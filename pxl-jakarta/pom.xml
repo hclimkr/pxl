@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.hclimkr</groupId>
+        <artifactId>pxl</artifactId>
+        <version>1.0.0-RC1</version>
+    </parent>
+
+    <artifactId>pxl-jakarta</artifactId>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.release>17</maven.compiler.release>
+    </properties>
+
+    <dependencies>
+<!--        <dependency>-->
+<!--            <groupId>jakarta.annotation</groupId>-->
+<!--            <artifactId>jakarta.annotation-api</artifactId>-->
+<!--            <version>3.0.0</version>-->
+<!--            <scope>compile</scope>-->
+<!--        </dependency>-->
+
+        <!-- Required: bean-validation API (interfaces only; needed at compile and runtime). Provider and EL below are optional. -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <version>3.1.1</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!--
+          Optional: bean-validation provider + EL.
+          When a consumer puts both on the classpath, data validation (e.g. @NotNull, @NotEmpty) is active;
+          without them, new Pxl() disables validation gracefully instead of throwing (it only logs a warning).
+          Declared here for tests only.
+        -->
+        <dependency>
+            <groupId>org.hibernate.validator</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>9.1.1.Final</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>jakarta.el</artifactId>
+            <version>4.0.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <sourceDirectory>${project.build.directory}/generated-sources/pxl-jakarta</sourceDirectory>
+        <testSourceDirectory>${project.build.directory}/generated-test-sources/pxl-jakarta</testSourceDirectory>
+
+        <!--
+          The pxl-javax src/main/resources (pxl-messages*.properties) are copied into
+          generated-sources/pxl-jakarta alongside the sources during the generate-sources phase,
+          so include only the .properties here as resources to ensure the same diagnostic message
+          bundle is packaged into the pxl-jakarta artifact (jar) as well.
+        -->
+        <resources>
+            <resource>
+                <directory>${project.build.directory}/generated-sources/pxl-jakarta</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+        </resources>
+
+        <testResources>
+            <testResource>
+                <directory>${project.build.directory}/generated-test-resources/pxl-jakarta</directory>
+            </testResource>
+        </testResources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>transform-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <copy todir="${project.build.directory}/generated-sources/pxl-jakarta">
+                                    <fileset dir="${project.basedir}/../pxl-javax/src/main/java"/>
+                                </copy>
+                                <copy todir="${project.build.directory}/generated-sources/pxl-jakarta">
+                                    <fileset dir="${project.basedir}/../pxl-javax/src/main/resources"/>
+                                </copy>
+                                <replace dir="${project.build.directory}/generated-sources/pxl-jakarta"
+                                         token="import javax.annotation." value="import jakarta.annotation."/>
+                                <replace dir="${project.build.directory}/generated-sources/pxl-jakarta"
+                                         token="import javax.validation." value="import jakarta.validation."/>
+                            </target>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>transform-test-sources</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <copy todir="${project.build.directory}/generated-test-sources/pxl-jakarta">
+                                    <fileset dir="${project.basedir}/../pxl-javax/src/test/java"/>
+                                </copy>
+                                <copy todir="${project.build.directory}/generated-test-resources/pxl-jakarta">
+                                    <fileset dir="${project.basedir}/../pxl-javax/src/test/resources"/>
+                                </copy>
+                                <replace dir="${project.build.directory}/generated-test-sources/pxl-jakarta"
+                                         token="import javax.annotation." value="import jakarta.annotation."/>
+                                <replace dir="${project.build.directory}/generated-test-sources/pxl-jakarta"
+                                         token="import javax.validation." value="import jakarta.validation."/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Automatic-Module-Name>io.github.hclimkr.pxl.jakarta</Automatic-Module-Name>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                    <release>17</release>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.46</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!-- Local-only coverage: generates target/site/jacoco/index.html on `mvn test`. No CI, no coverage gate. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.15</version>
+                <executions>
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

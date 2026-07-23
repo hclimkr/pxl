@@ -1,0 +1,181 @@
+package io.github.hclimkr.pxl.option;
+
+import io.github.hclimkr.pxl.PxlConstants;
+import io.github.hclimkr.pxl.exception.PxlNullPointerException;
+import io.github.hclimkr.pxl.internal.constraint.Nullable;
+import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.util.PxlCollectionUtils;
+import lombok.*;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+/**
+ * Excel sheet import option
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public final class PxlImportSheetOption {
+
+    /**
+     * The field name for the sheet object
+     */
+    @NonNull
+    @Builder.Default
+    private String fieldName = PxlConstants.SHEET_FIELD_NAME_WILD_CARD;
+
+    /**
+     * Specifies the name of the sheet on import.
+     */
+    @Builder.Default
+    private List<String> importSheetNames = null;
+
+    /**
+     * Specifies whether to import.
+     */
+    @Builder.Default
+    private Boolean importEnabled = null;
+
+    /**
+     * Specifies whether to override a superclass field that uses the same sheet name on import, if one exists.
+     */
+    @Builder.Default
+    private Boolean importOverrideSuperClassSheet = null;
+
+    /**
+     * Specifies whether to import hidden rows on import.
+     */
+    @Builder.Default
+    private Boolean importExcludeHiddenRows = null;
+
+    /**
+     * Specifies whether to import hidden columns on import.
+     */
+    @Builder.Default
+    private Boolean importExcludeHiddenColumns = null;
+
+    /**
+     * Specifies whether, for merged cells, each individual cell is treated as having the same value on import.
+     */
+    @Builder.Default
+    private Boolean importEachCellOfMergedRegion = null;
+
+    /**
+     * Specifies the index of the row used as the header on import.
+     * (The default is the first row. When set explicitly, use a 1-based value, and it must be less than the value of importFirstDataRowIndex.)
+     */
+    @Builder.Default
+    private Integer importHeaderRowIndex = null;
+
+    /**
+     * Specifies the index of the starting row used as data on import.
+     * (The default is the second row. When set explicitly, use a 1-based value, and it must be greater than the value of importHeaderRowIndex and less than or equal to the value of importLastDataRowIndex.)
+     */
+    @Builder.Default
+    private Integer importFirstDataRowIndex = null;
+
+    /**
+     * Specifies the index of the ending row used as data on import.
+     * (The default is the last row. When set explicitly, use a 1-based value, and it must be greater than or equal to the value of importFirstDataRowIndex.)
+     */
+    @Builder.Default
+    private Integer importLastDataRowIndex = null;
+
+    /**
+     * Specifies the index of the starting column used as data on import.
+     * (The default is the first column. When set explicitly, use a 1-based value, and it must be less than or equal to the value of importLastDataColumnIndex.)
+     */
+    @Builder.Default
+    private Integer importFirstDataColumnIndex = null;
+
+    /**
+     * Specifies the index of the ending column used as data on import.
+     * (The default is the last column. When set explicitly, use a 1-based value, and it must be greater than or equal to the value of importFirstDataColumnIndex.)
+     */
+    @Builder.Default
+    private Integer importLastDataColumnIndex = null;
+
+    /**
+     * Per-column import overrides, matched to column fields by name. Empty by default.
+     */
+    @Builder.Default
+    private final List<PxlImportColumnOption> importColumnOptions = new ArrayList<>();
+
+    /**
+     * Null-safe accessor that returns the import sheet names of the supplied sheet option, with all whitespace removed and blank entries dropped.
+     *
+     * @param sheetOption the sheet option to read from; may be {@code null}
+     * @return the whitespace-stripped, non-blank sheet names, or {@code null} if the sheet option or its names are {@code null}
+     */
+    public static List<String> getImportSheetNames(@Nullable final PxlImportSheetOption sheetOption) {
+
+        return Optional.ofNullable(sheetOption)
+                .flatMap(option -> Optional.ofNullable(option.getImportSheetNames())
+                        .map(names -> names.stream()
+                                .map(StringUtils::deleteWhitespace)
+                                .filter(StringUtils::isNotBlank)
+                                .collect(Collectors.toList())))
+                .orElse(null);
+    }
+
+    /**
+     * Returns the column import option at the given position in this sheet option.
+     *
+     * @param index the zero-based position within the column option list
+     * @return the column option at that position, or {@code null} if the index is out of range
+     */
+    public PxlImportColumnOption getImportColumnOption(final int index) {
+
+        return PxlCollectionUtils.get(this.importColumnOptions, index);
+    }
+
+    /**
+     * Null-safe accessor that returns the column import option at the given position from the supplied sheet option.
+     *
+     * @param importSheetOption the sheet option to read from; may be {@code null}
+     * @param index             the zero-based position within the column option list
+     * @return the column option at that position, or {@code null} if the sheet option is {@code null} or the index is out of range
+     */
+    public static PxlImportColumnOption getImportColumnOption(@Nullable final PxlImportSheetOption importSheetOption,
+                                                              final int index) {
+
+        return Optional.ofNullable(importSheetOption)
+                .map(sheetOption -> sheetOption.getImportColumnOption(index))
+                .orElse(null);
+    }
+
+    /**
+     * Null-safe accessor that returns the column import options of the supplied sheet option.
+     *
+     * @param importSheetOption the sheet option to read from; may be {@code null}
+     * @return the list of column options, or an empty list if the sheet option is {@code null}
+     */
+    public static List<PxlImportColumnOption> getImportColumnOptions(@Nullable final PxlImportSheetOption importSheetOption) {
+
+        return Optional.ofNullable(importSheetOption)
+                .map(sheetOption -> sheetOption.getImportColumnOptions())
+                .orElseGet(ArrayList::new);
+    }
+
+    /**
+     * Appends a column import option to this sheet option.
+     *
+     * @param importColumnOption the column option to append
+     * @return {@code true} (as specified by {@link java.util.Collection#add})
+     * @throws PxlNullPointerException if {@code importColumnOption} is {@code null}
+     */
+    public boolean addImportColumnOption(final PxlImportColumnOption importColumnOption)
+            throws PxlNullPointerException {
+
+        PxlAssertSupport.notNull(importColumnOption, "importColumnOption");
+
+        return this.importColumnOptions.add(importColumnOption);
+    }
+
+}
