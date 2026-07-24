@@ -308,7 +308,8 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 ### `@PxlWorkbookName` (필드 대상)
 
 워크북 이름을 담을 `String` 필드에 붙인다. 속성 없음. 불필요하면 생략 가능.  
-비-`String` 필드에 붙이면 정보 수집 시점에 `PxlDataException`으로 실패한다.
+비-`String` 필드에 붙이면 정보 수집 시점에 `PxlDataException`으로 실패한다.  
+import 전용: 워크북 형식 import 시, 빌더의 `.workbookName(...)`으로 넘긴 이름이 이 필드에 채워진다. export(및 샘플 export)에서는 사용되지 않는다.
 
 ### `@PxlSheet` (필드 대상)
 
@@ -341,7 +342,8 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 행 인덱스를 담을 필드에 붙인다. 속성 없음.  불필요하면 생략 가능.  
 필드 타입은 `byte`·`short`·`int`·`long` 및 각 래퍼 클래스(`Byte`·`Short`·`Integer`·`Long`)를 지원하며, 그 외 타입이면 `PxlArgumentException`으로 실패한다.  
 채워지는 값은 가져온 행의 1-based 스프레드시트 행 번호(0-based POI 행 번호 `row.getRowNum()` + 1 — 스프레드시트 UI에 표시되는 행 번호이자 `importHeaderRowIndex` 등 인덱스 속성과 같은 기준)다.  
-기본 구성(헤더가 첫 행)에서는 데이터 행이 2·3·4…이며, `importHeaderRowIndex`로 헤더를 아래로 옮기거나 헤더 위에 제목 행이 있으면 그만큼 커진 절대 행 번호가 들어간다.
+기본 구성(헤더가 첫 행)에서는 데이터 행이 2·3·4…이며, `importHeaderRowIndex`로 헤더를 아래로 옮기거나 헤더 위에 제목 행이 있으면 그만큼 커진 절대 행 번호가 들어간다.  
+import 전용: export(및 샘플 export)에는 아무 영향이 없다 — import 시에만 읽히므로 이 애노테이션으로 셀에 기록되는 값은 없다. export 시 값을 출력하려면 해당 필드에 `@PxlColumn`을 함께 붙여야 한다.
 
 ### `@PxlColumn` (필드 대상)
 

@@ -308,7 +308,8 @@ When you pass an option object to the `.override()` step to provide runtime valu
 ### `@PxlWorkbookName` (targets a field)
 
 Put it on a `String` field that holds the workbook name. No attributes. Can be omitted if not needed.  
-Putting it on a non-`String` field fails with `PxlDataException` at the metadata-collection stage.
+Putting it on a non-`String` field fails with `PxlDataException` at the metadata-collection stage.  
+Import-only: on import in the workbook form, the field is filled with the name passed to the builder's `.workbookName(...)`. On export (and sample export) this annotation is not used.
 
 ### `@PxlSheet` (targets a field)
 
@@ -341,7 +342,8 @@ The default value `0` of an index attribute means "auto" (first row/column autom
 Put it on a field that holds the row index. No attributes. Can be omitted if not needed.  
 The field type supports `byte`·`short`·`int`·`long` and their wrapper classes (`Byte`·`Short`·`Integer`·`Long`); any other type fails with `PxlArgumentException`.  
 The value filled in is the 1-based spreadsheet row number of the imported row (the 0-based POI row number `row.getRowNum()` plus one — the same numbering shown in the spreadsheet UI and used by `importHeaderRowIndex` and the other index attributes).  
-In the default configuration (header on the first row), data rows are 2, 3, 4…, and if you move the header down with `importHeaderRowIndex` or there is a title row above the header, the absolute row number grows accordingly.
+In the default configuration (header on the first row), data rows are 2, 3, 4…, and if you move the header down with `importHeaderRowIndex` or there is a title row above the header, the absolute row number grows accordingly.  
+Import-only: this annotation has no effect on export (nor sample export) — it is only read while importing, so nothing is written to a cell for it. To output a value on export, annotate the field with `@PxlColumn` as well.
 
 ### `@PxlColumn` (targets a field)
 
