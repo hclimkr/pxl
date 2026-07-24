@@ -78,7 +78,7 @@ mvn install -DskipTests                              # 테스트 없이 빌드
 - 공개 API의 필수 인자는 파라미터 애노테이션이 아니라 `PxlAssertSupport`(`notNull`/`notEmpty`/`notBlank`) 명령형 호출로 검증한다.  
   nullability 표기는 내부 `@Nullable`(`internal/constraint`)을 쓴다.
 - 새 필드 타입 지원을 추가하려면 `internal/codec/`에 codec 클래스를 추가하고 `PxlCellResolver`의 세 메서드(`parseDataValueFromCell`·`parseDataValueFromString`·`buildDataCell`) 모두에 분기를 추가한다.
-- 모든 파일은 CRLF 줄바꿈을 쓴다(`.gitattributes`가 없어 그대로 커밋된다). 대량 치환 후 EOL이 섞이지 않도록 주의한다.
+- 작업 트리는 CRLF 줄바꿈을 쓰지만 `.gitattributes`가 없어, `core.autocrlf=true`(이 저장소 기준) 설정에서 Git이 커밋되는 blob을 LF로 정규화한다. 대량 치환 후 EOL이 섞이지 않도록 주의한다.
 
 ---
 

@@ -78,7 +78,7 @@ mvn install -DskipTests                              # Build without tests
 - Validate required arguments of the public API with imperative `PxlAssertSupport` calls (`notNull`/`notEmpty`/`notBlank`), not with parameter annotations.  
   Use the internal `@Nullable` (`internal/constraint`) for nullability markers.
 - To add support for a new field type, add a codec class under `internal/codec/` and add a branch in all three methods of `PxlCellResolver` (`parseDataValueFromCell`, `parseDataValueFromString`, `buildDataCell`).
-- All files use CRLF line endings (there is no `.gitattributes`, so they are committed as-is). Take care not to mix EOLs after bulk substitutions.
+- The working tree uses CRLF, but there is no `.gitattributes`; with `core.autocrlf=true` (this repo's setup) Git normalizes the committed blobs to LF. Take care not to mix EOLs after bulk substitutions.
 
 ---
 
