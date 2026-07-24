@@ -12,6 +12,10 @@
 
     <artifactId>pxl-javax</artifactId>
 
+    <name>PXL (javax)</name>
+    <description>Annotation-driven, bidirectional binding between spreadsheets and Java objects, built on Apache POI (javax.validation variant)</description>
+    <url>https://github.com/hclimkr/pxl</url>
+
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>

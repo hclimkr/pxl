@@ -12,6 +12,10 @@
 
     <artifactId>pxl-jakarta</artifactId>
 
+    <name>PXL (jakarta)</name>
+    <description>Annotation-driven, bidirectional binding between spreadsheets and Java objects, built on Apache POI (jakarta.validation variant)</description>
+    <url>https://github.com/hclimkr/pxl</url>
+
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>

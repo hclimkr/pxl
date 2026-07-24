@@ -7,7 +7,7 @@ PXL
 [![Java](https://img.shields.io/badge/Java-8%2B%20%2F%2017%2B-orange.svg)](#setup)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-PXL is an **annotation-based library for bidirectionally binding spreadsheets and Java objects**,
+PXL is an **annotation-driven, bidirectional binding between spreadsheets and Java objects**,
 built on top of Apache POI and Apache Commons CSV, and supports Java 8 and above.
 
 - Import: XLSX · XLS · CSV → Java objects
