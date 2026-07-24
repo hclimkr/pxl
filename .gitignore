@@ -5,6 +5,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# flatten-maven-plugin output (CI-friendly ${revision} resolution)
+.flattened-pom.xml
+
 ### Gradle Build Output ###
 .gradle/
 build/

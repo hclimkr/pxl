@@ -6,7 +6,7 @@
 
     <groupId>io.github.hclimkr</groupId>
     <artifactId>pxl</artifactId>
-    <version>1.0.0</version>
+    <version>${revision}</version>
     <packaging>pom</packaging>
 
     <name>PXL</name>
@@ -41,6 +41,7 @@
     </modules>
 
     <properties>
+        <revision>1.0.0</revision>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <maven.compiler.release>17</maven.compiler.release>
@@ -156,6 +157,39 @@
                 <configuration>
                     <skipTests>false</skipTests>
                 </configuration>
+            </plugin>
+
+            <!--
+              Resolves the CI-friendly ${revision} version into the installed/deployed POMs.
+              resolveCiFriendliesOnly substitutes only the version property and leaves the rest
+              of the POM (name/description/url, dependencies) untouched, so consumers never see a
+              literal ${revision}. The single source of truth for the version is the <revision>
+              property above; bump it (or pass -Drevision=x.y.z) to release a new version.
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.7.3</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten-clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>
