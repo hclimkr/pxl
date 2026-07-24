@@ -6,7 +6,7 @@ PXL
 [![Java](https://img.shields.io/badge/Java-8%2B%20%2F%2017%2B-orange.svg)](#구성)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-PXL은 애노테이션 기반으로 **스프레드시트와 자바 객체를 양방향 바인딩하는 라이브러리**다.
+PXL은 **애노테이션 기반으로 스프레드시트와 자바 객체를 양방향 바인딩하는 라이브러리**다.
 Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지원한다.
 
 - Import: XLSX · XLS · CSV → 자바 객체
@@ -31,7 +31,7 @@ Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지
 
 ## 구성
 
-환경에 맞는 변형 하나를 고른다.
+환경에 맞는 변형 하나만 의존성에 추가한다.
 - `pxl-javax`(Java 8+, `javax.*`)
 - `pxl-jakarta`(Java 17+, `jakarta.*`)
 
@@ -73,6 +73,8 @@ implementation 'io.github.hclimkr:pxl-jakarta:1.0.0-RC1'
 
 ### 행 클래스
 
+행 클래스는 `@PxlColumn`으로 각 필드를 헤더에 매핑한다.
+
 ```java
 import io.github.hclimkr.pxl.annotation.PxlColumn;
 import io.github.hclimkr.pxl.annotation.PxlRowIndex;
@@ -85,7 +87,7 @@ import java.time.LocalDate;
 @NoArgsConstructor          // import 시에 무인자 생성자 필수
 public class Employee {
 
-    @PxlRowIndex            // (선택) 행의 1-based 스프레드시트 행 번호. 타입: byte/short/int/long + 래퍼 클래스(Byte/Short/Integer/Long)
+    @PxlRowIndex            // (선택) 1-based 스프레드시트 행 번호. 타입: byte/short/int/long + 래퍼 클래스(Byte/Short/Integer/Long)
     private Integer rowIndex;
 
     @PxlColumn(name = "Name", exportSample = "John Doe")
@@ -510,8 +512,8 @@ List<Employee> employees = pxl.importCsv()
 
 ## 빌드 & 기여
 
-소스는 `pxl-javax`에만 있고 `pxl-jakarta`는 빌드 시 문자열 치환으로 생성된다. 빌드·테스트 명령, 소스 편집 규칙, 테스트 작성 규칙은
-[CONTRIBUTING_ko.md](CONTRIBUTING_ko.md) 에 정리돼 있다.
+소스는 `pxl-javax`에만 있고 `pxl-jakarta`는 빌드 시 문자열 치환으로 생성된다.  
+빌드·테스트 명령, 소스 편집 규칙, 테스트 작성 규칙은 [CONTRIBUTING_ko.md](CONTRIBUTING_ko.md) 에 정리돼 있다.
 
 ---
 

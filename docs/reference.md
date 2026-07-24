@@ -5,7 +5,7 @@ PXL Reference
 
 [![Quick Start](https://img.shields.io/badge/🚀%20Quick%20Start-README.md-4c9aff?style=for-the-badge)](../README.md)
 
-PXL is an annotation-based **library that provides bidirectional binding between spreadsheets and Java objects**.
+PXL is an **annotation-based library that provides bidirectional binding between spreadsheets and Java objects**.
 It is built on top of Apache POI and Apache Commons CSV, and supports Java 8 and above.
 
 - Internally, it handles Excel (XLS/XLSX) with Apache POI and CSV with Apache Commons CSV.
@@ -64,7 +64,7 @@ With a declarative approach of putting annotations on your DTO, you get the foll
 
 ## Setup
 
-Add only the one variant you choose to your dependencies.
+Add only the variant that matches your environment to your dependencies.
 
 **Maven**
 

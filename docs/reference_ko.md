@@ -5,7 +5,7 @@ PXL 레퍼런스
 
 [![빠른 시작](https://img.shields.io/badge/🚀%20빠른%20시작-README_ko.md-4c9aff?style=for-the-badge)](../README_ko.md)
 
-PXL은 애노테이션 기반으로 **스프레드시트와 자바 객체를 양방향 바인딩**하는 라이브러리이다.
+PXL은 **애노테이션 기반으로 스프레드시트와 자바 객체를 양방향 바인딩**하는 라이브러리이다.
 Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지원한다.
 
 - 내부적으로 Apache POI로 엑셀(XLS/XLSX)을, Apache Commons CSV로 CSV를 처리한다.
@@ -64,7 +64,7 @@ DTO에 애노테이션을 붙이는 선언적 방식으로 아래 기능을 별�
 
 ## 구성
 
-선택한 변형 하나만 의존성에 추가한다.
+환경에 맞는 변형 하나만 의존성에 추가한다.
 
 **Maven**
 

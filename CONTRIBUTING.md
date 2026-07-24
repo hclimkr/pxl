@@ -2,7 +2,7 @@
 
 # Contributing Guide
 
-This document summarizes the repository structure, build, tests, and code conventions for developers.
+This document summarizes the repository structure, build, tests, and code conventions for developers.  
 For library usage, see [README.md](README.md) and [docs/reference.md](docs/reference.md).
 
 ---
@@ -38,7 +38,7 @@ The base package is `io.github.hclimkr.pxl`, and the boundary between the public
 ## Development Environment
 
 - JDK 17 must be on the PATH (`pxl-javax` compiles to 8, but the build itself runs on JDK 17).
-- Lombok (`@Getter`/`@Setter`/`@Builder`) is used throughout and is wired as an annotation processor in each module's `maven-compiler-plugin`. Enable the Lombok plugin in your IDE.
+- Lombok is used throughout and is wired as an annotation processor in each module's `maven-compiler-plugin`. Enable the Lombok plugin in your IDE.
 
 ---
 
@@ -66,16 +66,16 @@ mvn install -DskipTests                              # Build without tests
 
 - Do not create new `*Tests.java`. The runnable classes are organized by feature category in the root test package `io.github.hclimkr.pxl` (`PxlRoundTripTests`, `PxlTypeConversionTests`, `PxlExcelImportTests`, `PxlExcelExportTests`, `PxlCsvImportTests`, `PxlNameMatchingTests`, `Pxl{Column,Sheet,Workbook}OptionTests`, `PxlStyleTests`, `PxlSampleExcelExportTests`, `PxlI18nTests`, `PxlExceptionTests`, `PxlRegressionTests`, `Pxl{Picture,PictureNetwork}ExportTests`, `PxlLargeDataTests`, `PxlUtilityTests`), so add methods to the relevant feature class.
 - Naming convention: class name = feature category, method name = `feature_situation_result` camelCase (e.g. `importExcel_mergedRegion_streaming_throws`).
-- Annotated DTO fixtures that are binding targets go under the `tcdata/` subpackage. Input data is mostly created directly in code within each test (in English).
+- Annotated DTO fixtures that are binding targets go under the `tcdata/` subpackage. Input data is mostly created directly in code within each test.
 - Add regression/characterization tests together with any change that alters logic or performance.
 
 ---
 
 ## Code Conventions
 
-- Write JavaDoc (`/** */`) and inline/block comments (`//`, `/* */`) in English.
+- Write JavaDoc (`/** */`) and inline/block comments (`//`, `/* */`) in English.  
   Exception/diagnostic messages, however, are keyed into the i18n bundle (`pxl-messages{,_ko}.properties`, base = English) and resolved via `PxlI18nDiagnostic.get(...)`.
-- Validate required arguments of the public API with imperative `PxlAssertSupport` calls (`notNull`/`notEmpty`/`notBlank`), not with parameter annotations.
+- Validate required arguments of the public API with imperative `PxlAssertSupport` calls (`notNull`/`notEmpty`/`notBlank`), not with parameter annotations.  
   Use the internal `@Nullable` (`internal/constraint`) for nullability markers.
 - To add support for a new field type, add a codec class under `internal/codec/` and add a branch in all three methods of `PxlCellResolver` (`parseDataValueFromCell`, `parseDataValueFromString`, `buildDataCell`).
 - All files use CRLF line endings (there is no `.gitattributes`, so they are committed as-is). Take care not to mix EOLs after bulk substitutions.

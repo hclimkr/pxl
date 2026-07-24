@@ -38,7 +38,7 @@ import javax.validation.   →   import jakarta.validation.
 ## 개발 환경
 
 - JDK 17이 PATH에 있어야 한다(`pxl-javax`는 8로 컴파일하지만 빌드 자체는 JDK 17에서 수행).
-- Lombok(`@Getter`/`@Setter`/`@Builder`)이 전반에 쓰이며 각 모듈의 `maven-compiler-plugin`에 애노테이션 프로세서로 연결돼 있다. IDE에서 Lombok 플러그인을 활성화한다.
+- Lombok이 전반에 쓰이며 각 모듈의 `maven-compiler-plugin`에 애노테이션 프로세서로 연결돼 있다. IDE에서 Lombok 플러그인을 활성화한다.
 
 ---
 
@@ -66,7 +66,7 @@ mvn install -DskipTests                              # 테스트 없이 빌드
 
 - 새 `*Tests.java`를 만들지 않는다. 실행 클래스는 루트 테스트 패키지 `io.github.hclimkr.pxl`에 기능별 카테고리로 분류돼 있으니(`PxlRoundTripTests`, `PxlTypeConversionTests`, `PxlExcelImportTests`, `PxlExcelExportTests`, `PxlCsvImportTests`, `PxlNameMatchingTests`, `Pxl{Column,Sheet,Workbook}OptionTests`, `PxlStyleTests`, `PxlSampleExcelExportTests`, `PxlI18nTests`, `PxlExceptionTests`, `PxlRegressionTests`, `Pxl{Picture,PictureNetwork}ExportTests`, `PxlLargeDataTests`, `PxlUtilityTests`) 해당 기능 클래스에 메서드를 추가한다.
 - 명명 규칙: 클래스명 = 기능 카테고리, 메서드명 = `기능_상황_결과` camelCase (예: `importExcel_mergedRegion_streaming_throws`).
-- 바인딩 대상이 되는 애노테이션 붙은 DTO 픽스처는 `tcdata/` 하위 패키지에 둔다. 입력 데이터는 대부분 각 테스트에서 코드로 직접 생성한다(영문).
+- 바인딩 대상이 되는 애노테이션 붙은 DTO 픽스처는 `tcdata/` 하위 패키지에 둔다. 입력 데이터는 대부분 각 테스트에서 코드로 직접 생성한다.
 - 로직·성능을 바꾸는 수정에는 회귀/특성화 테스트를 함께 추가한다.
 
 ---
@@ -74,9 +74,9 @@ mvn install -DskipTests                              # 테스트 없이 빌드
 ## 코드 규칙
 
 - JavaDoc(`/** */`)과 인라인·블록 주석(`//`·`/* */`)은 영어로 작성한다.  
-단 예외·진단 메시지 i18n 번들(`pxl-messages{,_ko}.properties`, base=영어)에 키로 두고 `PxlI18nDiagnostic.get(...)`으로 해석하도록 한다.
+  단 예외·진단 메시지 i18n 번들(`pxl-messages{,_ko}.properties`, base=영어)에 키로 두고 `PxlI18nDiagnostic.get(...)`으로 해석하도록 한다.
 - 공개 API의 필수 인자는 파라미터 애노테이션이 아니라 `PxlAssertSupport`(`notNull`/`notEmpty`/`notBlank`) 명령형 호출로 검증한다.  
-nullability 표기는 내부 `@Nullable`(`internal/constraint`)을 쓴다.
+  nullability 표기는 내부 `@Nullable`(`internal/constraint`)을 쓴다.
 - 새 필드 타입 지원을 추가하려면 `internal/codec/`에 codec 클래스를 추가하고 `PxlCellResolver`의 세 메서드(`parseDataValueFromCell`·`parseDataValueFromString`·`buildDataCell`) 모두에 분기를 추가한다.
 - 모든 파일은 CRLF 줄바꿈을 쓴다(`.gitattributes`가 없어 그대로 커밋된다). 대량 치환 후 EOL이 섞이지 않도록 주의한다.
 
