@@ -177,7 +177,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Local-only coverage: generates target/site/jacoco/index.html on `mvn test`. No CI, no coverage gate. -->
+            <!-- Coverage report only: generates target/site/jacoco/index.html on `mvn test`. No coverage gate, and CI does not enforce a threshold either. -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
