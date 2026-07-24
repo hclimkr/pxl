@@ -4,6 +4,8 @@ PXL
 =============================
 
 [![Build](https://github.com/hclimkr/pxl/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/hclimkr/pxl/actions/workflows/build.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.hclimkr/pxl-javax?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.hclimkr/pxl-javax)
+[![Javadoc](https://javadoc.io/badge2/io.github.hclimkr/pxl-javax/javadoc.svg)](https://javadoc.io/doc/io.github.hclimkr/pxl-javax)
 [![Java](https://img.shields.io/badge/Java-8%2B%20%2F%2017%2B-orange.svg)](#구성)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
