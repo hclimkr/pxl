@@ -286,24 +286,24 @@ When you pass an option object to the `.override()` step to provide runtime valu
 
 ### `@PxlWorkbook` (targets a class)
 
-| Attribute                                                          | Default    | Description                                                                                                   |
-|-------------------------------------------------------------------|------------|--------------------------------------------------------------------------------------------------------------|
-| `importPassword`                                                  | `""`       | Password to remove document protection on import                                                             |
-| `importDataValidation`                                            | `true`     | Whether to perform validation on imported data                                                               |
-| `importUsingStreamReader`                                         | `false`    | Whether to use the Streaming Reader on import (XSSF/XLSX only)                                                |
-| `importStreamReaderRowCacheSize`                                  | `100`      | Row cache size of the Streaming Reader                                                                        |
-| `importStreamReaderBufferSize`                                    | `4096`     | Buffer size of the Streaming Reader                                                                           |
+| Attribute                                                          | Default    | Description                                                                                                                                                                       |
+|-------------------------------------------------------------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `importPassword`                                                  | `""`       | Password to remove document protection on import                                                                                                                                  |
+| `importDataValidation`                                            | `true`     | Whether to perform validation on imported data                                                                                                                                    |
+| `importUsingStreamReader`                                         | `false`    | Whether to use the Streaming Reader on import (XSSF/XLSX only)                                                                                                                    |
+| `importStreamReaderRowCacheSize`                                  | `100`      | Row cache size of the Streaming Reader                                                                                                                                            |
+| `importStreamReaderBufferSize`                                    | `4096`     | Buffer size of the Streaming Reader                                                                                                                                               |
 | `importCsvCharset`                                                | `"UTF-8"`  | Character encoding of the CSV to import.<br/>Handles a leading BOM automatically (strips the UTF-8/UTF-16LE/BE BOM; for `UTF-16` (auto), the BOM is used to determine endianness) |
-| `importCsvDelimiter`                                              | `','`      | Delimiter of the CSV to import (`char`)                                                                       |
-| `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on import                            |
-| `exportFileFormat`                                                | `XSSF`     | Export format (`PxlFileFormat`): `XSSF`=XLSX (default), `HSSF`=XLS, `SXSSF`=streaming XLSX.<br/>`CSV` is not supported, so specifying it raises an exception. |
-| `exportPassword`                                                  | `""`       | Document protection password to set on export                                                                |
-| `exportDataValidation`                                            | `true`     | Whether to perform validation on data to export                                                              |
-| `exportSXSSFRowAccessWindowSize`                                  | `100`      | rowAccessWindowSize on SXSSF export                                                                           |
-| `exportWorkbookRequiredHeaderCellStyler`                          | (unspecified) | Required header cell style (uses `PxlHeaderRequiredStyler` when unspecified/not applicable)                |
-| `exportWorkbookOptionalHeaderCellStyler`                          | (unspecified) | Optional header cell style (uses `PxlHeaderOptionalStyler` when unspecified/not applicable)                |
-| `exportWorkbookDataCellStyler`                                    | (unspecified) | Data cell style (uses `PxlDataVerticalCenterTextStyler` when unspecified/not applicable)                   |
-| `exportI18nBaseName` / `exportI18nLanguage` / `exportI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on export                            |
+| `importCsvDelimiter`                                              | `','`      | Delimiter of the CSV to import (`char`)                                                                                                                                           |
+| `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on import                                                                                                       |
+| `exportFileFormat`                                                | `XSSF`     | Export format (`PxlFileFormat`): `XSSF`=XLSX (default), `HSSF`=XLS, `SXSSF`=streaming XLSX.<br/>`CSV` is not supported, so specifying it raises an exception.                     |
+| `exportPassword`                                                  | `""`       | Document protection password to set on export.<br/>Applies to `toFile(...)`/`toStream(...)` only, not to `toWorkbook()`.                                                          |
+| `exportDataValidation`                                            | `true`     | Whether to perform validation on data to export                                                                                                                                   |
+| `exportSXSSFRowAccessWindowSize`                                  | `100`      | rowAccessWindowSize on SXSSF export                                                                                                                                               |
+| `exportWorkbookRequiredHeaderCellStyler`                          | (unspecified) | Required header cell style (uses `PxlHeaderRequiredStyler` when unspecified/not applicable)                                                                                       |
+| `exportWorkbookOptionalHeaderCellStyler`                          | (unspecified) | Optional header cell style (uses `PxlHeaderOptionalStyler` when unspecified/not applicable)                                                                                       |
+| `exportWorkbookDataCellStyler`                                    | (unspecified) | Data cell style (uses `PxlDataVerticalCenterTextStyler` when unspecified/not applicable)                                                                                          |
+| `exportI18nBaseName` / `exportI18nLanguage` / `exportI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on export                                                                                                       |
 
 ### `@PxlWorkbookName` (targets a field)
 

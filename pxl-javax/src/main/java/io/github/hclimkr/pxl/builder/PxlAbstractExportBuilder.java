@@ -31,6 +31,12 @@ abstract class PxlAbstractExportBuilder {
     /**
      * Creates and returns a POI workbook. The returned workbook must be closed by the caller.
      *
+     * <p>The resolved {@code exportPassword} is <strong>not</strong> applied to the returned workbook: POI cannot carry
+     * a document-open password on the workbook object itself (encryption happens at the file-container layer), so PXL
+     * encrypts only while writing. Writing the returned workbook with {@code Workbook.write(...)} therefore produces an
+     * unencrypted file — write it with {@link PxlWorkbookUtils#writeToStream(Workbook, OutputStream, String)} to have
+     * the password applied, or use {@link #toFile(File)} / {@link #toStream(OutputStream)} instead.</p>
+     *
      * @return the created workbook (the caller is responsible for closing it)
      * @throws PxlException if workbook creation fails
      */

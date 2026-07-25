@@ -286,24 +286,24 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 
 ### `@PxlWorkbook` (클래스 대상)
 
-| 속성                                                                | 기본값        | 설명                                                                                                           |
-|-------------------------------------------------------------------|------------|--------------------------------------------------------------------------------------------------------------|
-| `importPassword`                                                  | `""`       | Import 시 문서보호를 해제할 비밀번호                                                                                      |
-| `importDataValidation`                                            | `true`     | Import된 데이터에 대해 유효성 검사 수행 여부                                                                                 |
-| `importUsingStreamReader`                                         | `false`    | Import 시 Streaming Reader 사용 여부 (XSSF/XLSX 전용)                                                               |
-| `importStreamReaderRowCacheSize`                                  | `100`      | Streaming Reader의 row cache size                                                                             |
-| `importStreamReaderBufferSize`                                    | `4096`     | Streaming Reader의 buffer size                                                                                |
-| `importCsvCharset`                                                | `"UTF-8"`  | Import할 CSV의 문자 인코딩.<br/>선두 BOM 자동 처리(UTF-8/UTF-16LE/BE의 BOM 제거, `UTF-16`(auto)의 BOM은 엔디안 판별에 사용)            |
-| `importCsvDelimiter`                                              | `','`      | Import할 CSV의 구분자 (`char`)                                                                                    |
-| `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Import 시 다국어 ResourceBundle의 base name / language / country                                                  |
+| 속성                                                                | 기본값        | 설명                                                                                                                                 |
+|-------------------------------------------------------------------|------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `importPassword`                                                  | `""`       | Import 시 문서보호를 해제할 비밀번호                                                                                                 |
+| `importDataValidation`                                            | `true`     | Import된 데이터에 대해 유효성 검사 수행 여부                                                                                         |
+| `importUsingStreamReader`                                         | `false`    | Import 시 Streaming Reader 사용 여부 (XSSF/XLSX 전용)                                                                                |
+| `importStreamReaderRowCacheSize`                                  | `100`      | Streaming Reader의 row cache size                                                                                                    |
+| `importStreamReaderBufferSize`                                    | `4096`     | Streaming Reader의 buffer size                                                                                                       |
+| `importCsvCharset`                                                | `"UTF-8"`  | Import할 CSV의 문자 인코딩.<br/>선두 BOM 자동 처리(UTF-8/UTF-16LE/BE의 BOM 제거, `UTF-16`(auto)의 BOM은 엔디안 판별에 사용)          |
+| `importCsvDelimiter`                                              | `','`      | Import할 CSV의 구분자 (`char`)                                                                                                       |
+| `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Import 시 다국어 ResourceBundle의 base name / language / country                                                                     |
 | `exportFileFormat`                                                | `XSSF`     | Export 형식(`PxlFileFormat`): `XSSF`=XLSX(기본), `HSSF`=XLS, `SXSSF`=스트리밍 XLSX.<br/>`CSV`는 지원하지 않으므로 지정 시 예외 발생. |
-| `exportPassword`                                                  | `""`       | Export 시 설정할 문서보호 비밀번호                                                                                       |
-| `exportDataValidation`                                            | `true`     | Export할 데이터에 대해 유효성 검사 수행 여부                                                                                 |
-| `exportSXSSFRowAccessWindowSize`                                  | `100`      | SXSSF Export 시 rowAccessWindowSize                                                                           |
-| `exportWorkbookRequiredHeaderCellStyler`                          | (미지정)      | 필수 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderRequiredStyler`)                                                           |
-| `exportWorkbookOptionalHeaderCellStyler`                          | (미지정)      | 선택 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderOptionalStyler`)                                                           |
-| `exportWorkbookDataCellStyler`                                    | (미지정)      | 데이터 셀 스타일 (미지정/적용불가 시 `PxlDataVerticalCenterTextStyler`)                                                     |
-| `exportI18nBaseName` / `exportI18nLanguage` / `exportI18nCountry` | `""`/`"en"`/`""` | Export 시 다국어 ResourceBundle의 base name / language / country                                                  |
+| `exportPassword`                                                  | `""`       | Export 시 설정할 문서보호 비밀번호.<br/>`toFile(...)`·`toStream(...)`에만 적용되고 `toWorkbook()`에는 적용되지 않는다.               |
+| `exportDataValidation`                                            | `true`     | Export할 데이터에 대해 유효성 검사 수행 여부                                                                                         |
+| `exportSXSSFRowAccessWindowSize`                                  | `100`      | SXSSF Export 시 rowAccessWindowSize                                                                                                  |
+| `exportWorkbookRequiredHeaderCellStyler`                          | (미지정)      | 필수 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderRequiredStyler`)                                                                   |
+| `exportWorkbookOptionalHeaderCellStyler`                          | (미지정)      | 선택 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderOptionalStyler`)                                                                   |
+| `exportWorkbookDataCellStyler`                                    | (미지정)      | 데이터 셀 스타일 (미지정/적용불가 시 `PxlDataVerticalCenterTextStyler`)                                                              |
+| `exportI18nBaseName` / `exportI18nLanguage` / `exportI18nCountry` | `""`/`"en"`/`""` | Export 시 다국어 ResourceBundle의 base name / language / country                                                                     |
 
 ### `@PxlWorkbookName` (필드 대상)
 
