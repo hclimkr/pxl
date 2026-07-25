@@ -155,6 +155,23 @@ public class PxlCsvImportTests {
         assertThat(employees.get(0).getSalary()).isEqualByComparingTo("50000.50");
     }
 
+    @Test
+    public void importCsvStream_overrideAfterSheetConfig_binds() throws Exception {
+        // Same option as importCsvStream_tabDelimiter_binds, but chained after sheet(...) on the source step.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvDelimiter('\t')
+                .build();
+
+        final List<Employee> employees = pxl.importCsv()
+                .sheet(Employee.class)
+                .override(option)
+                .fromStream("Employees", stream(EMPLOYEES_TSV));
+
+        assertThat(employees).hasSize(1);
+        assertThat(employees.get(0).getName()).isEqualTo("Alice");
+        assertThat(employees.get(0).getSalary()).isEqualByComparingTo("50000.50");
+    }
+
     // ------------------------------------------------------------------
     // Workbook form (multiple CSVs -> @PxlWorkbook, with file name/name becoming the sheet name)
     // ------------------------------------------------------------------
@@ -194,6 +211,21 @@ public class PxlCsvImportTests {
         assertEmployees(workbook.getEmployees());
         assertThat(workbook.getDepartments()).hasSize(2);
         assertThat(workbook.getDepartments().get(1).getDepartmentName()).isEqualTo("Sales");
+    }
+
+    @Test
+    public void importCsvStreams_workbookNameAfterWorkbookConfig_setsName() throws Exception {
+        // workbookName(...) chained after workbook(...) on the source step must set the @PxlWorkbookName field.
+        final List<String> csvNames = Arrays.asList("Employees", "Departments");
+        final List<InputStream> csvStreams = Arrays.asList(stream(EMPLOYEES_CSV), stream(DEPARTMENTS_CSV));
+
+        final CompanyWorkbook workbook = pxl.importCsv()
+                .workbook(CompanyWorkbook.class)
+                .workbookName("Acme")
+                .fromStreams(csvNames, csvStreams);
+
+        assertThat(Pxl.getWorkbookNameFromWorkbookObject(workbook)).isEqualTo("Acme");
+        assertEmployees(workbook.getEmployees());
     }
 
     @Test

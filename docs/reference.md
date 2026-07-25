@@ -199,7 +199,7 @@ The direction (export/import) and format (excel/csv) are embedded in the start m
 | Excel import    | `pxl.importExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromStream(InputStream)`                                                                                    |
 | CSV import      | `pxl.importCsv()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromFiles(List<File>)` / `.fromStream(String, InputStream)` / `.fromStreams(List<String>, List<InputStream>)` |
 
-- The configuration-step `.override(...)` is optional, and its position within the chain can be set freely. It overrides annotation values at runtime with the values carried in the option object.  
+- The configuration-step `.override(...)` is optional, and its position within the chain can be set freely — before or after `.workbook(...)`/`.sheet(...)`, as long as it comes before the final (execute) step (if specified more than once, the last value wins). It overrides annotation values at runtime with the values carried in the option object.  
   For export, pass a `PxlExportWorkbookOption` to `.override(...)`; for import, pass a `PxlImportWorkbookOption` (if omitted, the annotation values are used as-is).
   For import, `.workbookName(String)`, which overrides the workbook name, can also be placed in the same position.
 - For the field list of each option and builder examples, see the [Option Override](#option-override) section.

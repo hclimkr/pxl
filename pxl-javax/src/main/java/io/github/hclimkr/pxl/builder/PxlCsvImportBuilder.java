@@ -27,7 +27,9 @@ import java.util.*;
  * {@code fromFiles(...)} / {@code fromStream(...)} / {@code fromStreams(...)}) actually open the source and parse.
  * The workbook form parses multiple CSVs grouped by sheet, while the sheet form supports a single CSV only.</p>
  *
- * <p>Common settings (workbook name and override option) are provided by {@link PxlAbstractImportBuilder}.</p>
+ * <p>Common settings (workbook name and override option) are provided by {@link PxlAbstractImportBuilder}. The same
+ * settings are also available on {@link Source}, so {@code workbookName(...)}/{@code override(...)} may be chained
+ * either before or after {@code workbook(...)}/{@code sheet(...)} (the value set last wins).</p>
  *
  * <p>Example: {@code List<Employee> rows = pxl.importCsv().sheet(Employee.class).fromFile(file);}</p>
  */
@@ -135,8 +137,8 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
     public static final class Source<R> {
 
         private final Validator validator;
-        private final String workbookName;
-        private final PxlImportWorkbookOption option;
+        private String workbookName;
+        private PxlImportWorkbookOption option;
 
         /**
          * Workbook class (workbook form). Non-null selects the workbook form; null selects the sheet form.
@@ -213,6 +215,36 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
                                               final Class<?> rowClass) {
 
             return new Source<>(validator, workbookName, option, null, collectionClass, rowClass);
+        }
+
+        /**
+         * Specifies the workbook name. (For setting the name field in the workbook form; optional)
+         *
+         * <p>Same as {@link PxlCsvImportBuilder#workbookName(String)}, so it may be chained either before or after
+         * {@code workbook(...)}/{@code sheet(...)}; the value set last wins.</p>
+         *
+         * @param workbookName the workbook name, or {@code null}
+         * @return this source step
+         */
+        public Source<R> workbookName(@Nullable final String workbookName) {
+
+            this.workbookName = workbookName;
+            return this;
+        }
+
+        /**
+         * Overrides annotation-declared values with the given import option. (Optional)
+         *
+         * <p>Same as {@link PxlCsvImportBuilder#override(PxlImportWorkbookOption)}, so it may be chained either
+         * before or after {@code workbook(...)}/{@code sheet(...)}; the value set last wins.</p>
+         *
+         * @param option the import option, or {@code null}
+         * @return this source step
+         */
+        public Source<R> override(@Nullable final PxlImportWorkbookOption option) {
+
+            this.option = option;
+            return this;
         }
 
         /**

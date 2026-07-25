@@ -10,7 +10,9 @@ import javax.validation.Validator;
  * <p>Holds common state independent of the source (Excel/CSV): {@code validator}, {@code workbookName}, {@code option}.
  * The parse-target configuration ({@code workbook(...)}/{@code sheet(...)}), which returns a source-terminal step
  * ({@code Pxl*ImportBuilder.Source}), and the setters {@code workbookName(...)}/{@code override(...)} — which must return
- * the self type for chaining — are implemented by each source's subclass builder, which sets these fields.</p>
+ * the self type for chaining — are implemented by each source's subclass builder, which sets these fields. The source
+ * step carries its own copy of {@code workbookName}/{@code option} and re-declares the same setters, so they may be
+ * chained after the parse-target configuration as well (the value set last wins).</p>
  *
  * <p>Package-private: not part of the public API. It exposes no public members; the public chaining methods live on
  * the public concrete subclasses.</p>

@@ -199,7 +199,7 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 | 엑셀 import    | `pxl.importExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromStream(InputStream)`                                                                                    |
 | CSV import   | `pxl.importCsv()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromFiles(List<File>)` / `.fromStream(String, InputStream)` / `.fromStreams(List<String>, List<InputStream>)` |
 
-- 구성 단계의 `.override(...)`은 선택적이며 체인 안에서 위치를 자유롭게 정할 수 있다. 옵션 객체에 담긴 값으로 애노테이션 값을 런타임에 오버라이드한다.  
+- 구성 단계의 `.override(...)`은 선택적이며 체인 안에서 위치를 자유롭게 정할 수 있다 — `.workbook(...)`/`.sheet(...)`의 앞이든 뒤든 마지막(실행) 단계 전이기만 하면 된다(여러 번 지정하면 마지막 값이 적용된다). 옵션 객체에 담긴 값으로 애노테이션 값을 런타임에 오버라이드한다.  
   export는 `.override(...)`에 `PxlExportWorkbookOption`을, import는 `PxlImportWorkbookOption`을 인자로 넘긴다(생략하면 애노테이션 값을 그대로 쓴다).
   import는 워크북 이름을 덮어쓰는 `.workbookName(String)`도 같은 위치에 둘 수 있다.
 - 각 옵션의 필드 목록과 빌더 예시는 [옵션 오버라이드](#옵션-오버라이드) 절을 참고한다.

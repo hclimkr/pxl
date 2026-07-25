@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Import builders: `override(...)` and `workbookName(...)` can now also be chained
+  after `workbook(...)`/`sheet(...)` on the returned source step, matching the export
+  builders where `override(...)` may appear anywhere before the final step. Chaining
+  them before the parse-target configuration keeps working; the value set last wins.
+
 ## [0.9.0] - 2026-07-24
 
 First public release.

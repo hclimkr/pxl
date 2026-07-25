@@ -153,6 +153,54 @@ public class PxlWorkbookOptionTests {
     }
 
     // ------------------------------------------------------------------
+    // Import .override(...) chain position - before or after workbook(...)/sheet(...)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void importOverride_afterSheetConfig_skipsValidation() throws Exception {
+        // Same option as importDataValidation_disabled_skipsValidation, but chained after sheet(...)
+        // on the source step - it must apply exactly like the builder-side call.
+        final byte[] bytes = buildStringSheet("V", new String[]{"Name", "Age"}, new String[][]{{"", "20"}});
+
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importDataValidation(false)
+                .build();
+
+        final List<ValidatedRow> rows = pxl.importExcel()
+                .sheet(ValidatedRow.class, Arrays.asList("V"))
+                .override(option)
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getName()).isNull();    // validation skipped -> null without an exception
+        assertThat(rows.get(0).getAge()).isEqualTo(20);
+    }
+
+    @Test
+    public void importOverride_beforeAndAfterSheetConfig_lastWins() throws Exception {
+        // Both sides set an option; the one chained last (on the source step) wins,
+        // so validation is skipped even though the builder-side option enabled it.
+        final byte[] bytes = buildStringSheet("V", new String[]{"Name", "Age"}, new String[][]{{"", "20"}});
+
+        final PxlImportWorkbookOption validating = PxlImportWorkbookOption.builder()
+                .importDataValidation(true)
+                .build();
+        final PxlImportWorkbookOption notValidating = PxlImportWorkbookOption.builder()
+                .importDataValidation(false)
+                .build();
+
+        final List<ValidatedRow> rows = pxl.importExcel()
+                .override(validating)
+                .sheet(ValidatedRow.class, Arrays.asList("V"))
+                .override(notValidating)
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getName()).isNull();
+        assertThat(rows.get(0).getAge()).isEqualTo(20);
+    }
+
+    // ------------------------------------------------------------------
     // Sheet exportOrder -> sheet order
     // ------------------------------------------------------------------
 

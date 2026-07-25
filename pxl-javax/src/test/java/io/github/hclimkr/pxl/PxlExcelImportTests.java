@@ -692,6 +692,38 @@ public class PxlExcelImportTests {
     }
 
     @Test
+    public void importExcel_workbookNameAndOverrideAfterWorkbookConfig_binds() throws Exception {
+        // Same mapping as importExcel_sheetNameMapping_binds, but workbookName(...)/override(...) are chained
+        // after workbook(...) on the source step - the chain position must not change the outcome.
+        final byte[] bytes;
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            final CellStyle dateStyle = workbook.createCellStyle();
+            dateStyle.setDataFormat(workbook.createDataFormat().getFormat("yyyy-mm-dd"));
+            writeEmployeeSheet(workbook.createSheet("Staff"), dateStyle);
+            workbook.write(outputStream);
+            bytes = outputStream.toByteArray();
+        }
+
+        final PxlImportSheetOption sheetOption = PxlImportSheetOption.builder()
+                .fieldName("employees")
+                .importSheetNames(Arrays.asList("Staff"))
+                .build();
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importSheetOptions(Arrays.asList(sheetOption))
+                .build();
+
+        final CompanyWorkbook workbook = pxl.importExcel()
+                .workbook(CompanyWorkbook.class)
+                .workbookName("Acme")
+                .override(option)
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(Pxl.getWorkbookNameFromWorkbookObject(workbook)).isEqualTo("Acme");
+        assertEmployees(workbook.getEmployees());
+    }
+
+    @Test
     public void importExcel_candidateSheetNames_laterNameMatches_binds() throws Exception {
         // The workbook has only a "Sales" sheet. In the candidate sheet name list of a Pxl sheet-form import,
         // verify that the earlier name ("Nonexistent") does not exist and the later "Sales" matches and binds.
