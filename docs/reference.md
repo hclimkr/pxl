@@ -199,6 +199,12 @@ The direction (export/import) and format (excel/csv) are embedded in the start m
 | Excel import    | `pxl.importExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromStream(InputStream)`                                                                                    |
 | CSV import      | `pxl.importCsv()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromFiles(List<File>)` / `.fromStream(String, InputStream)` / `.fromStreams(List<String>, List<InputStream>)` |
 
+- The configuration steps `.workbook(...)` and `.sheet(...)` are mutually exclusive — specifying both in one chain throws `PxlArgumentException` (as does omitting both).
+- For export, calling `.sheet(...)` multiple times creates multiple sheets — the call order becomes the sheet order within the workbook, and each sheet may take a different row class. A duplicated sheet name (compared after normalization to a safe name) throws `PxlDataException`.
+- For import, `.sheet(...)` cannot be chained consecutively — there are two ways to read multiple sheets.
+    - All at once, in workbook form: passing a `@PxlWorkbook` class to `.workbook(...)` binds multiple sheets at once, one per `@PxlSheet` field.  
+      Since one CSV file is one sheet, in this form you pass multiple sources via `.fromFiles(List<File>)` / `.fromStreams(List<String>, List<InputStream>)` (the file name without its extension, or the `csvNames` entry, is matched against the `@PxlSheet` name).
+    - One sheet at a time: call `.sheet(...)` once per sheet on the same builder instance and run each through its final (execute) step. The source is given at the execute step, so open a fresh stream per call (files are opened and closed internally each time).
 - The configuration-step `.override(...)` is optional, and its position within the chain can be set freely — before or after `.workbook(...)`/`.sheet(...)`, as long as it comes before the final (execute) step (if specified more than once, the last value wins). It overrides annotation values at runtime with the values carried in the option object.  
   For export, pass a `PxlExportWorkbookOption` to `.override(...)`; for import, pass a `PxlImportWorkbookOption` (if omitted, the annotation values are used as-is).
   For import, `.workbookName(String)`, which overrides the workbook name, can also be placed in the same position.
@@ -829,6 +835,42 @@ private String b;
 
 > `exportOrder` is a lexicographic string comparison.
 > For numeric order, pad with leading zeros like `"01"`, `"02"`, … (`"2"` vs `"10"` → `"10"` comes first).
+
+### Sheet: Multi-sheet Export
+
+```java
+// Call order = sheet order (Engineering, Sales, Departments); each sheet may take a different row class
+pxl.exportExcel()
+   .sheet("Engineering", engineering, Employee.class)
+   .sheet("Sales", sales, Employee.class)
+   .sheet("Departments", departments, Department.class)
+   .toFile(new File("company.xlsx"));
+
+// Sample export works the same way
+pxl.exportSampleExcel()
+   .sheet("Employees", Employee.class)
+   .sheet("Departments", Department.class)
+   .toFile(new File("template.xlsx"));
+```
+
+### Sheet: Multi-sheet Import
+
+```java
+import io.github.hclimkr.pxl.builder.PxlExcelImportBuilder;
+
+// 1) Workbook form: binds multiple sheets at once, one per @PxlSheet field
+//    (Company = a @PxlWorkbook class with two @PxlSheet fields, employees/departments)
+Company company = pxl.importExcel()
+                     .workbook(Company.class)
+                     .fromFile(file);
+
+// 2) Sheet form: call once per sheet on the same builder and run each one (the return type may differ per sheet)
+PxlExcelImportBuilder builder = pxl.importExcel();
+List<Employee> employees = builder.sheet(Employee.class, "Employees")
+                                  .fromFile(file);
+List<Department> departments = builder.sheet(Department.class, "Departments")
+                                      .fromFile(file);
+```
 
 ### Sheet: Split Sheets by Grouping on a Column Value (Export)
 

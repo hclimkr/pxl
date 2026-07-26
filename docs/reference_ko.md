@@ -199,6 +199,12 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 | 엑셀 import    | `pxl.importExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromStream(InputStream)`                                                                                    |
 | CSV import   | `pxl.importCsv()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromFiles(List<File>)` / `.fromStream(String, InputStream)` / `.fromStreams(List<String>, List<InputStream>)` |
 
+- 구성 단계의 `.workbook(...)`과 `.sheet(...)`은 서로 배타적이다 — 한 체인에서 둘을 함께 지정하면 `PxlArgumentException`이 발생한다(둘 다 생략해도 같다).
+- export는 `.sheet(...)`를 여러 번 호출해 여러 시트를 만든다 — 호출 순서가 그대로 워크북 내 시트 순서가 되며, 시트마다 다른 행 클래스를 줄 수 있다. 시트 이름이 중복되면(안전한 이름으로 정규화한 뒤 비교) `PxlDataException`이 발생한다.
+- import는 `.sheet(...)`를 연달아 체인할 수 없다 — 여러 시트를 읽는 방법은 두 가지다.
+    - 워크북 형태로 한 번에: `@PxlWorkbook` 클래스를 `.workbook(...)`에 주면 `@PxlSheet` 필드별로 여러 시트가 한 번에 바인딩된다.  
+      CSV는 한 파일이 한 시트이므로 이 형태에서 소스를 `.fromFiles(List<File>)`·`.fromStreams(List<String>, List<InputStream>)`로 여러 개 넘긴다(파일명에서 확장자를 뗀 이름·`csvNames`가 `@PxlSheet` 이름과 매칭된다).
+    - 시트별로 나눠서: 같은 빌더 인스턴스로 `.sheet(...)`를 시트마다 호출하고 각각 마지막(실행) 단계까지 실행한다. 소스는 실행 단계에서 지정하므로 스트림은 호출마다 새로 열어 준다(파일은 매번 내부에서 열고 닫는다).
 - 구성 단계의 `.override(...)`은 선택적이며 체인 안에서 위치를 자유롭게 정할 수 있다 — `.workbook(...)`/`.sheet(...)`의 앞이든 뒤든 마지막(실행) 단계 전이기만 하면 된다(여러 번 지정하면 마지막 값이 적용된다). 옵션 객체에 담긴 값으로 애노테이션 값을 런타임에 오버라이드한다.  
   export는 `.override(...)`에 `PxlExportWorkbookOption`을, import는 `PxlImportWorkbookOption`을 인자로 넘긴다(생략하면 애노테이션 값을 그대로 쓴다).
   import는 워크북 이름을 덮어쓰는 `.workbookName(String)`도 같은 위치에 둘 수 있다.
@@ -829,6 +835,42 @@ private String b;
 
 > `exportOrder`는 문자열 사전식 비교다.
 > 숫자 순서를 원하면 `"01"`, `"02"`, … 처럼 0으로 자릿수를 채운다(`"2"` vs `"10"` → `"10"`이 먼저 옴).
+
+### 시트: 다중 시트 Export
+
+```java
+// 호출 순서 = 시트 순서(Engineering, Sales, Departments), 시트마다 행 클래스를 달리 줄 수 있다
+pxl.exportExcel()
+   .sheet("Engineering", engineering, Employee.class)
+   .sheet("Sales", sales, Employee.class)
+   .sheet("Departments", departments, Department.class)
+   .toFile(new File("company.xlsx"));
+
+// 샘플 export도 동일하다
+pxl.exportSampleExcel()
+   .sheet("Employees", Employee.class)
+   .sheet("Departments", Department.class)
+   .toFile(new File("template.xlsx"));
+```
+
+### 시트: 다중 시트 Import
+
+```java
+import io.github.hclimkr.pxl.builder.PxlExcelImportBuilder;
+
+// 1) 워크북 형태: @PxlSheet 필드별로 여러 시트를 한 번에 바인딩
+//    (Company = @PxlWorkbook 클래스, employees/departments 두 개의 @PxlSheet 필드를 가진다)
+Company company = pxl.importExcel()
+                     .workbook(Company.class)
+                     .fromFile(file);
+
+// 2) 시트 형태: 같은 빌더로 시트마다 호출해 각각 실행한다(시트별로 반환 타입이 다를 수 있다)
+PxlExcelImportBuilder builder = pxl.importExcel();
+List<Employee> employees = builder.sheet(Employee.class, "Employees")
+                                  .fromFile(file);
+List<Department> departments = builder.sheet(Department.class, "Departments")
+                                      .fromFile(file);
+```
 
 ### 시트: 컬럼 값으로 그룹핑하여 시트 분할 Export
 
