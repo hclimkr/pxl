@@ -18,6 +18,11 @@ concurrency:
 jobs:
   build:
     name: Build & Test (JDK 17)
+    # While the repository is private, only run on demand — an automatic push/PR run would burn
+    # private-repo Actions minutes. The push/pull_request triggers above stay in place: once the
+    # repository is made public this condition starts evaluating true on its own and automatic runs
+    # resume, so there is nothing to edit at that point.
+    if: github.event_name == 'workflow_dispatch' || github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
 
     steps:

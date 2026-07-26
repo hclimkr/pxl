@@ -18,6 +18,11 @@ concurrency:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
+    # While the repository is private, only run on demand — code scanning on a private repository
+    # needs GitHub Advanced Security, and an automatic push/PR run would burn private-repo Actions
+    # minutes. The push/pull_request triggers above stay in place: once the repository is made public
+    # this condition starts evaluating true on its own and automatic runs resume, with nothing to edit.
+    if: github.event_name == 'workflow_dispatch' || github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
     permissions:
       # Required to upload the results to the code-scanning dashboard.
