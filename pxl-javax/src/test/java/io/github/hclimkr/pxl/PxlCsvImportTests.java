@@ -1,5 +1,6 @@
 package io.github.hclimkr.pxl;
 
+import io.github.hclimkr.pxl.builder.PxlCsvImportBuilder;
 import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
@@ -170,6 +171,25 @@ public class PxlCsvImportTests {
         assertThat(employees).hasSize(1);
         assertThat(employees.get(0).getName()).isEqualTo("Alice");
         assertThat(employees.get(0).getSalary()).isEqualByComparingTo("50000.50");
+    }
+
+    @Test
+    public void importCsv_sheetCalledTwicePerBuilder_bindsEachSourceIndependently() throws Exception {
+        // Unlike the export builder, sheet(...) returns a source step rather than the builder itself, so the calls
+        // are not chained; the same builder instance is reused once per CSV source, each with its own row class.
+        final PxlCsvImportBuilder builder = pxl.importCsv();
+
+        final List<Employee> employees = builder
+                .sheet(Employee.class)
+                .fromStream("Employees", stream(EMPLOYEES_CSV));
+        final List<Department> departments = builder
+                .sheet(Department.class)
+                .fromStream("Departments", stream(DEPARTMENTS_CSV));
+
+        // The second call must not be affected by the first (no state leaks between source steps).
+        assertEmployees(employees);
+        assertThat(departments).extracting(Department::getCode).containsExactly("ENG", "SAL");
+        assertThat(departments.get(0).getHeadcount()).isEqualTo(12);
     }
 
     // ------------------------------------------------------------------

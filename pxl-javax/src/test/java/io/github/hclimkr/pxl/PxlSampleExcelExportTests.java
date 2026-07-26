@@ -264,6 +264,29 @@ public class PxlSampleExcelExportTests {
         }
     }
 
+    @Test
+    public void exportSampleMultiSheet_threeSheets_preservesCallOrder() throws Exception {
+        // Three sheet() calls -> three sheets, created in call order.
+        final Workbook workbook = pxl.exportSampleExcel()
+                .sheet("People", Employee.class)
+                .sheet("Depts", Department.class)
+                .sheet("Cols", SampleColumnRow.class)
+                .toWorkbook();
+        try {
+            assertThat(workbook.getNumberOfSheets()).isEqualTo(3);
+            assertThat(workbook.getSheetName(0)).isEqualTo("People");
+            assertThat(workbook.getSheetName(1)).isEqualTo("Depts");
+            assertThat(workbook.getSheetName(2)).isEqualTo("Cols");
+
+            // Each sheet's header row comes from its own row class.
+            assertThat(headerValuesOf(workbook, "People")).contains(EMPLOYEE_HEADERS);
+            assertThat(headerValuesOf(workbook, "Depts")).contains("Code", "DepartmentName", "Headcount");
+            assertThat(headerValuesOf(workbook, "Cols")).contains("Keep");
+        } finally {
+            workbook.close();
+        }
+    }
+
     // ------------------------------------------------------------------
     // The exportSample of an enum column must be a value parseable to that enum (constraint)
     // ------------------------------------------------------------------

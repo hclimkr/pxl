@@ -99,6 +99,50 @@ public class PxlExcelExportTests {
         assertThat(importedAllTypes.get(0).getText()).isEqualTo("Hello, PXL");
     }
 
+    @Test
+    public void exportMultiSheet_threeSheets_preservesCallOrderAndRows() throws Exception {
+        final List<Employee> engineering = Arrays.asList(
+                Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"));
+        final List<Employee> sales = Arrays.asList(
+                Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales"),
+                Fixtures.employee("Carol", 35, "68000", true, LocalDate.of(2019, 3, 20), Grade.A, "Sales"));
+        final List<Department> departments = Arrays.asList(
+                Fixtures.department("ENG", "Engineering", 12),
+                Fixtures.department("SAL", "Sales", 7));
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        // Three sheet() calls -> three sheets; the same rowClass may repeat and the call order is the sheet order.
+        pxl.exportExcel()
+                .sheet("Engineering", engineering, Employee.class)
+                .sheet("Sales", sales, Employee.class)
+                .sheet("Departments", departments, Department.class)
+                .override(noValidationOption())
+                .toFile(excelFile);
+
+        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+            assertThat(workbook.getNumberOfSheets()).isEqualTo(3);
+            assertThat(workbook.getSheetName(0)).isEqualTo("Engineering");
+            assertThat(workbook.getSheetName(1)).isEqualTo("Sales");
+            assertThat(workbook.getSheetName(2)).isEqualTo("Departments");
+        }
+
+        // Rows must not leak across sheets: each sheet holds only the rows passed with its own sheet() call.
+        final List<Employee> importedEngineering = pxl.importExcel()
+                .sheet(Employee.class, Arrays.asList("Engineering"))
+                .fromFile(excelFile);
+        final List<Employee> importedSales = pxl.importExcel()
+                .sheet(Employee.class, Arrays.asList("Sales"))
+                .fromFile(excelFile);
+        final List<Department> importedDepartments = pxl.importExcel()
+                .sheet(Department.class, Arrays.asList("Departments"))
+                .fromFile(excelFile);
+
+        assertThat(importedEngineering).extracting(Employee::getName).containsExactly("Alice");
+        assertThat(importedSales).extracting(Employee::getName).containsExactly("Bob", "Carol");
+        assertThat(importedDepartments).extracting(Department::getCode).containsExactly("ENG", "SAL");
+        assertThat(importedDepartments.get(0).getHeadcount()).isEqualTo(12);
+    }
+
     // ------------------------------------------------------------------
     // Masking (exportMasking)
     // ------------------------------------------------------------------

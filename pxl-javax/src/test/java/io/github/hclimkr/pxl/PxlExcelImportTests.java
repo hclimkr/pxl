@@ -1,5 +1,6 @@
 package io.github.hclimkr.pxl;
 
+import io.github.hclimkr.pxl.builder.PxlExcelImportBuilder;
 import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
@@ -171,6 +172,25 @@ public class PxlExcelImportTests {
         h2.setCellStyle(dateStyle);
         r2.createCell(5).setCellValue("B");
         r2.createCell(6).setCellValue("Sales");
+    }
+
+    // Writes a Department header + 2 rows (ENG/SAL) into an arbitrary sheet.
+    private static void writeDepartmentSheet(final Sheet sheet) {
+        final Row header = sheet.createRow(0);
+        final String[] headers = {"Code", "DepartmentName", "Headcount"};
+        for (int i = 0; i < headers.length; i++) {
+            header.createCell(i).setCellValue(headers[i]);
+        }
+
+        final Row r1 = sheet.createRow(1);
+        r1.createCell(0).setCellValue("ENG");
+        r1.createCell(1).setCellValue("Engineering");
+        r1.createCell(2).setCellValue(12);
+
+        final Row r2 = sheet.createRow(2);
+        r2.createCell(0).setCellValue("SAL");
+        r2.createCell(1).setCellValue("Sales");
+        r2.createCell(2).setCellValue(7);
     }
 
     private static void assertEmployees(final List<Employee> employees) {
@@ -742,6 +762,41 @@ public class PxlExcelImportTests {
                 .fromStream(new ByteArrayInputStream(bytes));
 
         assertEmployees(employees);
+    }
+
+    // ------------------------------------------------------------------
+    // Multi-sheet import in sheet form — sheet() returns a source step, so one builder is reused per sheet
+    // ------------------------------------------------------------------
+
+    @Test
+    public void importExcel_sheetCalledTwicePerBuilder_bindsEachSheetIndependently() throws Exception {
+        final byte[] bytes;
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            final CellStyle dateStyle = workbook.createCellStyle();
+            dateStyle.setDataFormat(workbook.createDataFormat().getFormat("yyyy-mm-dd"));
+            writeEmployeeSheet(workbook.createSheet("Employees"), dateStyle);
+            writeDepartmentSheet(workbook.createSheet("Departments"));
+            workbook.write(outputStream);
+            bytes = outputStream.toByteArray();
+        }
+
+        // Unlike the export builder, sheet(...) returns a source step rather than the builder itself, so the calls
+        // are not chained; the same builder instance is reused once per sheet, each with its own row class.
+        final PxlExcelImportBuilder builder = pxl.importExcel();
+
+        final List<Employee> employees = builder
+                .sheet(Employee.class, Arrays.asList("Employees"))
+                .fromStream(new ByteArrayInputStream(bytes));
+        final List<Department> departments = builder
+                .sheet(Department.class, Arrays.asList("Departments"))
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        // The second call must not be affected by the first (no state leaks between source steps).
+        assertEmployees(employees);
+        assertThat(departments).extracting(Department::getCode).containsExactly("ENG", "SAL");
+        assertThat(departments.get(0).getDepartmentName()).isEqualTo("Engineering");
+        assertThat(departments.get(0).getHeadcount()).isEqualTo(12);
     }
 
     // ------------------------------------------------------------------
