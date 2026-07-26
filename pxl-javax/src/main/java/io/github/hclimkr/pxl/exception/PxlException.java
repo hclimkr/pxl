@@ -10,13 +10,19 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Base checked exception for the Pxl library and the common supertype of every {@code Pxl*Exception}.
+ * Base checked exception for the Pxl library and the common supertype of every checked {@code Pxl*Exception}.
  *
- * <p>All import/export failures are wrapped in this type (or one of its subtypes) at the {@code Pxl}
- * boundary. The context-aware constructors build a human-readable message prefixed with the sheet,
- * row, and column at which the error occurred (see {@link #buildTagMessage}).</p>
+ * <p>The class is {@code abstract}: it is never thrown itself, only its concrete subtypes are. Every
+ * import/export failure crossing the {@code Pxl} boundary is normalized into one of them — a classified
+ * failure into the matching subtype ({@link PxlIOException}, {@link PxlCellCodecException},
+ * {@link PxlValidationException}, {@link PxlArgumentException}, ...), anything else into
+ * {@link PxlSystemException}. Declaring {@code throws PxlException} therefore stays a valid contract for a
+ * boundary method, while {@code catch} clauses may narrow to whichever subtype they can act on.</p>
+ *
+ * <p>The context-aware constructors build a human-readable message prefixed with the sheet, row, and column
+ * at which the error occurred (see {@link #buildTagMessage}).</p>
  */
-public class PxlException extends Exception {
+public abstract class PxlException extends Exception {
 
     /**
      * Creates an exception with no detail message.

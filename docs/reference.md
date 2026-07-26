@@ -538,25 +538,28 @@ private String code;
 
 ### Exception Types
 
-Exceptions that cross the boundary are all wrapped at the `Pxl` boundary into the checked `PxlException` family.  
+Exceptions that cross the boundary are all normalized at the `Pxl` boundary into the checked `PxlException` family.  
 Exception message text is localized into multiple languages.  
 The default is English, Korean is provided, and the language is set globally with `Pxl.setMessageLocale(Locale)`.  
 For details, see "Exception/Diagnostic Message Language" in [i18n](#i18n).
 
 | Exception                 | When it occurs                          |
 |---------------------------|-----------------------------------------|
-| `PxlException`            | General exception (base type)           |
+| `PxlException`            | abstract base type — never thrown itself; the common supertype of every checked Pxl exception |
 | `PxlCellCodecException`   | When a cell value cannot be converted to the target type |
 | `PxlValidationException`  | On validation failure                   |
 | `PxlReflectionException`  | On reflection failure                   |
 | `PxlArgumentException`    | On an argument/annotation configuration error |
 | `PxlNullPointerException` | When a required (non-null) argument is `null` |
 | `PxlDataException`        | On invalid data                         |
-| `PxlIOException`          | On an I/O error                         |
+| `PxlIOException`          | On an I/O error (including a file/stream that cannot be opened or read) |
 | `PxlI18nException`        | When an i18n ResourceBundle cannot be found |
+| `PxlSystemException`      | On a failure PXL does not classify — anything not covered by the types above (e.g. an unexpected runtime failure from POI), wrapped at the boundary with the original as its `getCause()` |
 | `PxlRuntimeException`     | unchecked exception — currently unused  |
 
 All checked exceptions such as `PxlNullPointerException`·`PxlValidationException` are subtypes of `PxlException`.  
+`PxlException` itself is abstract, so what you actually catch is always a concrete subtype — the matching one for a classified failure, and `PxlSystemException` for everything else.  
+A `throws PxlException` declaration on a final (execute) step therefore remains a valid contract, and callers may either handle them together with `catch (PxlException e)` or narrow to whichever subtypes they can act on.  
 However, `PxlRuntimeException` is the exception: it is unchecked (in the `RuntimeException` family), is not a subtype of `PxlException`, and is currently unused.  
 
 ### Exception/Diagnostic Message Language
@@ -585,7 +588,7 @@ The `name` value of `@PxlColumn`/`@PxlSheet` becomes the bundle key.
 
 i18n is disabled by default (opt-in).  
 It works only when `import/exportI18nBaseName` is explicitly specified (or a `ResourceBundle` is injected into the option); if the base name is empty, no bundle is loaded and the name is used as-is.  
-If a base name is specified but its `ResourceBundle` cannot be found, it fails with `PxlException`.
+If a base name is specified but its `ResourceBundle` cannot be found, it fails with `PxlI18nException`.
 
 ```java
 // messages.properties (UTF-8):  role=Role   fullname=Full Name   people=Staff
@@ -608,7 +611,7 @@ public class Person {
 }
 ```
 
-> It works only when `i18nBaseName` is specified (untranslated by default). If specified but the bundle cannot be found, it does not silently pass but raises `PxlException`.
+> It works only when `i18nBaseName` is specified (untranslated by default). If specified but the bundle cannot be found, it does not silently pass but raises `PxlI18nException`.
 
 ---
 

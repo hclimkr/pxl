@@ -1,7 +1,7 @@
 package io.github.hclimkr.pxl;
 
 import io.github.hclimkr.pxl.exception.PxlCellCodecException;
-import io.github.hclimkr.pxl.exception.PxlException;
+import io.github.hclimkr.pxl.exception.PxlReflectionException;
 import io.github.hclimkr.pxl.exception.PxlValidationException;
 import io.github.hclimkr.pxl.tcdata.*;
 import org.apache.poi.ss.usermodel.*;
@@ -621,7 +621,7 @@ public class PxlTypeConversionTests {
     @Test
     public void collection_nestedGeneric_throws() throws Exception {
         final byte[] bytes = stringSheet("N", new String[]{"Nested"}, new String[][]{{"a;b"}});
-        assertThrows(PxlException.class, () -> importList(bytes, "N", NestedCollectionRow.class));
+        assertThrows(PxlReflectionException.class, () -> importList(bytes, "N", NestedCollectionRow.class));
     }
 
     @Test

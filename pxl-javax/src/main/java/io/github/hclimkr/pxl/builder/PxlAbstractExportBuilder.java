@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl.builder;
 
 import io.github.hclimkr.pxl.exception.PxlException;
+import io.github.hclimkr.pxl.exception.PxlSystemException;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
@@ -17,6 +18,14 @@ import java.io.OutputStream;
  *
  * <p>Subclass builders implement only {@link #build()}, which produces the workbook creation result ({@link Built}),
  * while the terminal methods (returning a workbook / file / stream) and resource handling and exception wrapping are shared here.</p>
+ *
+ * <p>The terminal methods are the <strong>normalization boundary</strong>: they declare {@code throws PxlException},
+ * but since that type is abstract what actually surfaces is always a concrete subtype — the matching one for a
+ * classified failure ({@link io.github.hclimkr.pxl.exception.PxlArgumentException},
+ * {@link io.github.hclimkr.pxl.exception.PxlCellCodecException},
+ * {@link io.github.hclimkr.pxl.exception.PxlValidationException}, ...), and
+ * {@link PxlSystemException} (carrying the original as its cause) for anything else, including checked I/O failures
+ * and unexpected runtime failures from POI.</p>
  *
  * <p>Package-private: not part of the public API. Consumers reach the shared {@code public} terminals
  * ({@code toWorkbook()}/{@code toFile(...)}/{@code toStream(...)}) through the public concrete subclasses.</p>
@@ -68,7 +77,7 @@ abstract class PxlAbstractExportBuilder {
         } catch (PxlException e) {
             throw e;
         } catch (Exception e) {
-            throw new PxlException(e);
+            throw new PxlSystemException(e);
         } finally {
             IOUtils.closeQuietly(outputStream);
             PxlWorkbookUtils.closeWorkbook(built.workbook);
@@ -96,7 +105,7 @@ abstract class PxlAbstractExportBuilder {
         } catch (PxlException e) {
             throw e;
         } catch (Exception e) {
-            throw new PxlException(e);
+            throw new PxlSystemException(e);
         } finally {
             PxlWorkbookUtils.closeWorkbook(built.workbook);
         }

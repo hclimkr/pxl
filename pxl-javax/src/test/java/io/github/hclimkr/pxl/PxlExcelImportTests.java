@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl;
 
 import io.github.hclimkr.pxl.builder.PxlExcelImportBuilder;
+import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
@@ -635,7 +636,7 @@ public class PxlExcelImportTests {
                 .build();
 
         final byte[] bytes = buildMergedFixture();
-        assertThrows(io.github.hclimkr.pxl.exception.PxlException.class, () -> importMerged(bytes, option));
+        assertThrows(PxlArgumentException.class, () -> importMerged(bytes, option));
     }
 
     // ------------------------------------------------------------------

@@ -3,6 +3,7 @@ package io.github.hclimkr.pxl.builder;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
+import io.github.hclimkr.pxl.exception.PxlSystemException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.core.PxlCsvImporter;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
@@ -131,6 +132,13 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
      *
      * <p>The workbook form parses multiple CSVs (files/streams) grouped by sheet; the sheet form supports a single CSV
      * only. Only obtained from {@code workbook(...)}/{@code sheet(...)} on the builder — hence a nested type.</p>
+     *
+     * <p>The source-terminal methods are the <strong>normalization boundary</strong>: they declare
+     * {@code throws PxlException}, but since that type is abstract what actually surfaces is always a concrete
+     * subtype — the matching one for a classified failure ({@link PxlArgumentException},
+     * {@link io.github.hclimkr.pxl.exception.PxlCellCodecException},
+     * {@link io.github.hclimkr.pxl.exception.PxlValidationException}, ...), and {@link PxlSystemException}
+     * (carrying the original as its cause) for anything else, such as a CSV file that cannot be opened or read.</p>
      *
      * @param <R> the parsed result type (a workbook object, a {@code List<row>}, or a {@code Collection<row>})
      */
@@ -291,7 +299,7 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
             } catch (PxlException e) {
                 throw e;
             } catch (Exception e) {
-                throw new PxlException(e);
+                throw new PxlSystemException(e);
             } finally {
                 openedStreams.forEach(IOUtils::closeQuietly);
             }
@@ -339,7 +347,7 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
             } catch (PxlException e) {
                 throw e;
             } catch (Exception e) {
-                throw new PxlException(e);
+                throw new PxlSystemException(e);
             }
         }
 
@@ -350,10 +358,10 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
          * @param streams the CSV input streams
          * @return the parsed result
          * @throws PxlArgumentException if the sheet form is given more than one source
-         * @throws Exception            if parsing fails
+         * @throws PxlException         if parsing fails
          */
         private R parse(final List<String> names, final List<InputStream> streams)
-                throws Exception {
+                throws PxlException {
 
             final Object result;
             if (Objects.nonNull(workbookClass)) {

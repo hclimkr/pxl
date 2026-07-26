@@ -1,7 +1,7 @@
 package io.github.hclimkr.pxl;
 
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
-import io.github.hclimkr.pxl.exception.PxlException;
+import io.github.hclimkr.pxl.exception.PxlCellCodecException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
@@ -296,7 +296,7 @@ public class PxlSampleExcelExportTests {
         // An enum column's exportSample is internally reverse-parsed to the enum and re-exported, so it must be a valid value.
         // "N/A", which is not in Grade(A/B/C/F) -> the sample export fails with an exception.
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        assertThrows(PxlException.class, () ->
+        assertThrows(PxlCellCodecException.class, () ->
                 pxl.exportSampleExcel()
                         .sheet("S", BadEnumSampleRow.class)
                         .toStream(outputStream));
@@ -427,7 +427,7 @@ public class PxlSampleExcelExportTests {
     public void exportSample_bothWorkbookAndSheetSpecified_throws() {
         // workbook(Class) and sheet(...) are mutually exclusive; the terminal build fails.
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        assertThrows(PxlException.class, () ->
+        assertThrows(PxlArgumentException.class, () ->
                 pxl.exportSampleExcel()
                         .workbook(AllTypesWorkbook.class)
                         .sheet("S", Employee.class)
@@ -438,7 +438,7 @@ public class PxlSampleExcelExportTests {
     public void exportSample_neitherWorkbookNorSheetSpecified_throws() {
         // Neither the workbook form nor the sheet form was configured before the terminal.
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        assertThrows(PxlException.class, () -> pxl.exportSampleExcel()
+        assertThrows(PxlArgumentException.class, () -> pxl.exportSampleExcel()
                 .toStream(outputStream));
     }
 

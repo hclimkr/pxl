@@ -1,8 +1,8 @@
 package io.github.hclimkr.pxl;
 
 import io.github.hclimkr.pxl.builder.PxlCsvImportBuilder;
+import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlDataException;
-import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
@@ -374,7 +374,7 @@ public class PxlCsvImportTests {
                 .sheet(NumberRowIndexRow.class)
                 .fromStream("S", stream(csv)).get(0).getRowIndex().intValue()).isEqualTo(2);
         // an unsupported @PxlRowIndex type (String) is rejected when the int index cannot be cast to it
-        assertThrows(PxlException.class, () -> pxl.importCsv()
+        assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
                 .sheet(BadRowIndexRow.class)
                 .fromStream("S", stream(csv)));
     }

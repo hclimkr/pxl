@@ -1,7 +1,8 @@
 package io.github.hclimkr.pxl;
 
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
-import io.github.hclimkr.pxl.exception.PxlException;
+import io.github.hclimkr.pxl.exception.PxlCellCodecException;
+import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.tcdata.*;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -134,7 +135,7 @@ public class PxlRegressionTests {
         row.setValue("v");
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        assertThrows(PxlException.class, () ->
+        assertThrows(PxlArgumentException.class, () ->
                 pxl.exportExcel()
                         .sheet("Mask", Arrays.asList(row), BadMaskingRow.class)
                         .override(noValidationOption())
@@ -151,7 +152,7 @@ public class PxlRegressionTests {
         row.setDate(java.time.LocalDate.of(2023, 1, 1));
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        assertThrows(PxlException.class, () ->
+        assertThrows(PxlArgumentException.class, () ->
                 pxl.exportExcel()
                         .sheet("Bad", Arrays.asList(row), BadPatternRow.class)
                         .override(noValidationOption())
@@ -181,7 +182,7 @@ public class PxlRegressionTests {
     @Test
     public void misdeclaredConverter_failsFast() {
         final BadConverterRow row = new BadConverterRow();
-        row.setBad(new io.github.hclimkr.pxl.tcdata.BadExportConverterObject());
+        row.setBad(new BadExportConverterObject());
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlArgumentException.class, () ->
@@ -203,7 +204,7 @@ public class PxlRegressionTests {
         assertThatThrownBy(() -> pxl.importExcel()
                 .sheet(ThrowingConverterRow.class, Arrays.asList("Throw"))
                 .fromStream(new ByteArrayInputStream(bytes)))
-                .isInstanceOf(PxlException.class)
+                .isInstanceOf(PxlCellCodecException.class)
                 .hasStackTraceContaining("converter-boom");
     }
 
@@ -237,7 +238,7 @@ public class PxlRegressionTests {
         final String employeesCsv = "Name,Age,Salary,Active,HireDate,Grade,Department\nAlice,30,50000,yes,2020-01-15,A,Engineering\n";
 
         // Both streams "Employees" -> double-match to the employees field -> fail-fast
-        assertThrows(PxlException.class, () -> pxl.importCsv()
+        assertThrows(PxlDataException.class, () -> pxl.importCsv()
                 .workbookName("Acme")
                 .workbook(CompanyWorkbook.class)
                 .fromStreams(
@@ -275,6 +276,6 @@ public class PxlRegressionTests {
     public void staticHelpers_nullArgs_handled() {
         assertThat(Pxl.getWorkbookNameFromWorkbookObject(null)).isNull();
         assertThat(Pxl.getWorkbookFileFormatFromWorkbookObject(null))
-                .isEqualTo(io.github.hclimkr.pxl.PxlFileFormat.XSSF);
+                .isEqualTo(PxlFileFormat.XSSF);
     }
 }

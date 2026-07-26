@@ -1,9 +1,7 @@
 package io.github.hclimkr.pxl.builder;
 
 import io.github.hclimkr.pxl.PxlConstants;
-import io.github.hclimkr.pxl.exception.PxlArgumentException;
-import io.github.hclimkr.pxl.exception.PxlException;
-import io.github.hclimkr.pxl.exception.PxlNullPointerException;
+import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.core.PxlExcelImporter;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
@@ -181,6 +179,12 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
      * open the source, run the parse, and return the typed result {@code R}.
      *
      * <p>Only obtained from {@code workbook(...)}/{@code sheet(...)} on the builder — hence a nested type.</p>
+     *
+     * <p>The source-terminal methods are the <strong>normalization boundary</strong>: they declare
+     * {@code throws PxlException}, but since that type is abstract what actually surfaces is always a concrete
+     * subtype — the matching one for a classified failure ({@link PxlIOException} when the workbook cannot be
+     * opened, {@link PxlCellCodecException}, {@link PxlValidationException}, {@link PxlArgumentException}, ...),
+     * and {@link PxlSystemException} (carrying the original as its cause) for anything else.</p>
      *
      * @param <R> the parsed result type (a workbook object, a {@code List<row>}, or a {@code Collection<row>})
      */
@@ -379,7 +383,7 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
             } catch (PxlException e) {
                 throw e;
             } catch (Exception e) {
-                throw new PxlException(e);
+                throw new PxlSystemException(e);
             } finally {
                 PxlWorkbookUtils.closeWorkbook(workbook);
             }
@@ -392,17 +396,23 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          * @param excelFile    the Excel file, or {@code null} when a stream is given
          * @param excelStream  the Excel input stream (used when {@code excelFile} is {@code null})
          * @return the opened workbook
-         * @throws Exception if the workbook cannot be opened
+         * @throws PxlIOException if the workbook cannot be opened (a missing file, an unreadable or
+         *                        password-protected container, an unsupported format, ...) — the underlying
+         *                        failure is wrapped as the cause
          */
         private Workbook openWorkbook(final PxlImportWorkbookMeta workbookMeta,
                                       final File excelFile,
                                       final InputStream excelStream)
-                throws Exception {
+                throws PxlIOException {
 
-            if (Objects.nonNull(excelFile)) {
-                return PxlWorkbookSupport.openWorkbook(excelFile, workbookMeta);
+            try {
+                if (Objects.nonNull(excelFile)) {
+                    return PxlWorkbookSupport.openWorkbook(excelFile, workbookMeta);
+                }
+                return PxlWorkbookSupport.openWorkbook(excelStream, workbookMeta);
+            } catch (Exception e) {
+                throw new PxlIOException(e);
             }
-            return PxlWorkbookSupport.openWorkbook(excelStream, workbookMeta);
         }
 
     }

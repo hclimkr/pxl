@@ -538,25 +538,28 @@ private String code;
 
 ### 예외 종류
 
-경계를 넘는 예외는 모두 `Pxl` 경계에서 checked `PxlException` 계열로 감싸진다.  
+경계를 넘는 예외는 모두 `Pxl` 경계에서 checked `PxlException` 계열로 정규화된다.  
 예외의 메시지 문구는 다국어로 지역화된다.  
 기본은 영어이며 한국어를 제공하고 `Pxl.setMessageLocale(Locale)`로 언어를 전역 지정한다.  
 자세한 내용은 [i18n](#i18n)의 "예외·진단 메시지 언어"를 참조한다.
 
-| 예외                        | 발생 시점                          |
-|---------------------------|--------------------------------|
-| `PxlException`            | 일반 예외(베이스 타입)                  |
-| `PxlCellCodecException`   | 셀 값을 대상 타입으로 변환할 수 없을 때        |
-| `PxlValidationException`  | 유효성 검사 실패 시                    |
-| `PxlReflectionException`  | 리플렉션 실패 시                      |
-| `PxlArgumentException`    | 인자/애노테이션 설정 오류 시               |
-| `PxlNullPointerException` | 필수(non-null) 인자가 `null`일 때     |
-| `PxlDataException`        | 잘못된 데이터일 때                     |
-| `PxlIOException`          | I/O 오류일 때                      |
-| `PxlI18nException`        | i18n ResourceBundle을 못 찾을 때    |
-| `PxlRuntimeException`     | unchecked 예외 — 현재 미사용      |
+| 예외                        | 발생 시점                                                                                                                              |
+|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| `PxlException`            | abstract 베이스 타입 — 직접 던져지지 않으며, 모든 checked Pxl 예외의 공통 상위 타입                                                    |
+| `PxlCellCodecException`   | 셀 값을 대상 타입으로 변환할 수 없을 때                                                                                                |
+| `PxlValidationException`  | 유효성 검사 실패 시                                                                                                                    |
+| `PxlReflectionException`  | 리플렉션 실패 시                                                                                                                       |
+| `PxlArgumentException`    | 인자/애노테이션 설정 오류 시                                                                                                           |
+| `PxlNullPointerException` | 필수(non-null) 인자가 `null`일 때                                                                                                      |
+| `PxlDataException`        | 잘못된 데이터일 때                                                                                                                     |
+| `PxlIOException`          | I/O 오류일 때(파일·스트림을 열거나 읽지 못할 때 포함)                                                                                  |
+| `PxlI18nException`        | i18n ResourceBundle을 못 찾을 때                                                                                                       |
+| `PxlSystemException`      | PXL이 분류하지 않은 실패일 때 — 위 타입에 해당하지 않는 예외(POI의 예기치 못한 런타임 실패 등)를 경계에서 감싼 것(원인은 `getCause()`) |
+| `PxlRuntimeException`     | unchecked 예외 — 현재 미사용                                                                                                           |
 
 `PxlNullPointerException`·`PxlValidationException` 등 모든 checked 예외는 `PxlException`의 하위 타입이다.  
+`PxlException` 자체는 abstract이므로 실제로 잡히는 것은 항상 구체 하위 타입이다 — 분류된 실패는 대응 타입으로, 그 밖의 실패는 `PxlSystemException`으로 온다.  
+따라서 마지막(실행) 단계 메서드의 `throws PxlException` 선언은 그대로 유효한 계약이며, 호출부는 `catch (PxlException e)`로 일괄 처리하거나 필요한 하위 타입만 골라 잡을 수 있다.  
 단, `PxlRuntimeException`은 예외로 unchecked(`RuntimeException` 계열)이며 `PxlException`의 하위가 아니며 현재는 사용하지 않고 있다.  
 
 ### 예외·진단 메시지 언어
@@ -585,7 +588,7 @@ Pxl.resetMessageLocale();               // JVM 기본 locale로 복귀
 
 i18n은 기본적으로 비활성(opt-in) 이다.  
 `import/exportI18nBaseName`을 명시적으로 지정(또는 옵션에 `ResourceBundle` 주입)했을 때만 동작하며, base name이 비어 있으면 번들을 로드하지 않아 이름이 그대로 사용된다.  
-base name을 지정했으나 해당 `ResourceBundle`을 찾지 못하면 `PxlException`으로 실패한다.
+base name을 지정했으나 해당 `ResourceBundle`을 찾지 못하면 `PxlI18nException`으로 실패한다.
 
 ```java
 // messages.properties (UTF-8):  role=Role   fullname=Full Name   people=Staff
@@ -608,7 +611,7 @@ public class Person {
 }
 ```
 
-> `i18nBaseName`을 지정했을 때만 동작한다(기본은 미번역). 지정했는데 번들을 못 찾으면 조용히 넘어가지 않고 `PxlException` 발생.
+> `i18nBaseName`을 지정했을 때만 동작한다(기본은 미번역). 지정했는데 번들을 못 찾으면 조용히 넘어가지 않고 `PxlI18nException` 발생.
 
 ---
 

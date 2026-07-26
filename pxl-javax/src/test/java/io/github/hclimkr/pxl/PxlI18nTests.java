@@ -1,12 +1,14 @@
 package io.github.hclimkr.pxl;
 
-import io.github.hclimkr.pxl.exception.PxlException;
+import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlI18nException;
+import io.github.hclimkr.pxl.exception.PxlValidationException;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18n;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nContent;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.tcdata.I18nCountryWorkbook;
 import io.github.hclimkr.pxl.tcdata.I18nRow;
 import io.github.hclimkr.pxl.tcdata.I18nWorkbook;
 import io.github.hclimkr.pxl.tcdata.TestPaths;
@@ -112,12 +114,12 @@ public class PxlI18nTests {
     // Country: language+country (ko_KR) -> resolves to the Korean bundle (messages_ko)
     // ------------------------------------------------------------------
 
-    private static io.github.hclimkr.pxl.tcdata.I18nCountryWorkbook sampleCountryWorkbook() {
+    private static I18nCountryWorkbook sampleCountryWorkbook() {
         final I18nRow row = new I18nRow();
         row.setRole("admin");
         row.setFullName("Bob");
 
-        final io.github.hclimkr.pxl.tcdata.I18nCountryWorkbook workbook = new io.github.hclimkr.pxl.tcdata.I18nCountryWorkbook();
+        final I18nCountryWorkbook workbook = new I18nCountryWorkbook();
         workbook.setWorkbookName("W");
         workbook.setPeople(Arrays.asList(row));
         return workbook;
@@ -153,10 +155,10 @@ public class PxlI18nTests {
                 .override(noValidationOption())
                 .toFile(excelFile);
 
-        final io.github.hclimkr.pxl.tcdata.I18nCountryWorkbook imported =
+        final I18nCountryWorkbook imported =
                 pxl.importExcel()
                         .workbookName("W")
-                        .workbook(io.github.hclimkr.pxl.tcdata.I18nCountryWorkbook.class)
+                        .workbook(I18nCountryWorkbook.class)
                         .fromFile(excelFile);
 
         assertThat(imported.getPeople()).hasSize(1);
@@ -177,7 +179,7 @@ public class PxlI18nTests {
             Pxl.setMessageLocale(Locale.ENGLISH);
 
             // rowIndex is passed 0-based and rendered 1-based (3) in the message. When columnName is present, columnIndex is ignored.
-            final PxlException exception = new PxlException("Users", 2, "age", null, "boom");
+            final PxlValidationException exception = new PxlValidationException("Users", 2, "age", null, "boom");
 
             assertThat(exception.getMessage()).isEqualTo("sheet 'Users', row 3, column 'age': boom");
         } finally {
@@ -190,7 +192,7 @@ public class PxlI18nTests {
         try {
             Pxl.setMessageLocale(Locale.KOREAN);
 
-            final PxlException exception = new PxlException("Users", 2, "age", null, "boom");
+            final PxlValidationException exception = new PxlValidationException("Users", 2, "age", null, "boom");
 
             assertThat(exception.getMessage()).isEqualTo("'Users' 시트, 3행, 'age' 열: boom");
         } finally {
@@ -204,7 +206,7 @@ public class PxlI18nTests {
             // A locale without a bundle (fr) must fall back to the base (English).
             Pxl.setMessageLocale(Locale.FRENCH);
 
-            final PxlException exception = new PxlException("Users", 2, "age", null, "boom");
+            final PxlValidationException exception = new PxlValidationException("Users", 2, "age", null, "boom");
 
             assertThat(exception.getMessage()).isEqualTo("sheet 'Users', row 3, column 'age': boom");
         } finally {
@@ -296,11 +298,11 @@ public class PxlI18nTests {
             Pxl.resetMessageLocale();
 
             Locale.setDefault(Locale.KOREAN);
-            assertThat(new PxlException("S", 0, "c", null, "boom").getMessage())
+            assertThat(new PxlValidationException("S", 0, "c", null, "boom").getMessage())
                     .isEqualTo("'S' 시트, 1행, 'c' 열: boom");
 
             Locale.setDefault(Locale.ENGLISH);
-            assertThat(new PxlException("S", 0, "c", null, "boom").getMessage())
+            assertThat(new PxlValidationException("S", 0, "c", null, "boom").getMessage())
                     .isEqualTo("sheet 'S', row 1, column 'c': boom");
         } finally {
             Locale.setDefault(savedDefault);
@@ -316,13 +318,13 @@ public class PxlI18nTests {
             Pxl.setMessageLocale(Locale.ENGLISH);
             assertThatThrownBy(() -> pxl.exportExcel()
                     .toStream(new ByteArrayOutputStream()))
-                    .isInstanceOf(PxlException.class)
+                    .isInstanceOf(PxlArgumentException.class)
                     .hasMessageContaining("either workbook(Object) or sheet(...) must be specified.");
 
             Pxl.setMessageLocale(Locale.KOREAN);
             assertThatThrownBy(() -> pxl.exportExcel()
                     .toStream(new ByteArrayOutputStream()))
-                    .isInstanceOf(PxlException.class)
+                    .isInstanceOf(PxlArgumentException.class)
                     .hasMessageContaining("workbook(Object) 또는 sheet(...) 중 하나를 지정해야 합니다.");
         } finally {
             Pxl.resetMessageLocale();

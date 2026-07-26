@@ -83,7 +83,7 @@ public class PxlExceptionTests {
     public void importFile_nonExistent_throws(@TempDir final Path tempDir) {
         final File missing = tempDir.resolve("does-not-exist.xlsx").toFile();
 
-        assertThrows(PxlException.class, () ->
+        assertThrows(PxlIOException.class, () ->
                 pxl.importExcel()
                         .sheet(Employee.class, Arrays.asList("Any"))
                         .fromFile(missing));
@@ -276,7 +276,7 @@ public class PxlExceptionTests {
                 .importPassword("wrong")
                 .build();
 
-        assertThrows(PxlException.class, () ->
+        assertThrows(PxlIOException.class, () ->
                 pxl.importExcel()
                         .override(importOption)
                         .sheet(Employee.class, Arrays.asList("People"))
@@ -453,9 +453,9 @@ public class PxlExceptionTests {
     public void customObjectAndCollection_invalidString_throw() {
         // Point ("x".split(",") -> parseInt("x") NFE), Money ("x".split(ws)[1] out of bounds), and a
         // collection element ("x") route their invalid input through the object/collection codec and are rejected.
-        assertThrows(PxlException.class, () -> importTyped(sheetWithValue("Point", "x"), AllTypesRow.class));
-        assertThrows(PxlException.class, () -> importTyped(sheetWithValue("Money", "x"), AllTypesRow.class));
-        assertThrows(PxlException.class, () -> importTyped(sheetWithValue("IntList", "10;x;30"), AllTypesRow.class));
+        assertThrows(PxlCellCodecException.class, () -> importTyped(sheetWithValue("Point", "x"), AllTypesRow.class));
+        assertThrows(PxlCellCodecException.class, () -> importTyped(sheetWithValue("Money", "x"), AllTypesRow.class));
+        assertThrows(PxlCellCodecException.class, () -> importTyped(sheetWithValue("IntList", "10;x;30"), AllTypesRow.class));
     }
 
     // ------------------------------------------------------------------
@@ -529,7 +529,7 @@ public class PxlExceptionTests {
 
     @Test
     public void importColumn_unsupportedType_throws() {
-        assertThrows(PxlException.class, () ->
+        assertThrows(PxlArgumentException.class, () ->
                 importTyped(sheetWithValue("U", "x"), UnsupportedTypeRow.class));
     }
 
@@ -846,7 +846,6 @@ public class PxlExceptionTests {
 
     @Test
     public void exceptionTypes_commonConstructors_carryMessageAndCause() {
-        assertCommonConstructors(PxlException::new, PxlException::new, PxlException::new, PxlException::new);
         assertCommonConstructors(PxlArgumentException::new, PxlArgumentException::new, PxlArgumentException::new, PxlArgumentException::new);
         assertCommonConstructors(PxlNullPointerException::new, PxlNullPointerException::new, PxlNullPointerException::new, PxlNullPointerException::new);
         assertCommonConstructors(PxlCellCodecException::new, PxlCellCodecException::new, PxlCellCodecException::new, PxlCellCodecException::new);
@@ -856,12 +855,13 @@ public class PxlExceptionTests {
         assertCommonConstructors(PxlI18nException::new, PxlI18nException::new, PxlI18nException::new, PxlI18nException::new);
         assertCommonConstructors(PxlIOException::new, PxlIOException::new, PxlIOException::new, PxlIOException::new);
         assertCommonConstructors(PxlRuntimeException::new, PxlRuntimeException::new, PxlRuntimeException::new, PxlRuntimeException::new);
+        assertCommonConstructors(PxlSystemException::new, PxlSystemException::new, PxlSystemException::new, PxlSystemException::new);
     }
 
     @Test
     public void exceptionTypes_taggedConstructors_embedLocationValues() {
         // message form: the sheet name, one-based row (index 4 -> "5"), column name, and message all appear.
-        final PxlException byName = new PxlException("Sheet1", 4, "Age", null, "boom");
+        final PxlValidationException byName = new PxlValidationException("Sheet1", 4, "Age", null, "boom");
         assertTrue(byName.getMessage().contains("Sheet1"));
         assertTrue(byName.getMessage().contains("Age"));
         assertTrue(byName.getMessage().contains("boom"));

@@ -3,6 +3,7 @@ package io.github.hclimkr.pxl.builder;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
+import io.github.hclimkr.pxl.exception.PxlSystemException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.core.PxlExcelExporter;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
@@ -132,7 +133,7 @@ public final class PxlSampleExcelExportBuilder extends PxlAbstractExportBuilder 
         } catch (PxlException e) {
             throw e;
         } catch (Exception e) {
-            throw new PxlException(e);
+            throw new PxlSystemException(e);
         } finally {
             if (!success && Objects.nonNull(workbookMeta)) {
                 PxlWorkbookUtils.closeWorkbook(workbookMeta.getWorkbook());
