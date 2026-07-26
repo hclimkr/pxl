@@ -232,7 +232,7 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 | 기타     | `Enum`, 사용자 정의 클래스, 위 타입들의 `Collection`                                                      |
 | 실험적    | `Duration` `Period`                                                                          |
 
-미지원 변수 타입 필드는 변환 시 `PxlCellCodecException`으로 실패한다.
+미지원 변수 타입 필드는 컬럼 메타를 해석하는 시점에 `PxlArgumentException`으로 실패한다(사용자 정의 클래스라면 `@PxlImportConverter`·`@PxlExportConverter` 또는 `String` 생성자를 갖춰야 지원 타입이 된다). 지원 타입이지만 셀 값을 그 타입으로 변환할 수 없을 때가 `PxlCellCodecException`이다.
 
 ### 타입별 동작 요약 — Import
 
@@ -302,7 +302,7 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 | `importCsvCharset`                                                | `"UTF-8"`  | Import할 CSV의 문자 인코딩.<br/>선두 BOM 자동 처리(UTF-8/UTF-16LE/BE의 BOM 제거, `UTF-16`(auto)의 BOM은 엔디안 판별에 사용)          |
 | `importCsvDelimiter`                                              | `','`      | Import할 CSV의 구분자 (`char`)                                                                                                       |
 | `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Import 시 다국어 ResourceBundle의 base name / language / country                                                                     |
-| `exportFileFormat`                                                | `XSSF`     | Export 형식(`PxlFileFormat`): `XSSF`=XLSX(기본), `HSSF`=XLS, `SXSSF`=스트리밍 XLSX.<br/>`CSV`는 지원하지 않으므로 지정 시 예외 발생. |
+| `exportFileFormat`                                                | `XSSF`     | Export 형식(`PxlFileFormat`): `XSSF`=XLSX(기본), `HSSF`=XLS, `SXSSF`=스트리밍 XLSX.<br/>`CSV`는 지원하지 않으므로 지정 시 `PxlDataException` 발생. |
 | `exportPassword`                                                  | `""`       | Export 시 설정할 문서보호 비밀번호.<br/>`toFile(...)`·`toStream(...)`에만 적용되고 `toWorkbook()`에는 적용되지 않는다.               |
 | `exportDataValidation`                                            | `true`     | Export할 데이터에 대해 유효성 검사 수행 여부                                                                                         |
 | `exportSXSSFRowAccessWindowSize`                                  | `100`      | SXSSF Export 시 rowAccessWindowSize                                                                                                  |
@@ -551,8 +551,8 @@ private String code;
 | `PxlReflectionException`  | 리플렉션 실패 시                                                                                                                       |
 | `PxlArgumentException`    | 인자/애노테이션 설정 오류 시                                                                                                           |
 | `PxlNullPointerException` | 필수(non-null) 인자가 `null`일 때                                                                                                      |
-| `PxlDataException`        | 잘못된 데이터일 때                                                                                                                     |
-| `PxlIOException`          | I/O 오류일 때(파일·스트림을 열거나 읽지 못할 때 포함)                                                                                  |
+| `PxlDataException`        | 워크북/CSV 형태가 기대와 다를 때 — 대상 시트·컬럼을 못 찾거나 중복, 시트/행/열 수 한도 초과, 헤더 행·컬럼 없음, export할 데이터 없음, 이름·클래스·스트림 개수 불일치, 행/열 인덱스 설정 위반 |
+| `PxlIOException`          | I/O 오류일 때 — 파일·스트림을 열거나 읽지 못함(파일 없음·미지원 포맷·`importPassword` 불일치로 복호화 실패 포함), 쓰기 실패             |
 | `PxlI18nException`        | i18n ResourceBundle을 못 찾을 때                                                                                                       |
 | `PxlSystemException`      | PXL이 분류하지 않은 실패일 때 — 위 타입에 해당하지 않는 예외(POI의 예기치 못한 런타임 실패 등)를 경계에서 감싼 것(원인은 `getCause()`) |
 | `PxlRuntimeException`     | unchecked 예외 — 현재 미사용                                                                                                           |

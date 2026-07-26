@@ -232,7 +232,7 @@ The direction (export/import) and format (excel/csv) are embedded in the start m
 | Other            | `Enum`, user-defined classes, `Collection` of the above types                               |
 | Experimental     | `Duration` `Period`                                                                          |
 
-Fields of an unsupported variable type fail with `PxlCellCodecException` during conversion.
+Fields of an unsupported variable type fail with `PxlArgumentException` while the column metadata is resolved (a user-defined class becomes a supported type once it has `@PxlImportConverter`/`@PxlExportConverter` or a `String` constructor). `PxlCellCodecException` is for a supported type whose cell value cannot be converted into it.
 
 ### Per-Type Behavior Summary — Import
 
@@ -302,7 +302,7 @@ When you pass an option object to the `.override()` step to provide runtime valu
 | `importCsvCharset`                                                | `"UTF-8"`  | Character encoding of the CSV to import.<br/>Handles a leading BOM automatically (strips the UTF-8/UTF-16LE/BE BOM; for `UTF-16` (auto), the BOM is used to determine endianness) |
 | `importCsvDelimiter`                                              | `','`      | Delimiter of the CSV to import (`char`)                                                                                                                                           |
 | `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on import                                                                                                       |
-| `exportFileFormat`                                                | `XSSF`     | Export format (`PxlFileFormat`): `XSSF`=XLSX (default), `HSSF`=XLS, `SXSSF`=streaming XLSX.<br/>`CSV` is not supported, so specifying it raises an exception.                     |
+| `exportFileFormat`                                                | `XSSF`     | Export format (`PxlFileFormat`): `XSSF`=XLSX (default), `HSSF`=XLS, `SXSSF`=streaming XLSX.<br/>`CSV` is not supported, so specifying it raises `PxlDataException`.                |
 | `exportPassword`                                                  | `""`       | Document protection password to set on export.<br/>Applies to `toFile(...)`/`toStream(...)` only, not to `toWorkbook()`.                                                          |
 | `exportDataValidation`                                            | `true`     | Whether to perform validation on data to export                                                                                                                                   |
 | `exportSXSSFRowAccessWindowSize`                                  | `100`      | rowAccessWindowSize on SXSSF export                                                                                                                                               |
@@ -551,8 +551,8 @@ For details, see "Exception/Diagnostic Message Language" in [i18n](#i18n).
 | `PxlReflectionException`  | On reflection failure                   |
 | `PxlArgumentException`    | On an argument/annotation configuration error |
 | `PxlNullPointerException` | When a required (non-null) argument is `null` |
-| `PxlDataException`        | On invalid data                         |
-| `PxlIOException`          | On an I/O error (including a file/stream that cannot be opened or read) |
+| `PxlDataException`        | When the workbook/CSV shape does not match what the binding expects — a target sheet/column that cannot be found or is duplicated, a sheet/row/column count limit exceeded, a missing header row/column, nothing to export, counts that do not line up (names vs. classes vs. streams), or invalid row/column index settings |
+| `PxlIOException`          | On an I/O error — a source that cannot be opened or read (a missing file, an unsupported format, or decryption failing on a wrong `importPassword`), or a failed write |
 | `PxlI18nException`        | When an i18n ResourceBundle cannot be found |
 | `PxlSystemException`      | On a failure PXL does not classify — anything not covered by the types above (e.g. an unexpected runtime failure from POI), wrapped at the boundary with the original as its `getCause()` |
 | `PxlRuntimeException`     | unchecked exception — currently unused  |

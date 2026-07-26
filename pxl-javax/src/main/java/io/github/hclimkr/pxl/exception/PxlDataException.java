@@ -1,8 +1,14 @@
 package io.github.hclimkr.pxl.exception;
 
 /**
- * Thrown when the source data violates a structural limit or expectation (e.g. exceeding the maximum
- * number of sheets/rows/columns, or an otherwise malformed workbook/CSV shape).
+ * Thrown when the workbook/CSV shape does not match what the binding expects.
+ *
+ * <p>Covers a target that cannot be located or is ambiguous (no sheet matching the candidate names, a missing
+ * column, a duplicated sheet/column name, a CSV name matching several sheets), a structural limit that is
+ * exceeded (maximum number of sheets/rows/columns), a missing header row/column, nothing to write on export
+ * (no data, a {@code null} row collection or row class), inputs whose counts do not line up (sheet names vs.
+ * row classes/collections, CSV names vs. streams), and row/column index settings that cannot hold together
+ * (a negative index, a last index below the first, a first data row not after the header row).</p>
  */
 public final class PxlDataException extends PxlException {
 

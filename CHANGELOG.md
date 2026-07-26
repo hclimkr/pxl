@@ -13,6 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   after `workbook(...)`/`sheet(...)` on the returned source step, matching the export
   builders where `override(...)` may appear anywhere before the final step. Chaining
   them before the parse-target configuration keeps working; the value set last wins.
+- `PxlSystemException`: the exception a builder's final (execute) step wraps a failure
+  PXL does not classify in — a checked I/O failure, an unexpected runtime failure from
+  POI, and so on — keeping the original accessible through `getCause()`.
+
+### Changed
+
+- **BREAKING** `PxlException` is now `abstract` and can no longer be instantiated
+  (`new PxlException(...)`). Catching it and subclassing it are unaffected, and
+  `throws PxlException` remains a valid contract on the final (execute) steps.
+  What surfaces there is always a concrete subtype: the matching one for a classified
+  failure, and `PxlSystemException` for everything else.
+- Failing to open an Excel source (a missing file, an unreadable or password-protected
+  container, an unsupported format) now surfaces as `PxlIOException` rather than the
+  bare base type, so callers can catch that case on its own.
 
 ## [0.9.0] - 2026-07-24
 

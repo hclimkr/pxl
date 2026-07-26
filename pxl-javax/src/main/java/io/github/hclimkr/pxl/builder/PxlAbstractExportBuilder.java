@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl.builder;
 
 import io.github.hclimkr.pxl.exception.PxlException;
+import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.exception.PxlSystemException;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
@@ -61,7 +62,8 @@ abstract class PxlAbstractExportBuilder {
      * <p>The output stream to the file is opened and closed internally, so the caller has nothing to close.</p>
      *
      * @param excelFile the destination Excel file
-     * @throws PxlException if workbook creation or writing fails
+     * @throws PxlNullPointerException if {@code excelFile} is {@code null}
+     * @throws PxlException            if workbook creation or writing fails
      */
     public final void toFile(final File excelFile)
             throws PxlException {
@@ -91,7 +93,8 @@ abstract class PxlAbstractExportBuilder {
      * for closing it.</p>
      *
      * @param outputStream the destination output stream (not closed by this method)
-     * @throws PxlException if workbook creation or writing fails
+     * @throws PxlNullPointerException if {@code outputStream} is {@code null}
+     * @throws PxlException            if workbook creation or writing fails
      */
     public final void toStream(final OutputStream outputStream)
             throws PxlException {

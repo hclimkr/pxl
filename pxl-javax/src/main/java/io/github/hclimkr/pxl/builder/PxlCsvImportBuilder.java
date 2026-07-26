@@ -262,7 +262,8 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
          *
          * @param csvFile the CSV file
          * @return the parsed result
-         * @throws PxlException if parsing fails
+         * @throws PxlNullPointerException if {@code csvFile} is {@code null}
+         * @throws PxlException            if the file cannot be opened or read, or if parsing fails
          */
         public R fromFile(final File csvFile)
                 throws PxlException {
@@ -279,7 +280,9 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
          *
          * @param csvFiles the CSV files
          * @return the parsed result
-         * @throws PxlException if parsing fails
+         * @throws PxlNullPointerException if {@code csvFiles} is {@code null}
+         * @throws PxlArgumentException    if {@code csvFiles} is empty
+         * @throws PxlException            if a file cannot be opened or read, or if parsing fails
          */
         public R fromFiles(final List<File> csvFiles)
                 throws PxlException {
@@ -313,7 +316,8 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
          * @param csvName   the CSV name
          * @param csvStream the CSV input stream (not closed by this method)
          * @return the parsed result
-         * @throws PxlException if parsing fails
+         * @throws PxlNullPointerException if {@code csvName} or {@code csvStream} is {@code null}
+         * @throws PxlException            if parsing fails
          */
         public R fromStream(final String csvName,
                             final InputStream csvStream)
@@ -333,7 +337,9 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
          * @param csvNames   the CSV names
          * @param csvStreams the CSV input streams (not closed by this method)
          * @return the parsed result
-         * @throws PxlException if parsing fails
+         * @throws PxlNullPointerException if {@code csvNames} or {@code csvStreams} is {@code null}
+         * @throws PxlArgumentException    if {@code csvNames} or {@code csvStreams} is empty
+         * @throws PxlException            if parsing fails
          */
         public R fromStreams(final List<String> csvNames,
                              final List<InputStream> csvStreams)

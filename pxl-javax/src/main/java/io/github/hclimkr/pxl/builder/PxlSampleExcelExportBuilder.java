@@ -101,7 +101,8 @@ public final class PxlSampleExcelExportBuilder extends PxlAbstractExportBuilder 
      * Builds the Excel sample workbook from the configured workbook class or sheets.
      *
      * @return the creation result (workbook and optional password)
-     * @throws PxlException if both or neither of the workbook/sheet forms are specified, or if workbook creation fails
+     * @throws PxlArgumentException if both or neither of the workbook/sheet forms are specified
+     * @throws PxlException         if workbook creation fails
      */
     @Override
     protected Built build()

@@ -317,7 +317,9 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          *
          * @param excelFile the Excel file
          * @return the parsed result
-         * @throws PxlException if parsing fails
+         * @throws PxlNullPointerException if {@code excelFile} is {@code null}
+         * @throws PxlIOException          if the file cannot be opened or read
+         * @throws PxlException            if parsing fails
          */
         public R fromFile(final File excelFile)
                 throws PxlException {
@@ -334,7 +336,9 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          *
          * @param excelStream the Excel input stream (not closed by this method)
          * @return the parsed result
-         * @throws PxlException if parsing fails
+         * @throws PxlNullPointerException if {@code excelStream} is {@code null}
+         * @throws PxlIOException          if the stream cannot be read as a workbook
+         * @throws PxlException            if parsing fails
          */
         public R fromStream(final InputStream excelStream)
                 throws PxlException {
@@ -350,7 +354,9 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          * @param excelFile   the Excel file, or {@code null} when a stream is given
          * @param excelStream the Excel input stream, or {@code null} when a file is given
          * @return the parsed result
-         * @throws PxlException if neither source is given or if parsing fails
+         * @throws PxlArgumentException if neither source is given
+         * @throws PxlIOException       if the workbook cannot be opened
+         * @throws PxlException         if parsing fails
          */
         private R parse(@Nullable final File excelFile, @Nullable final InputStream excelStream)
                 throws PxlException {
