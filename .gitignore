@@ -50,6 +50,7 @@ build/
 # AI Assistant Configurations (Claude Code)
 CLAUDE.md
 MISC.md
+RELEASE.md
 TODO.md
 .claude/
 .claude_history
