@@ -3,7 +3,7 @@ package io.github.hclimkr.pxl.builder;
 import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
-import io.github.hclimkr.pxl.internal.core.PxlExcelImporter;
+import io.github.hclimkr.pxl.internal.core.PxlCoreExcelImporter;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlImportWorkbookMeta;
@@ -374,14 +374,14 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
                 final Object result;
                 if (Objects.nonNull(workbookClass)) {
                     final List<PxlImportSheetOption> sheetOptions = workbookMeta.getImportSheetOptions();
-                    result = PxlExcelImporter.parseExcel(workbookName, workbook, workbookClass, workbookMeta, sheetOptions, validator);
+                    result = PxlCoreExcelImporter.parseExcel(workbookName, workbook, workbookClass, workbookMeta, sheetOptions, validator);
                 } else {
                     final PxlImportSheetOption sheetOption = Optional.ofNullable(workbookMeta.getImportSheetOptions())
                             .flatMap(options -> options.stream()
                                     .filter(o -> StringUtils.equals(o.getFieldName(), PxlConstants.SHEET_FIELD_NAME_WILD_CARD))
                                     .findFirst())
                             .orElse(null);
-                    result = PxlExcelImporter.parseExcel(workbook, candidateSheetNames, collectionClass, rowClass, workbookMeta, sheetOption, validator);
+                    result = PxlCoreExcelImporter.parseExcel(workbook, candidateSheetNames, collectionClass, rowClass, workbookMeta, sheetOption, validator);
                 }
 
                 @SuppressWarnings("unchecked") final R typed = (R) result;

@@ -34,12 +34,12 @@ import java.util.*;
 /**
  * CSV import routine
  */
-public final class PxlCsvImporter extends PxlAbstractImporter {
+public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
     /**
      * Prevents instantiation.
      */
-    private PxlCsvImporter() {
+    private PxlCoreCsvImporter() {
 
         throw new AssertionError("no instances of this class");
     }

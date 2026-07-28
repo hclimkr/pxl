@@ -5,7 +5,7 @@ import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.exception.PxlSystemException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
-import io.github.hclimkr.pxl.internal.core.PxlExcelExporter;
+import io.github.hclimkr.pxl.internal.core.PxlCoreExcelExporter;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlExportWorkbookMeta;
@@ -123,10 +123,10 @@ public final class PxlSampleExcelExportBuilder extends PxlAbstractExportBuilder 
             final Workbook workbook;
             if (Objects.nonNull(workbookClass)) {
                 workbookMeta = PxlExportWorkbookMeta.makeExportWorkbookMeta(workbookClass, option);
-                workbook = PxlExcelExporter.buildSampleWorkbook(workbookClass, workbookMeta);
+                workbook = PxlCoreExcelExporter.buildSampleWorkbook(workbookClass, workbookMeta);
             } else {
                 workbookMeta = PxlExportWorkbookMeta.makeExportWorkbookMeta(null, option);
-                workbook = PxlExcelExporter.buildSampleWorkbook(sheetNames, rowClasses, workbookMeta);
+                workbook = PxlCoreExcelExporter.buildSampleWorkbook(sheetNames, rowClasses, workbookMeta);
             }
             success = true;
 

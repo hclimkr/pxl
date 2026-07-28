@@ -34,12 +34,12 @@ import java.util.stream.Stream;
 /**
  * Excel export routine
  */
-public final class PxlExcelExporter extends PxlAbstractExporter {
+public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
     /**
      * Prevents instantiation.
      */
-    private PxlExcelExporter() {
+    private PxlCoreExcelExporter() {
 
         throw new AssertionError("no instances of this class");
     }

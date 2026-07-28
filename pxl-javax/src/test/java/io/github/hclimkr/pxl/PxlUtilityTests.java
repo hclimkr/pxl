@@ -6,7 +6,7 @@ import io.github.hclimkr.pxl.constraint.PxlByteSize;
 import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.constraint.PxlByteSizeValidator;
 import io.github.hclimkr.pxl.internal.core.PxlContentsHandler;
-import io.github.hclimkr.pxl.internal.core.PxlExcelExporter;
+import io.github.hclimkr.pxl.internal.core.PxlCoreExcelExporter;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18n;
 import io.github.hclimkr.pxl.internal.meta.*;
 import io.github.hclimkr.pxl.internal.support.*;
@@ -1049,7 +1049,7 @@ public class PxlUtilityTests {
                 Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering"),
                 Fixtures.employee("Bob", 42, "72000", false, null, Grade.B, "Sales"));
 
-        final Workbook workbook = PxlExcelExporter.buildWorkbook("People", rows, Employee.class, workbookMeta, null);
+        final Workbook workbook = PxlCoreExcelExporter.buildWorkbook("People", rows, Employee.class, workbookMeta, null);
 
         final Sheet sheet = workbook.getSheet("People");
         assertThat(sheet).isNotNull();
@@ -1065,18 +1065,18 @@ public class PxlUtilityTests {
         final List<Class<?>> classes = Arrays.<Class<?>>asList(Employee.class);
 
         // sheetNames vs sheetObjects count mismatch
-        assertThrows(PxlDataException.class, () -> PxlExcelExporter.buildWorkbook(
+        assertThrows(PxlDataException.class, () -> PxlCoreExcelExporter.buildWorkbook(
                 Arrays.asList("S1", "S2"), objects, classes, PxlExportWorkbookMeta.makeExportWorkbookMeta(null, null), null));
         // sheetNames vs rowClasses count mismatch
-        assertThrows(PxlDataException.class, () -> PxlExcelExporter.buildWorkbook(
+        assertThrows(PxlDataException.class, () -> PxlCoreExcelExporter.buildWorkbook(
                 Arrays.asList("S1"), objects, Arrays.<Class<?>>asList(Employee.class, Employee.class),
                 PxlExportWorkbookMeta.makeExportWorkbookMeta(null, null), null));
         // a null sheet-object element
-        assertThrows(PxlDataException.class, () -> PxlExcelExporter.buildWorkbook(
+        assertThrows(PxlDataException.class, () -> PxlCoreExcelExporter.buildWorkbook(
                 Arrays.asList("S1"), Arrays.<Collection<?>>asList((Collection<?>) null), classes,
                 PxlExportWorkbookMeta.makeExportWorkbookMeta(null, null), null));
         // a null row-class element
-        assertThrows(PxlDataException.class, () -> PxlExcelExporter.buildWorkbook(
+        assertThrows(PxlDataException.class, () -> PxlCoreExcelExporter.buildWorkbook(
                 Arrays.asList("S1"), objects, Arrays.<Class<?>>asList((Class<?>) null),
                 PxlExportWorkbookMeta.makeExportWorkbookMeta(null, null), null));
     }
@@ -1086,14 +1086,14 @@ public class PxlUtilityTests {
         final List<Class<?>> classes = Arrays.<Class<?>>asList(Employee.class);
 
         // sheetNames vs rowClasses count mismatch
-        assertThrows(PxlDataException.class, () -> PxlExcelExporter.buildSampleWorkbook(
+        assertThrows(PxlDataException.class, () -> PxlCoreExcelExporter.buildSampleWorkbook(
                 Arrays.asList("S1", "S2"), classes, PxlExportWorkbookMeta.makeExportWorkbookMeta(null, null)));
         // duplicate sheet name
-        assertThrows(PxlDataException.class, () -> PxlExcelExporter.buildSampleWorkbook(
+        assertThrows(PxlDataException.class, () -> PxlCoreExcelExporter.buildSampleWorkbook(
                 Arrays.asList("Dup", "Dup"), Arrays.<Class<?>>asList(Employee.class, Employee.class),
                 PxlExportWorkbookMeta.makeExportWorkbookMeta(null, null)));
         // a null row-class element
-        assertThrows(PxlDataException.class, () -> PxlExcelExporter.buildSampleWorkbook(
+        assertThrows(PxlDataException.class, () -> PxlCoreExcelExporter.buildSampleWorkbook(
                 Arrays.asList("S1"), Arrays.<Class<?>>asList((Class<?>) null),
                 PxlExportWorkbookMeta.makeExportWorkbookMeta(null, null)));
     }

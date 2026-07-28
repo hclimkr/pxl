@@ -29,12 +29,12 @@ import java.util.Objects;
 /**
  * Excel import routine
  */
-public final class PxlExcelImporter extends PxlAbstractImporter {
+public final class PxlCoreExcelImporter extends PxlAbstractImporter {
 
     /**
      * Prevents instantiation.
      */
-    private PxlExcelImporter() {
+    private PxlCoreExcelImporter() {
 
         throw new AssertionError("no instances of this class");
     }

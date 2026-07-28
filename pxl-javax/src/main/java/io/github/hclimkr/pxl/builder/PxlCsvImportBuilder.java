@@ -5,7 +5,7 @@ import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.exception.PxlSystemException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
-import io.github.hclimkr.pxl.internal.core.PxlCsvImporter;
+import io.github.hclimkr.pxl.internal.core.PxlCoreCsvImporter;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
@@ -371,12 +371,12 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
 
             final Object result;
             if (Objects.nonNull(workbookClass)) {
-                result = PxlCsvImporter.parseCsv(workbookName, names, streams, workbookClass, option, validator);
+                result = PxlCoreCsvImporter.parseCsv(workbookName, names, streams, workbookClass, option, validator);
             } else {
                 if (names.size() != 1) {
                     throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.BUILDER_CSV_SINGLE_SOURCE_ONLY));
                 }
-                result = PxlCsvImporter.parseCsv(names.get(0), streams.get(0), collectionClass, rowClass, option, validator);
+                result = PxlCoreCsvImporter.parseCsv(names.get(0), streams.get(0), collectionClass, rowClass, option, validator);
             }
 
             @SuppressWarnings("unchecked") final R typed = (R) result;
