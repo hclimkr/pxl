@@ -7,7 +7,16 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 /**
- * Super type token
+ * Super type token: captures a full generic type (for example {@code List<String>}), which a {@code Class} literal
+ * cannot express because erasure leaves only {@code List.class} behind.
+ * <p>
+ * Instantiate it as an anonymous subclass — {@code new PxlTypeReference<List<String>>() {}} — so that the type
+ * argument survives in the class file as the generic superclass, from where the constructor reads it back.
+ *
+ * @param <T> the captured type
+ * @deprecated The binder resolves a collection field's element type straight from the declared field instead, via
+ * {@link PxlReflectionSupport#getParameterizedArgument0(java.lang.reflect.Field)}, so nothing in PXL creates one of
+ * these any more. Kept only so that any outside caller still compiles; it may be removed in a future release.
  */
 @Deprecated
 public abstract class PxlTypeReference<T> {

@@ -35,7 +35,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Workbook-related utilities.
+ * Workbook-related utilities: opening a workbook from a file or stream, writing it out (optionally encrypted),
+ * closing it (disposing of a streaming workbook's temp files), creating a formula evaluator, and reading the
+ * {@code @PxlWorkbookName} field of a workbook object.
  */
 public final class PxlWorkbookUtils {
 

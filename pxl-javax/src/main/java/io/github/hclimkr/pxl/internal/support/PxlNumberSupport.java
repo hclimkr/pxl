@@ -11,7 +11,19 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Number-related utilities.
+ * Numeric helpers shared by the number codecs: pattern formatting, float widening, and the range/finiteness guards
+ * that keep a spreadsheet's {@code double} storage from silently corrupting a bound value.
+ * <p>
+ * A spreadsheet holds every number as a {@code double}, which is where the guards come in. {@code requireWithinRange}
+ * rejects a value that would not survive the target type (including the 2^53 limit beyond which a {@code double}
+ * can no longer represent consecutive integers), and the {@code requireFinite*} methods reject {@code NaN} and
+ * infinity on both directions, since neither has a cell representation. All of them fail loudly rather than
+ * truncating.
+ * <p>
+ * {@code getDecimalFormat} builds formatters on {@link Locale#ROOT} symbols so that a pattern such as
+ * {@code "#,##0.##"} parses and formats identically regardless of the JVM's default locale, and
+ * {@code floatToPlainDouble} widens a {@code float} through its short decimal form so {@code 0.1f} becomes
+ * {@code 0.1} rather than {@code 0.10000000149011612}.
  */
 public final class PxlNumberSupport {
 

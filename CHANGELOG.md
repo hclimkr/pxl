@@ -13,13 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `workbookName(...)` was not set: `importExcel().workbook(W.class).fromFile(file)` binds
   the file name without its extension (`Report.xlsx` → `"Report"`) to the
   `@PxlWorkbookName` field. An explicitly configured name still wins, and a stream source
-  carries no file name, so `fromStream(...)` leaves the field `null` as before. CSV import
-  is unchanged.
+  carries no file name, so `fromStream(...)` leaves the field `null` as before. A file that
+  is nothing but an extension (`".xlsx"`) binds an empty name.
+
 - `PxlFileFormat.fromPoiWorkbook(Workbook)`: resolves the file format of an already open
   POI workbook from its implementation type. `HSSFWorkbook` maps to `HSSF` and
   `SXSSFWorkbook` to `SXSSF`, while `XSSFWorkbook` and the streaming reader's
   `StreamingWorkbook` both map to `XSSF` — a streamed read opens the same OOXML
   container, and `SXSSF` denotes the streaming export workbook only.
+
+### Fixed
+
+- CSV import in the workbook form now matches a file whose name is in the decomposed (NFD)
+  Unicode form against the composed (NFC) name written in `@PxlSheet`. macOS file systems
+  hand back decomposed file names, so a sheet named in Korean was not found there even
+  though the file name and the annotation read identically. Names derived from file names
+  are now normalized to NFC on both import paths.
 
 ### Changed
 
@@ -34,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   workbook type falls back to `PxlConstants.DEFAULT_EXPORT_FILE_FORMAT` (`XSSF`).
 - Internal only, not part of the public API: the `internal/core` binder entry points are
   now `PxlCoreCsvImporter`, `PxlCoreExcelImporter` and `PxlCoreExcelExporter`.
+- Javadoc: the published class documentation for the `util` helpers (`PxlCellUtils`,
+  `PxlColumnUtils`, `PxlRowUtils`, `PxlSheetUtils`, `PxlWorkbookUtils`) now states what each
+  class covers and how it behaves on a streaming sheet, and `@PxlWorkbookName` documents the
+  file-name fallback and that it applies to CSV import as well.
 
 ## [0.9.1] - 2026-07-27
 

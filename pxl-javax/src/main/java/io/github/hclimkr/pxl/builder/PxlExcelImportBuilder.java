@@ -12,7 +12,6 @@ import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Workbook;
 
@@ -321,7 +320,8 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          * <p>The file is opened and closed internally, so the caller has nothing to close.</p>
          *
          * <p>In the workbook form, when no name was set through {@code workbookName(...)}, the file name without its
-         * extension is bound to the {@code @PxlWorkbookName} field.</p>
+         * extension is bound to the {@code @PxlWorkbookName} field ({@code Report.xlsx} binds {@code "Report"}); a file
+         * that is nothing but an extension ({@code ".xlsx"}) binds an empty name.</p>
          *
          * @param excelFile the Excel file
          * @return the parsed result
@@ -341,6 +341,9 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          * Opens the given Excel input stream as the source, parses it, and returns the result.
          *
          * <p>The given stream is <strong>not closed</strong>; the caller retains ownership and is responsible for closing it.</p>
+         *
+         * <p>A stream carries no file name, so in the workbook form the {@code @PxlWorkbookName} field is filled only
+         * when a name was set through {@code workbookName(...)}.</p>
          *
          * @param excelStream the Excel input stream (not closed by this method)
          * @return the parsed result
@@ -408,6 +411,7 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          *
          * <p>An explicitly configured name always wins. When none was configured and the source is a file, the file
          * name without its extension stands in — the same rule CSV import uses to derive sheet names from file names.
+         * A file that is nothing but an extension ({@code ".xlsx"}) yields an empty name, which is bound as is.
          * A stream source carries no file name, so the name stays {@code null} there.</p>
          *
          * @param excelFile the source file, or {@code null} when parsing from a stream
@@ -419,8 +423,7 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
                 return workbookName;
             }
 
-            // A name such as ".xlsx" leaves nothing behind, so fall back to null rather than binding an empty name.
-            return StringUtils.defaultIfEmpty(FilenameUtils.removeExtension(excelFile.getName()).trim(), null);
+            return getNormalizedFileBaseName(excelFile);
         }
 
         /**

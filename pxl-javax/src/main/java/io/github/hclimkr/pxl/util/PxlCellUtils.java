@@ -30,7 +30,20 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * Cell-related utilities.
+ * Cell-level POI helpers: locating or creating a cell, reading it as text, writing a value of any supported type,
+ * and decorating it.
+ * <p>
+ * The {@code setCellValue} family spans the JDK types PXL binds (numbers, {@code String}, {@code boolean},
+ * {@code Date} and {@code java.time}, ...), so a caller need not pick the right POI setter per type, and
+ * {@code getCellStringValue} renders a cell the way the spreadsheet displays it by honouring its number format
+ * through a {@code DataFormatter} — pass the workbook's cached formatter on hot paths, as the no-argument overload
+ * allocates one per call. Also here: formula, error and blank cells; {@code getCellWithMerges}, which reads the
+ * value a merged region carries from any of its cells; cell-style cloning; notes; and pictures anchored to a cell.
+ * <p>
+ * The lookups are null-safe: a {@code null} or streaming sheet, or an absent row/cell that is not to be created,
+ * yields {@code null} rather than an exception, and the decorating methods no-op on a {@code null} cell. Since a
+ * streaming sheet reports neither merged regions nor arbitrary rows, {@code getCellWithMerges} falls back to the
+ * cell itself there.
  */
 public final class PxlCellUtils {
 

@@ -6,7 +6,15 @@ import org.apache.poi.ss.usermodel.Sheet;
 import java.util.Objects;
 
 /**
- * Column-related utilities.
+ * Column-level POI helpers.
+ * <p>
+ * Currently a single entry point, {@code autoSizeColumns}, which widens a column to fit its content. It does not
+ * simply delegate to POI: the computed width is scaled by 1.8 and then clamped between
+ * {@link PxlConstants#EXPORT_AUTO_COLUMN_MIN_WIDTH} and {@link PxlConstants#EXPORT_AUTO_COLUMN_MAX_WIDTH}, because
+ * POI's own measurement comes out too narrow for the fonts PXL exports with.
+ * <p>
+ * Auto-sizing measures every row of the column, so it is expensive on large sheets, and on a streaming (SXSSF)
+ * sheet it only sees the rows still held in memory — the column must be tracked before those rows are flushed.
  */
 public final class PxlColumnUtils {
 

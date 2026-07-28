@@ -11,7 +11,13 @@ import org.apache.poi.ss.util.CellRangeAddressList;
 import java.util.Arrays;
 
 /**
- * Column-related utilities.
+ * Builds the dropdown (list) data validation an export column declares through {@code @PxlColumn(exportDropdownList)}.
+ * <p>
+ * Excel offers two ways to constrain a cell to a list, and which one works depends on the items: an inline
+ * explicit list is simplest but is comma-delimited and capped at 255 characters, so items containing a comma or a
+ * list exceeding that limit are instead written to a hidden helper sheet and referenced through a defined name.
+ * This class picks between the two and keeps the helper sheet and defined names unique within the workbook, so the
+ * same (sheet, column) reached twice does not collide.
  */
 public final class PxlColumnSupport {
 

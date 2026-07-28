@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.text.Normalizer;
 import java.time.*;
 import java.util.Arrays;
 import java.util.Date;
@@ -1060,13 +1061,7 @@ public class PxlExcelImportTests {
         // Without workbookName(...), the workbook form binds the source file name (extension removed) to the
         // @PxlWorkbookName field; an explicitly configured name still wins over it.
         final File excelFile = TestPaths.exportFile("AcmeReport.xlsx");
-        try (XSSFWorkbook workbook = new XSSFWorkbook();
-             FileOutputStream outputStream = new FileOutputStream(excelFile)) {
-            final CellStyle dateStyle = workbook.createCellStyle();
-            dateStyle.setDataFormat(workbook.createDataFormat().getFormat("yyyy-mm-dd"));
-            writeEmployeeSheet(workbook.createSheet("Employees"), dateStyle);
-            workbook.write(outputStream);
-        }
+        writeEmployeeWorkbookTo(excelFile);
 
         final CompanyWorkbook imported = pxl.importExcel()
                 .workbook(CompanyWorkbook.class)
@@ -1081,6 +1076,49 @@ public class PxlExcelImportTests {
                 .fromFile(excelFile);
 
         assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(named)).isEqualTo("Acme");
+    }
+
+    @Test
+    public void importExcel_workbookFormFromFile_extensionOnlyFileName_bindsEmptyName() throws Exception {
+        // A file called ".xlsx" leaves nothing behind once the extension is removed; the empty name is bound as is.
+        final File excelFile = TestPaths.exportFile(".xlsx");
+        writeEmployeeWorkbookTo(excelFile);
+
+        final CompanyWorkbook imported = pxl.importExcel()
+                .workbook(CompanyWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(imported)).isEmpty();
+    }
+
+    @Test
+    public void importExcel_workbookFormFromFile_decomposedFileName_bindsComposedName() throws Exception {
+        // macOS file systems hand back decomposed (NFD) file names, so the fallback normalizes to NFC - otherwise the
+        // bound name would not equal its composed counterpart even though the two read identically. Creating the file
+        // with an NFD name reproduces that on any OS, since File.getName() returns the name as given.
+        final String composed = "café";
+        final String decomposed = Normalizer.normalize(composed, Normalizer.Form.NFD);
+        assertThat(decomposed).isNotEqualTo(composed);
+
+        final File excelFile = TestPaths.exportFile(decomposed + ".xlsx");
+        writeEmployeeWorkbookTo(excelFile);
+
+        final CompanyWorkbook imported = pxl.importExcel()
+                .workbook(CompanyWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(imported)).isEqualTo(composed);
+    }
+
+    // Writes a one-sheet ("Employees") workbook to the given file, for the workbook-name fallback tests.
+    private static void writeEmployeeWorkbookTo(final File excelFile) throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             FileOutputStream outputStream = new FileOutputStream(excelFile)) {
+            final CellStyle dateStyle = workbook.createCellStyle();
+            dateStyle.setDataFormat(workbook.createDataFormat().getFormat("yyyy-mm-dd"));
+            writeEmployeeSheet(workbook.createSheet("Employees"), dateStyle);
+            workbook.write(outputStream);
+        }
     }
 
     @Test

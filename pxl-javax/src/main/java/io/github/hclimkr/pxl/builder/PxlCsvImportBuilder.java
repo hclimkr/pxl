@@ -10,7 +10,6 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 
 import javax.validation.Validator;
@@ -49,7 +48,10 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
     /**
      * Specifies the workbook name. (For setting the name field in the workbook form; optional)
      *
-     * @param workbookName the workbook name, or {@code null}
+     * <p>CSV import has no file-name fallback for it — a CSV file name names its <em>sheet</em> — so left unset, the
+     * {@code @PxlWorkbookName} field stays untouched.</p>
+     *
+     * @param workbookName the workbook name, or {@code null} to leave the name field untouched
      * @return this builder
      */
     public PxlCsvImportBuilder workbookName(@Nullable final String workbookName) {
@@ -260,6 +262,9 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
          *
          * <p>The file is opened and closed internally, so the caller has nothing to close.</p>
          *
+         * <p>One CSV file is one sheet, and its name comes from the file: the file name without its extension is
+         * matched against the {@code @PxlSheet} name in the workbook form.</p>
+         *
          * @param csvFile the CSV file
          * @return the parsed result
          * @throws PxlNullPointerException if {@code csvFile} is {@code null}
@@ -278,6 +283,10 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
          *
          * <p>The files are opened and closed internally, so the caller has nothing to close.</p>
          *
+         * <p>Each file is one sheet: the file name without its extension is matched against the {@code @PxlSheet}
+         * names, so the files may be given in any order. Use {@link #fromStreams(List, List)} to name the sheets
+         * explicitly instead.</p>
+         *
          * @param csvFiles the CSV files
          * @return the parsed result
          * @throws PxlNullPointerException if {@code csvFiles} is {@code null}
@@ -294,7 +303,7 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
             try {
                 final List<String> names = new ArrayList<>();
                 for (final File csvFile : csvFiles) {
-                    names.add(FilenameUtils.removeExtension(csvFile.getName()).trim());
+                    names.add(getNormalizedFileBaseName(csvFile));
                     openedStreams.add(new BufferedInputStream(new FileInputStream(csvFile)));
                 }
 

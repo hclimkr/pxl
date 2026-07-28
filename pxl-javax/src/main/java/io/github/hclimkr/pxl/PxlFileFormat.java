@@ -17,6 +17,11 @@ import java.util.Optional;
 /**
  * Excel/CSV file format, each carrying its filename extension, MIME content type, and the maximum
  * sheet/row/column counts applied on import and export.
+ * <p>
+ * Besides the constants, two lookups recover the format from what you already have: an open POI workbook
+ * ({@link #fromPoiWorkbook(Workbook)}) or a workbook class declaring {@code @PxlWorkbook(exportFileFormat = ...)}
+ * ({@link #fromWorkbookObject(Class)}). Both are plain lookups — they throw nothing and never return {@code null},
+ * falling back to {@link PxlConstants#DEFAULT_EXPORT_FILE_FORMAT}.
  */
 @Getter
 @AllArgsConstructor

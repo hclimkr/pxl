@@ -18,6 +18,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
@@ -436,6 +437,24 @@ public class PxlCsvImportTests {
         assertThrows(PxlDataException.class, () -> pxl.importCsv()
                 .sheet(LongRowIndexRow.class)
                 .fromStream("S", stream(csv)));
+    }
+
+    @Test
+    public void importCsvFile_workbookForm_decomposedFileName_matchesComposedSheetName(@TempDir final Path tempDir) throws Exception {
+        // macOS file systems hand back decomposed (NFD) file names, so the derived sheet name is normalized to NFC -
+        // otherwise it would not equal the composed name written in @PxlSheet and the sheet would not be found.
+        // Creating the file with an NFD name reproduces that on any OS, since File.getName() returns the name as given.
+        final String composed = "직원";                                   // one of the @PxlSheet aliases of AliasSheetWorkbook
+        final String decomposed = Normalizer.normalize(composed, Normalizer.Form.NFD);
+        assertThat(decomposed).isNotEqualTo(composed);
+
+        final File employeesCsv = writeCsv(tempDir, decomposed + ".csv", EMPLOYEES_CSV);
+
+        final AliasSheetWorkbook workbook = pxl.importCsv()
+                .workbook(AliasSheetWorkbook.class)
+                .fromFile(employeesCsv);
+
+        assertEmployees(workbook.getData());
     }
 
     @Test

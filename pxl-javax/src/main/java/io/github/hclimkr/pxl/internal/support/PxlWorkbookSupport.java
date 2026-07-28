@@ -35,7 +35,23 @@ import java.nio.file.Paths;
 import java.util.Objects;
 
 /**
- * Workbook-related utilities.
+ * Workbook lifecycle and naming for the binder: creating an empty workbook for an export format, opening a source
+ * workbook for import, resolving the {@code @PxlWorkbookName} field, and making sheet/defined names unique.
+ * <p>
+ * {@code createWorkbook} maps {@link PxlFileFormat} to the POI implementation — {@code HSSF} to an
+ * {@link HSSFWorkbook} (XLS), {@code XSSF} to an {@link XSSFWorkbook} (XLSX), {@code SXSSF} to an auto-flushing
+ * {@link SXSSFWorkbook} (streaming XLSX) — and stamps the creator/application document properties.
+ * <p>
+ * {@code openWorkbook} is where the reader is chosen. It sniffs the source's leading magic bytes rather than
+ * trusting the file extension, and reads with the streaming reader only when the import metadata asks for it
+ * <em>and</em> the content really is OOXML; a file that turns out to be OLE2 (XLS) falls back to the non-streaming
+ * reader, while a stream that does can no longer be rewound and therefore fails with a clear exception instead.
+ * The format it settled on is recorded back into the metadata, and every POI failure is translated into
+ * {@link InvalidFormatException}/{@link IOException} carrying a localized message.
+ * <p>
+ * The naming helpers exist because Excel constrains both: a sheet name is limited to 31 characters and forbids
+ * certain characters, and neither a sheet name nor a defined name may repeat within a workbook. Both helpers
+ * sanitize first and then append a {@code " (2)"}, {@code " (3)"} … suffix until the name is free.
  */
 public final class PxlWorkbookSupport {
 

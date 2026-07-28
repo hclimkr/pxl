@@ -9,7 +9,16 @@ import org.apache.poi.ss.util.WorkbookUtil;
 import java.util.Objects;
 
 /**
- * Sheet-related utilities.
+ * Sheet-level POI helpers: cloning a sheet under a new name, and setting a sheet's print area from row/column
+ * indexes or an A1-style range.
+ * <p>
+ * Cloning goes beyond POI's {@link Workbook#cloneSheet(int)}, which drops page setup: the copy also carries the
+ * source sheet's print setup, its fit-to-page and repeating row/column settings, and its print area. The requested
+ * name is sanitized with {@link WorkbookUtil#createSafeSheetName(String)} first, so an over-long name or one
+ * holding characters Excel forbids cannot fail the clone.
+ * <p>
+ * Both concerns are page-layout metadata a streaming sheet ({@link StreamingSheet}) does not carry, so setting a
+ * print area no-ops there, as it does on a {@code null} sheet.
  */
 public final class PxlSheetUtils {
 
