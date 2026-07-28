@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `PxlFileFormat.fromPoiWorkbook(Workbook)`: resolves the file format of an already open
+  POI workbook from its implementation type. `HSSFWorkbook` maps to `HSSF` and
+  `SXSSFWorkbook` to `SXSSF`, while `XSSFWorkbook` and the streaming reader's
+  `StreamingWorkbook` both map to `XSSF` — a streamed read opens the same OOXML
+  container, and `SXSSF` denotes the streaming export workbook only.
+
+### Changed
+
+- **BREAKING** `Pxl.getWorkbookFileFormatFromWorkbookObject(Class)` moved to
+  `PxlFileFormat.fromWorkbookObject(Class)`. The lookup itself is unchanged.
+- **BREAKING** `Pxl.getWorkbookNameFromWorkbookObject(Object)` moved to
+  `PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(Object)`. The lookup itself is
+  unchanged, including the fail-safe `null` it returns for a missing or unreadable
+  `@PxlWorkbookName` field.
+- Both `PxlFileFormat` lookups are plain lookups: they throw nothing and never return
+  `null`. A `null` argument, a class carrying no `@PxlWorkbook`, or an unrecognized
+  workbook type falls back to `PxlConstants.DEFAULT_EXPORT_FILE_FORMAT` (`XSSF`).
+- Internal only, not part of the public API: the `internal/core` binder entry points are
+  now `PxlCoreCsvImporter`, `PxlCoreExcelImporter` and `PxlCoreExcelExporter`.
+
 ## [0.9.1] - 2026-07-27
 
 ### Added
