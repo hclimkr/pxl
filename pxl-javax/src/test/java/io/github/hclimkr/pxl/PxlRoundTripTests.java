@@ -4,6 +4,7 @@ import io.github.hclimkr.pxl.builder.PxlExcelExportBuilder;
 import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
+import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -261,7 +262,7 @@ public class PxlRoundTripTests {
         final RoundTripSource source = exportWorkbook(transport, workbook, noValidationOption());
         final AllTypesWorkbook imported = (AllTypesWorkbook) source.importWorkbook("MyWorkbook", AllTypesWorkbook.class);
 
-        assertThat(Pxl.getWorkbookNameFromWorkbookObject(imported)).isEqualTo("MyWorkbook");
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(imported)).isEqualTo("MyWorkbook");
         assertThat(imported.getRows()).hasSize(1);
         Fixtures.assertSampleAllTypesRow(imported.getRows().get(0));
     }
@@ -281,7 +282,7 @@ public class PxlRoundTripTests {
         final RoundTripSource source = exportWorkbook(transport, workbook, noValidationOption());
         final CompanyWorkbook imported = (CompanyWorkbook) source.importWorkbook("Acme", CompanyWorkbook.class);
 
-        assertThat(Pxl.getWorkbookNameFromWorkbookObject(imported)).isEqualTo("Acme");
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(imported)).isEqualTo("Acme");
         assertThat(imported.getEmployees()).hasSize(2);
         final Employee alice = imported.getEmployees().get(0);
         assertThat(alice.getName()).isEqualTo("Alice");
@@ -370,22 +371,22 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Static helpers (workbook name / file format extraction)
+    // Static helpers (PxlWorkbookUtils workbook name / PxlFileFormat file format extraction)
     // ------------------------------------------------------------------
 
     @Test
-    public void getWorkbookName_nullObject_returnsNull() {
-        assertThat(Pxl.getWorkbookNameFromWorkbookObject(null)).isNull();
+    public void workbookUtils_getWorkbookName_nullObject_returnsNull() {
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(null)).isNull();
     }
 
     @Test
-    public void getWorkbookFileFormat_annotatedAndDefault_resolves() {
-        assertThat(Pxl.getWorkbookFileFormatFromWorkbookObject(CompanyWorkbook.class)).isEqualTo(PxlFileFormat.XSSF);
-        assertThat(Pxl.getWorkbookFileFormatFromWorkbookObject(XlsFormatWorkbook.class)).isEqualTo(PxlFileFormat.HSSF);
+    public void fileFormat_fromWorkbookObject_annotatedAndDefault_resolves() {
+        assertThat(PxlFileFormat.fromWorkbookObject(CompanyWorkbook.class)).isEqualTo(PxlFileFormat.XSSF);
+        assertThat(PxlFileFormat.fromWorkbookObject(XlsFormatWorkbook.class)).isEqualTo(PxlFileFormat.HSSF);
     }
 
     @Test
-    public void getWorkbookFileFormat_nullClass_returnsDefault() {
-        assertThat(Pxl.getWorkbookFileFormatFromWorkbookObject(null)).isEqualTo(PxlFileFormat.XSSF);
+    public void fileFormat_fromWorkbookObject_nullClass_returnsDefault() {
+        assertThat(PxlFileFormat.fromWorkbookObject(null)).isEqualTo(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
     }
 }

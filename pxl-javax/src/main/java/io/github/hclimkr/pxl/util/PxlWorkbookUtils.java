@@ -10,6 +10,8 @@ import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
+import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.UnsupportedFileFormatException;
@@ -27,6 +29,7 @@ import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.*;
+import java.lang.reflect.Field;
 import java.security.GeneralSecurityException;
 import java.util.Objects;
 import java.util.Optional;
@@ -224,6 +227,34 @@ public final class PxlWorkbookUtils {
                 .orElse(null);
 
         return formulaEvaluator;
+    }
+
+    /**
+     * Finds and returns the workbook name carried by a workbook object's {@code @PxlWorkbookName} field.
+     * <p>
+     * This is a fail-safe lookup: it throws nothing. A {@code null} object, a class without a
+     * {@code @PxlWorkbookName} field, and a field whose value cannot be read reflectively all yield {@code null}.
+     *
+     * @param workbookObject the workbook object to read the name from (may be {@code null})
+     * @return the workbook name, or {@code null} if absent or unreadable
+     */
+    public static String getWorkbookNameFromWorkbookObject(@Nullable final Object workbookObject) {
+
+        if (Objects.isNull(workbookObject)) {
+            return null;
+        }
+
+        String workbookName = null;
+
+        final Field workbookNameField = PxlWorkbookSupport.getWorkbookNameField(workbookObject.getClass());
+        if (Objects.nonNull(workbookNameField)) {
+            try {
+                workbookName = (String) PxlReflectionSupport.getFieldValue(workbookNameField, workbookObject);
+            } catch (Exception ignored) {
+            }
+        }
+
+        return workbookName;
     }
 
 }

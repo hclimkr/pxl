@@ -34,6 +34,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -1293,5 +1294,61 @@ public class PxlUtilityTests {
             assertThat(workbook.getSheetName(workbook.getSheetIndex(cloned))).isEqualTo("Cloned");
             assertThat(workbook.getPrintArea(workbook.getSheetIndex(cloned))).isNotNull();
         }
+    }
+
+    // ==================================================================
+    // PxlFileFormat (root public type)
+    // ==================================================================
+
+    @Test
+    public void fileFormat_fromPoiWorkbook_poiWorkbookTypes_resolveMatchingFormat() throws Exception {
+        try (HSSFWorkbook workbook = new HSSFWorkbook()) {
+            assertThat(PxlFileFormat.fromPoiWorkbook(workbook)).isEqualTo(PxlFileFormat.HSSF);
+        }
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            assertThat(PxlFileFormat.fromPoiWorkbook(workbook)).isEqualTo(PxlFileFormat.XSSF);
+        }
+
+        final SXSSFWorkbook sxssfWorkbook = new SXSSFWorkbook();
+        try {
+            assertThat(PxlFileFormat.fromPoiWorkbook(sxssfWorkbook)).isEqualTo(PxlFileFormat.SXSSF);
+        } finally {
+            PxlWorkbookUtils.closeWorkbook(sxssfWorkbook);   // disposes the temp files backing the workbook
+        }
+    }
+
+    @Test
+    public void fileFormat_fromPoiWorkbook_streamingWorkbook_resolvesToXssf() throws Exception {
+        // The streaming reader opens the same OOXML container, so it reports XSSF - SXSSF is the streaming export format.
+        final byte[] xlsx;
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            workbook.createSheet("Data").createRow(0).createCell(0).setCellValue("x");
+            workbook.write(outputStream);
+            xlsx = outputStream.toByteArray();
+        }
+
+        try (Workbook streaming = StreamingReader.builder().open(new ByteArrayInputStream(xlsx))) {
+            assertThat(PxlFileFormat.fromPoiWorkbook(streaming)).isEqualTo(PxlFileFormat.XSSF);
+        }
+    }
+
+    @Test
+    public void fileFormat_fromPoiWorkbook_nullOrUnknownType_returnsDefaultFormat() throws Exception {
+        // A plain lookup: nothing is thrown, an unmatched argument falls back to the default export format.
+        assertThat(PxlFileFormat.fromPoiWorkbook(null)).isEqualTo(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
+
+        // A Workbook implementation PXL does not know falls back the same way.
+        final Workbook unknown = (Workbook) Proxy.newProxyInstance(
+                Workbook.class.getClassLoader(), new Class<?>[]{Workbook.class}, (proxy, method, args) -> null);
+
+        assertThat(PxlFileFormat.fromPoiWorkbook(unknown)).isEqualTo(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
+    }
+
+    @Test
+    public void fileFormat_fromWorkbookObject_annotationAbsent_returnsDefaultFormat() throws Exception {
+        // A class without @PxlWorkbook carries no declared format, so the default export format stands in.
+        assertThat(PxlFileFormat.fromWorkbookObject(Employee.class)).isEqualTo(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
     }
 }

@@ -1,23 +1,17 @@
 package io.github.hclimkr.pxl;
 
-import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.builder.PxlCsvImportBuilder;
 import io.github.hclimkr.pxl.builder.PxlExcelExportBuilder;
 import io.github.hclimkr.pxl.builder.PxlExcelImportBuilder;
 import io.github.hclimkr.pxl.builder.PxlSampleExcelExportBuilder;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
-import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
-import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.Validation;
 import javax.validation.Validator;
-import java.lang.reflect.Field;
 import java.util.Locale;
-import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Public entry point for Excel/CSV file binding.
@@ -135,50 +129,6 @@ public final class Pxl {
     public static void resetMessageLocale() {
 
         PxlI18nDiagnostic.setOverrideLocale(null);
-    }
-
-    /**
-     * Finds and returns the name from a workbook object.
-     *
-     * @param workbookObject workbook object
-     * @return workbook name (null if absent)
-     */
-    public static String getWorkbookNameFromWorkbookObject(final Object workbookObject) {
-
-        if (Objects.isNull(workbookObject)) {
-            return null;
-        }
-
-        String workbookName = null;
-
-        final Field workbookNameField = PxlWorkbookSupport.getWorkbookNameField(workbookObject.getClass());
-        if (Objects.nonNull(workbookNameField)) {
-            try {
-                workbookName = (String) PxlReflectionSupport.getFieldValue(workbookNameField, workbookObject);
-            } catch (Exception ignored) {
-            }
-        }
-
-        return workbookName;
-    }
-
-    /**
-     * Finds and returns the file format from a workbook class.
-     *
-     * @param workbookClass workbook class
-     * @return file format (default value if absent)
-     */
-    public static PxlFileFormat getWorkbookFileFormatFromWorkbookObject(final Class<?> workbookClass) {
-
-        if (Objects.isNull(workbookClass)) {
-            return PxlConstants.DEFAULT_EXPORT_FILE_FORMAT;
-        }
-
-        final PxlWorkbook workbookAnnotation = workbookClass.getAnnotation(PxlWorkbook.class);
-
-        return Optional.ofNullable(workbookAnnotation)
-                .map(PxlWorkbook::exportFileFormat)
-                .orElse(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
     }
 
 }

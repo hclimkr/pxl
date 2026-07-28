@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * Workbook with a class-level @PxlWorkbook(exportFileFormat=HSSF).
- * Used to verify that getWorkbookFileFormatFromWorkbookObject reads the annotation value.
+ * Used to verify that PxlFileFormat.fromWorkbookObject reads the annotation value.
  */
 @Getter
 @Setter

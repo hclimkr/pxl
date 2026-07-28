@@ -4,6 +4,7 @@ import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlCellCodecException;
 import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.tcdata.*;
+import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -274,8 +275,8 @@ public class PxlRegressionTests {
 
     @Test
     public void staticHelpers_nullArgs_handled() {
-        assertThat(Pxl.getWorkbookNameFromWorkbookObject(null)).isNull();
-        assertThat(Pxl.getWorkbookFileFormatFromWorkbookObject(null))
-                .isEqualTo(PxlFileFormat.XSSF);
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(null)).isNull();
+        assertThat(PxlFileFormat.fromWorkbookObject(null))
+                .isEqualTo(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
     }
 }

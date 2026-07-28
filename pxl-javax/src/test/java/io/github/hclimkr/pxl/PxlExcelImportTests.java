@@ -6,6 +6,7 @@ import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
+import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -740,7 +741,7 @@ public class PxlExcelImportTests {
                 .override(option)
                 .fromStream(new ByteArrayInputStream(bytes));
 
-        assertThat(Pxl.getWorkbookNameFromWorkbookObject(workbook)).isEqualTo("Acme");
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(workbook)).isEqualTo("Acme");
         assertEmployees(workbook.getEmployees());
     }
 

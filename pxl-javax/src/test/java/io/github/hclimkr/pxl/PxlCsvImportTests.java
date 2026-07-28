@@ -6,6 +6,7 @@ import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
+import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -207,7 +208,7 @@ public class PxlCsvImportTests {
                 .workbook(CompanyWorkbook.class)
                 .fromFiles(Arrays.asList(employeesCsv, departmentsCsv));
 
-        assertThat(Pxl.getWorkbookNameFromWorkbookObject(workbook)).isEqualTo("Acme");
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(workbook)).isEqualTo("Acme");
         assertEmployees(workbook.getEmployees());
 
         final List<Department> departments = workbook.getDepartments();
@@ -227,7 +228,7 @@ public class PxlCsvImportTests {
                 .workbook(CompanyWorkbook.class)
                 .fromStreams(csvNames, csvStreams);
 
-        assertThat(Pxl.getWorkbookNameFromWorkbookObject(workbook)).isEqualTo("Acme");
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(workbook)).isEqualTo("Acme");
         assertEmployees(workbook.getEmployees());
         assertThat(workbook.getDepartments()).hasSize(2);
         assertThat(workbook.getDepartments().get(1).getDepartmentName()).isEqualTo("Sales");
@@ -244,7 +245,7 @@ public class PxlCsvImportTests {
                 .workbookName("Acme")
                 .fromStreams(csvNames, csvStreams);
 
-        assertThat(Pxl.getWorkbookNameFromWorkbookObject(workbook)).isEqualTo("Acme");
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(workbook)).isEqualTo("Acme");
         assertEmployees(workbook.getEmployees());
     }
 
