@@ -207,7 +207,7 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
     - 시트별로 나눠서: 같은 빌더 인스턴스로 `.sheet(...)`를 시트마다 호출하고 각각 마지막(실행) 단계까지 실행한다. 소스는 실행 단계에서 지정하므로 스트림은 호출마다 새로 열어 준다(파일은 매번 내부에서 열고 닫는다).
 - 구성 단계의 `.override(...)`은 선택적이며 체인 안에서 위치를 자유롭게 정할 수 있다 — `.workbook(...)`/`.sheet(...)`의 앞이든 뒤든 마지막(실행) 단계 전이기만 하면 된다(여러 번 지정하면 마지막 값이 적용된다). 옵션 객체에 담긴 값으로 애노테이션 값을 런타임에 오버라이드한다.  
   export는 `.override(...)`에 `PxlExportWorkbookOption`을, import는 `PxlImportWorkbookOption`을 인자로 넘긴다(생략하면 애노테이션 값을 그대로 쓴다).
-  import는 워크북 이름을 덮어쓰는 `.workbookName(String)`도 같은 위치에 둘 수 있다.
+  import는 워크북 이름을 덮어쓰는 `.workbookName(String)`도 같은 위치에 둘 수 있다. 생략하면 파일에서 읽는 엑셀 import는 확장자를 제거한 파일명을 워크북 이름으로 쓴다 — [`@PxlWorkbookName`](#pxlworkbookname-필드-대상) 참조.
 - 각 옵션의 필드 목록과 빌더 예시는 [옵션 오버라이드](#옵션-오버라이드) 절을 참고한다.
 
 ### 자원 소유권
@@ -313,9 +313,11 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 
 ### `@PxlWorkbookName` (필드 대상)
 
-워크북 이름을 담을 `String` 필드에 붙인다. 속성 없음. 불필요하면 생략 가능.  
-비-`String` 필드에 붙이면 정보 수집 시점에 `PxlDataException`으로 실패한다.  
-import 전용: 워크북 형식 import 시, 빌더의 `.workbookName(...)`으로 넘긴 이름이 이 필드에 채워진다. export(및 샘플 export)에서는 사용되지 않는다.
+워크북 이름을 담을 `String` 필드에 붙이며 불필요하면 생략 가능하다.  
+`String` 타입이 아닌 필드에 붙이면 `PxlDataException` 발생한다.  
+import 전용: 워크북 형식 import 시, 빌더의 `.workbookName(...)`으로 넘긴 이름이 이 필드에 채워진다.
+이름을 주지 않으면 파일에서 읽는 경우 그 파일의 확장자를 제거한 파일명으로 설정된다.
+export(및 샘플 export)에서는 사용되지 않는다.
 
 ### `@PxlSheet` (필드 대상)
 
@@ -345,11 +347,11 @@ import 전용: 워크북 형식 import 시, 빌더의 `.workbookName(...)`으로
 
 ### `@PxlRowIndex` (필드 대상)
 
-행 인덱스를 담을 필드에 붙인다. 속성 없음.  불필요하면 생략 가능.  
+행 인덱스를 담을 필드에 붙이며 불필요하면 생략 가능하다.  
 필드 타입은 `byte`·`short`·`int`·`long` 및 각 래퍼 클래스(`Byte`·`Short`·`Integer`·`Long`)를 지원하며, 그 외 타입이면 `PxlArgumentException`으로 실패한다.  
-채워지는 값은 가져온 행의 1-based 스프레드시트 행 번호(0-based POI 행 번호 `row.getRowNum()` + 1 — 스프레드시트 UI에 표시되는 행 번호이자 `importHeaderRowIndex` 등 인덱스 속성과 같은 기준)다.  
+채워지는 값은 가져온 행의 1-based 스프레드시트 행 번호(스프레드시트 UI에 표시되는 행 번호이자 `importHeaderRowIndex` 등 인덱스 속성과 같은 기준)다.  
 기본 구성(헤더가 첫 행)에서는 데이터 행이 2·3·4…이며, `importHeaderRowIndex`로 헤더를 아래로 옮기거나 헤더 위에 제목 행이 있으면 그만큼 커진 절대 행 번호가 들어간다.  
-import 전용: export(및 샘플 export)에는 아무 영향이 없다 — import 시에만 읽히므로 이 애노테이션으로 셀에 기록되는 값은 없다. export 시 값을 출력하려면 해당 필드에 `@PxlColumn`을 함께 붙여야 한다.
+import 전용: export(및 샘플 export)에서는 사용되지 않는다.
 
 ### `@PxlColumn` (필드 대상)
 

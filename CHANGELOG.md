@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Excel import in the workbook form now names the workbook after its source file when
+  `workbookName(...)` was not set: `importExcel().workbook(W.class).fromFile(file)` binds
+  the file name without its extension (`Report.xlsx` → `"Report"`) to the
+  `@PxlWorkbookName` field. An explicitly configured name still wins, and a stream source
+  carries no file name, so `fromStream(...)` leaves the field `null` as before. CSV import
+  is unchanged.
 - `PxlFileFormat.fromPoiWorkbook(Workbook)`: resolves the file format of an already open
   POI workbook from its implementation type. `HSSFWorkbook` maps to `HSSF` and
   `SXSSFWorkbook` to `SXSSF`, while `XSSFWorkbook` and the streaming reader's

@@ -21,6 +21,7 @@ import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTWorkbookPr;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.*;
@@ -1048,5 +1049,58 @@ public class PxlExcelImportTests {
                 .importSheetOptions(Arrays.asList(PxlImportSheetOption.builder().importHeaderRowIndex(10).build()))
                 .build();
         assertThrows(PxlDataException.class, () -> importList(bytes, "S", LongRowIndexRow.class, option));
+    }
+
+    // ------------------------------------------------------------------
+    // Workbook name fallback (@PxlWorkbookName)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void importExcel_workbookFormFromFile_noWorkbookName_bindsFileNameWithoutExtension() throws Exception {
+        // Without workbookName(...), the workbook form binds the source file name (extension removed) to the
+        // @PxlWorkbookName field; an explicitly configured name still wins over it.
+        final File excelFile = TestPaths.exportFile("AcmeReport.xlsx");
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             FileOutputStream outputStream = new FileOutputStream(excelFile)) {
+            final CellStyle dateStyle = workbook.createCellStyle();
+            dateStyle.setDataFormat(workbook.createDataFormat().getFormat("yyyy-mm-dd"));
+            writeEmployeeSheet(workbook.createSheet("Employees"), dateStyle);
+            workbook.write(outputStream);
+        }
+
+        final CompanyWorkbook imported = pxl.importExcel()
+                .workbook(CompanyWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(imported)).isEqualTo("AcmeReport");
+        assertEmployees(imported.getEmployees());
+
+        final CompanyWorkbook named = pxl.importExcel()
+                .workbookName("Acme")
+                .workbook(CompanyWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(named)).isEqualTo("Acme");
+    }
+
+    @Test
+    public void importExcel_workbookFormFromStream_noWorkbookName_leavesNameNull() throws Exception {
+        // A stream carries no file name, so the fallback cannot apply and the name field stays null.
+        final byte[] bytes;
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            final CellStyle dateStyle = workbook.createCellStyle();
+            dateStyle.setDataFormat(workbook.createDataFormat().getFormat("yyyy-mm-dd"));
+            writeEmployeeSheet(workbook.createSheet("Employees"), dateStyle);
+            workbook.write(outputStream);
+            bytes = outputStream.toByteArray();
+        }
+
+        final CompanyWorkbook imported = pxl.importExcel()
+                .workbook(CompanyWorkbook.class)
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(imported)).isNull();
+        assertEmployees(imported.getEmployees());
     }
 }

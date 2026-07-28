@@ -12,6 +12,7 @@ import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Workbook;
 
@@ -48,7 +49,10 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
     /**
      * Specifies the workbook name. (For setting the name field in the workbook form; optional)
      *
-     * @param workbookName the workbook name, or {@code null}
+     * <p>When left unset, {@link Source#fromFile(File)} falls back to the source file name without its extension,
+     * so the {@code @PxlWorkbookName} field is populated even without an explicit name.</p>
+     *
+     * @param workbookName the workbook name, or {@code null} to leave it to the file-name fallback
      * @return this builder
      */
     public PxlExcelImportBuilder workbookName(@Nullable final String workbookName) {
@@ -284,9 +288,10 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          * Specifies the workbook name. (For setting the name field in the workbook form; optional)
          *
          * <p>Same as {@link PxlExcelImportBuilder#workbookName(String)}, so it may be chained either before or after
-         * {@code workbook(...)}/{@code sheet(...)}; the value set last wins.</p>
+         * {@code workbook(...)}/{@code sheet(...)}; the value set last wins. Left unset, {@link #fromFile(File)}
+         * falls back to the source file name without its extension.</p>
          *
-         * @param workbookName the workbook name, or {@code null}
+         * @param workbookName the workbook name, or {@code null} to leave it to the file-name fallback
          * @return this source step
          */
         public Source<R> workbookName(@Nullable final String workbookName) {
@@ -314,6 +319,9 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          * Opens the given Excel file as the source, parses it, and returns the result.
          *
          * <p>The file is opened and closed internally, so the caller has nothing to close.</p>
+         *
+         * <p>In the workbook form, when no name was set through {@code workbookName(...)}, the file name without its
+         * extension is bound to the {@code @PxlWorkbookName} field.</p>
          *
          * @param excelFile the Excel file
          * @return the parsed result
@@ -374,7 +382,7 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
                 final Object result;
                 if (Objects.nonNull(workbookClass)) {
                     final List<PxlImportSheetOption> sheetOptions = workbookMeta.getImportSheetOptions();
-                    result = PxlCoreExcelImporter.parseExcel(workbookName, workbook, workbookClass, workbookMeta, sheetOptions, validator);
+                    result = PxlCoreExcelImporter.parseExcel(resolveWorkbookName(excelFile), workbook, workbookClass, workbookMeta, sheetOptions, validator);
                 } else {
                     final PxlImportSheetOption sheetOption = Optional.ofNullable(workbookMeta.getImportSheetOptions())
                             .flatMap(options -> options.stream()
@@ -396,6 +404,26 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
         }
 
         /**
+         * Resolves the workbook name bound to the {@code @PxlWorkbookName} field in the workbook form.
+         *
+         * <p>An explicitly configured name always wins. When none was configured and the source is a file, the file
+         * name without its extension stands in — the same rule CSV import uses to derive sheet names from file names.
+         * A stream source carries no file name, so the name stays {@code null} there.</p>
+         *
+         * @param excelFile the source file, or {@code null} when parsing from a stream
+         * @return the workbook name to bind, or {@code null} if none was configured and no file name is available
+         */
+        private String resolveWorkbookName(@Nullable final File excelFile) {
+
+            if (Objects.nonNull(workbookName) || Objects.isNull(excelFile)) {
+                return workbookName;
+            }
+
+            // A name such as ".xlsx" leaves nothing behind, so fall back to null rather than binding an empty name.
+            return StringUtils.defaultIfEmpty(FilenameUtils.removeExtension(excelFile.getName()).trim(), null);
+        }
+
+        /**
          * Opens a POI workbook from the file when present, otherwise from the stream, per the resolved workbook meta.
          *
          * @param workbookMeta the resolved import workbook meta (selects XLS/XLSX/streaming)
@@ -414,8 +442,9 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
             try {
                 if (Objects.nonNull(excelFile)) {
                     return PxlWorkbookSupport.openWorkbook(excelFile, workbookMeta);
+                } else {
+                    return PxlWorkbookSupport.openWorkbook(excelStream, workbookMeta);
                 }
-                return PxlWorkbookSupport.openWorkbook(excelStream, workbookMeta);
             } catch (Exception e) {
                 throw new PxlIOException(e);
             }

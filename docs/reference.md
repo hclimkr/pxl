@@ -207,7 +207,7 @@ The direction (export/import) and format (excel/csv) are embedded in the start m
     - One sheet at a time: call `.sheet(...)` once per sheet on the same builder instance and run each through its final (execute) step. The source is given at the execute step, so open a fresh stream per call (files are opened and closed internally each time).
 - The configuration-step `.override(...)` is optional, and its position within the chain can be set freely — before or after `.workbook(...)`/`.sheet(...)`, as long as it comes before the final (execute) step (if specified more than once, the last value wins). It overrides annotation values at runtime with the values carried in the option object.  
   For export, pass a `PxlExportWorkbookOption` to `.override(...)`; for import, pass a `PxlImportWorkbookOption` (if omitted, the annotation values are used as-is).
-  For import, `.workbookName(String)`, which overrides the workbook name, can also be placed in the same position.
+  For import, `.workbookName(String)`, which overrides the workbook name, can also be placed in the same position. Omit it and an Excel import from a file names the workbook after the file (extension removed); see [`@PxlWorkbookName`](#pxlworkbookname-targets-a-field).
 - For the field list of each option and builder examples, see the [Option Override](#option-override) section.
 
 ### Resource Ownership
@@ -313,9 +313,11 @@ When you pass an option object to the `.override()` step to provide runtime valu
 
 ### `@PxlWorkbookName` (targets a field)
 
-Put it on a `String` field that holds the workbook name. No attributes. Can be omitted if not needed.  
-Putting it on a non-`String` field fails with `PxlDataException` at the metadata-collection stage.  
-Import-only: on import in the workbook form, the field is filled with the name passed to the builder's `.workbookName(...)`. On export (and sample export) this annotation is not used.
+Put it on the `String` field that holds the workbook name; it can be omitted if not needed.  
+Putting it on a field that is not a `String` raises `PxlDataException`.  
+Import-only: on import in the workbook form, the field is filled with the name passed to the builder's `.workbookName(...)`.
+When no name is given and the source is read from a file, it is set to that file's name with the extension removed.
+It is not used on export (or sample export).
 
 ### `@PxlSheet` (targets a field)
 
@@ -345,11 +347,11 @@ The default value `0` of an index attribute means "auto" (first row/column autom
 
 ### `@PxlRowIndex` (targets a field)
 
-Put it on a field that holds the row index. No attributes. Can be omitted if not needed.  
+Put it on a field that holds the row index; it can be omitted if not needed.  
 The field type supports `byte`·`short`·`int`·`long` and their wrapper classes (`Byte`·`Short`·`Integer`·`Long`); any other type fails with `PxlArgumentException`.  
-The value filled in is the 1-based spreadsheet row number of the imported row (the 0-based POI row number `row.getRowNum()` plus one — the same numbering shown in the spreadsheet UI and used by `importHeaderRowIndex` and the other index attributes).  
+The value filled in is the 1-based spreadsheet row number of the imported row (the same numbering shown in the spreadsheet UI and used by `importHeaderRowIndex` and the other index attributes).  
 In the default configuration (header on the first row), data rows are 2, 3, 4…, and if you move the header down with `importHeaderRowIndex` or there is a title row above the header, the absolute row number grows accordingly.  
-Import-only: this annotation has no effect on export (nor sample export) — it is only read while importing, so nothing is written to a cell for it. To output a value on export, annotate the field with `@PxlColumn` as well.
+Import-only: It is not used on export (or sample export).
 
 ### `@PxlColumn` (targets a field)
 
