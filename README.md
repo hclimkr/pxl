@@ -253,7 +253,7 @@ Company company = pxl.importExcel()
                      .workbook(Company.class)
                      .fromFile(new File("company.xlsx"));
 ```
-Every operation is handled through a single method chain like the examples above. The first method name indicates the direction of the operation (export/import) and the format (Excel/CSV), then you specify the target, and it is executed in the final method.
+Every operation is handled through a single method chain like the examples above. The first method name indicates the direction of the operation (export/import) and the format (Excel/CSV), then you specify the target, and it is executed in the final (execute) method.
 
 | Use case          | Method chain (start → configure → execute)                                                                                                                                                      |
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -266,7 +266,7 @@ Every operation is handled through a single method chain like the examples above
 
 ## Export (Objects → Excel)
 
-Compose the content with `workbook(...)` or `sheet(...)` (specify only one of the two forms; specifying both throws an exception),
+Configure the content with `workbook(...)` or `sheet(...)` (specify only one of the two forms; specifying both throws an exception),
 and finally output with one of `toFile(File)` / `toStream(OutputStream)` / `toWorkbook()`.
 
 ### Workbook Object → Excel
@@ -395,7 +395,7 @@ Creating `exportSampleExcel().sheet(Employee.class, "Employees")` with the `Empl
 
 ## Import (Excel → Objects)
 
-Start with `importExcel()`, compose the target to read as a workbook form (`workbook(Class)`) or a sheet form (`sheet(Class, candidateSheetNames...)`),
+Start with `importExcel()`, configure the target to read as a workbook form (`workbook(Class)`) or a sheet form (`sheet(Class, candidateSheetNames...)`),
 and specify the final (execute) method (`fromFile`/`fromStream`) to parse it on the spot.
 
 ### Import Source Excel Layout
@@ -449,7 +449,7 @@ try (InputStream is = new FileInputStream("employees.xlsx")) {
 
 ## Import (CSV → Objects)
 
-This works the same way as Excel import (start → compose workbook/sheet → call the final (execute) method). For CSV, the file name (without extension) becomes the sheet name, and the final (execute) methods expand to `fromFile`/`fromFiles`/`fromStream`/`fromStreams`.
+This works the same way as Excel import (start → configure workbook/sheet → call the final (execute) method). For CSV, the file name (without extension) becomes the sheet name, and the final (execute) methods expand to `fromFile`/`fromFiles`/`fromStream`/`fromStreams`.
 The sheet form uses `sheet(Class)` without candidate sheet name arguments (single CSV), while the workbook form groups multiple CSVs by sheet.
 
 ### Import Source CSV File Layout
