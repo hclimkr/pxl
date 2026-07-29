@@ -220,6 +220,45 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 | import<br/>`fromFile(File)`<br/>`fromFiles(List<File>)` (CSV)                                   | 호출자의 `File`                  | 내부에서 파일의 스트림을 열고 직접 닫는다      |
 | import<br/>`fromStream(InputStream)` (Excel)<br/>`fromStream(String, InputStream)`·`fromStreams(List<String>, List<InputStream>)` (CSV) | 호출자의 `InputStream`  | 닫지 않는다. 호출자가 닫아야 한다          |
 
+### 빌더 수명과 스레드 안전성
+
+`Pxl` 자체는 상태가 없고 스레드에 안전하다. 반면 `Pxl`이 만들어 주는 빌더는 그때까지 모은 구성을 들고 있으므로 스레드에 안전하지 않다.
+
+| 객체                                              | 재사용            | 비고                                                                    |
+|-------------------------------------------------|----------------|-----------------------------------------------------------------------|
+| `Pxl`                                           | 재사용한다          | 상태 없음·스레드 안전. `new Pxl()`은 유효성 검사 부트스트랩 비용이 있으니 싱글톤으로 둔다 |
+| export 빌더<br/>(`exportExcel()`·`exportSampleExcel()`) | 재실행은 되나 재구성은 안 된다 | 구성이 빌더에 남으므로 마지막(실행) 단계를 다시 호출하면 그대로 한 번 더 만들지만, 시트를 더 넣으면 기존 것 위에 누적된다 |
+| import 빌더<br/>(`importExcel()`·`importCsv()`)   | 재사용할 수 있다      | 소스 스텝이 필요한 설정을 복사해 가므로 같은 빌더로 시트마다 실행할 수 있다                           |
+
+export 빌더는 추가된 시트를 모두 보관하며, 어떤 마지막(실행) 단계도 이를 비우지 않는다.
+
+덕분에 같은 구성으로 다시 실행하는 것은 정의된 동작이다 — 마지막(실행) 단계마다 빌더가 들고 있는 시트로 워크북을 새로 만들므로, 같은 내용을 여러 대상에 보낼 수 있다.
+
+```java
+PxlExcelExportBuilder builder = pxl.exportExcel()
+                                   .sheet(Employee.class, employees, "Employees");
+
+builder.toFile(new File("employees.xlsx"));   // 기록된다
+builder.toStream(outputStream);               // 다시 만들어져 같은 내용이 나간다
+```
+
+이때 워크북은 매번 처음부터 다시 만들어진다 — 캐시된 결과를 재사용하는 것이 아니라 반복 생성이다.
+
+동작하지 않는 것은 같은 빌더를 재구성하는 경우다. 실행 후 `sheet(...)`를 다시 호출하면 이미 있는 시트 위에 더해지므로 다음 실행에서 앞서 넣은 시트까지 함께 기록되고, 시트 이름이 겹치면 `PxlDataException`이 발생한다. 내용이 다른 워크북을 만들 때는 `exportExcel()`부터 체인을 새로 시작한다.
+
+import 빌더는 반대다. `workbook(...)`/`sheet(...)`가 설정을 소스 스텝에 넘기고 빌더 자신은 그대로 남으므로, 재구성이야말로 이 빌더의 쓰임새다 — 빌더 하나로 시트를 얼마든지 읽을 수 있다.
+
+```java
+PxlExcelImportBuilder builder = pxl.importExcel();
+
+List<Employee> employees = builder.sheet(Employee.class, "Employees")
+                                  .fromFile(excelFile);
+List<Department> departments = builder.sheet(Department.class, "Departments")
+                                      .fromFile(excelFile);
+```
+
+호출마다 자기 시트를 읽으며, 반환 타입도 시트별로 다를 수 있다. 빌더에 지정한 `workbookName(...)`/`override(...)`는 그 뒤의 모든 실행에 적용된다. 특정 실행에만 적용하려면 소스 스텝에 지정한다 — 스텝의 값은 빌더에서 복사해 온 값과 병합되지 않고 그것을 대체한다.
+
 ---
 
 ## 지원 변수 타입
@@ -983,6 +1022,12 @@ List<Employee> rows = pxl.importExcel()
   `exportColumnWidth`를 지정하지 않으면 기본값(auto)이 적용되어, export 시 POI `autoSizeColumn`이 해당 열의 모든 행 셀을 폰트 메트릭으로 실측한다(열당 O(행 수)).  
   컬럼 N·행 M이면 O(N×M)의 측정 비용이 추가되어 대량 데이터 export에서 성능 저하의 지배적 요인이 될 수 있다.  
   행 수가 많으면 `@PxlColumn(exportColumnWidth = ...)` 또는 옵션으로 고정 너비를 지정하는 것을 권장한다.
+
+- export Heap 사용량과 `SXSSF`  
+  `XSSF`(기본값)는 한 바이트를 쓰기 전에 워크북 전체를 객체 그래프로 구성하므로, 최종 생성되는 파일보다 훨씬 큰 Heap을 점유한다.  
+  `SXSSF`는 같은 `.xlsx`를 만들면서 행을 슬라이딩 윈도우(`exportSXSSFRowAccessWindowSize`, 기본 100)만큼만 메모리에 두고 나머지는 임시 파일로 내보내므로, 힙 사용량이 행 수와 거의 무관해진다.  
+  XLSX 전용이라 `HSSF`(`.xls`)에는 효과가 없다.  
+  단, 자동 너비로 둔 열은 실측을 위해 추적 대상이 되고 추적된 열은 메모리에 남으므로 절감 효과를 깎아먹는다. `SXSSF`를 쓸 때는 `exportColumnWidth`를 고정하는 편이 좋다.
 
 ---
 

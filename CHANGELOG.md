@@ -62,6 +62,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of calling it a "source method" in one place and an execute step in another. The
   Korean docs also spell out 소스 코드 where they mean the source tree, keeping it distinct
   from the import source a chain reads from.
+- Docs: the reference now covers builder lifecycle and thread safety — `Pxl` is stateless and
+  reusable, no builder is thread-safe, an export builder can be re-run as-is but not
+  re-configured (`sheet(...)` accumulates), and an import builder is meant to be re-configured
+  one run per sheet. It also explains what `SXSSF` buys over the default `XSSF` on the heap,
+  and that a column left at automatic width has to be tracked and stays in memory, eating into
+  that saving.
 
 ## [0.9.1] - 2026-07-27
 

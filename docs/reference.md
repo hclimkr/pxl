@@ -220,6 +220,45 @@ The direction (export/import) and format (excel/csv) are embedded in the start m
 | import<br/>`fromFile(File)`<br/>`fromFiles(List<File>)` (CSV)                             | Caller's `File`         | Opens the file's stream internally and closes it directly |
 | import<br/>`fromStream(InputStream)` (Excel)<br/>`fromStream(String, InputStream)`·`fromStreams(List<String>, List<InputStream>)` (CSV) | Caller's `InputStream`  | Does not close it. The caller must close it |
 
+### Builder Lifecycle and Thread Safety
+
+`Pxl` itself is stateless and thread-safe. The builders it hands out are the opposite: each carries the configuration collected so far, so they are not thread-safe.
+
+| Object                                                  | Reuse                     | Note                                                                                             |
+|---------------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------------------|
+| `Pxl`                                                   | Reuse it                  | Stateless and thread-safe; `new Pxl()` pays a validation-bootstrap cost, so keep it as a singleton |
+| Export builders<br/>(`exportExcel()`·`exportSampleExcel()`) | Re-runnable, not re-configurable | The configuration stays on the builder: running a final (execute) method again repeats it, but adding more sheets accumulates on top of it |
+| Import builders<br/>(`importExcel()`·`importCsv()`)     | Reusable                  | The source step copies the settings it needs, so the same builder may be run once per sheet         |
+
+An export builder keeps every sheet added to it, and no final (execute) method clears them.
+
+That makes re-running the same configuration well-defined — each final (execute) method builds a fresh workbook out of the sheets held by the builder, so the same content can be sent to more than one destination:
+
+```java
+PxlExcelExportBuilder builder = pxl.exportExcel()
+                                   .sheet(Employee.class, employees, "Employees");
+
+builder.toFile(new File("employees.xlsx"));   // written
+builder.toStream(outputStream);               // built again, same content
+```
+
+Note that the workbook really is built from scratch each time — this is a repeat, not a cached copy.
+
+Re-configuring the same builder is what does not work. Calling `sheet(...)` again after a run adds to the sheets already there, so the next run writes the earlier ones as well, and a repeated sheet name raises `PxlDataException`. Start a fresh chain from `exportExcel()` for each workbook whose contents differ.
+
+An import builder is the other way round. `workbook(...)`/`sheet(...)` hand their settings to the source step and leave the builder itself untouched, so re-configuring is exactly what it is for — drive as many sheets as you like off one builder:
+
+```java
+PxlExcelImportBuilder builder = pxl.importExcel();
+
+List<Employee> employees = builder.sheet(Employee.class, "Employees")
+                                  .fromFile(excelFile);
+List<Department> departments = builder.sheet(Department.class, "Departments")
+                                      .fromFile(excelFile);
+```
+
+Each call reads its own sheet, and the return type may differ per sheet. `workbookName(...)`/`override(...)` set on the builder apply to every run that follows. To apply one to a single run, set it on the source step instead — the step's value replaces the one copied from the builder rather than merging with it.
+
 ---
 
 ## Supported Variable Types
@@ -983,6 +1022,12 @@ List<Employee> rows = pxl.importExcel()
   If you do not specify `exportColumnWidth`, the default (auto) applies, so on export POI `autoSizeColumn` measures every row cell of that column with font metrics (O(row count) per column).  
   With N columns and M rows, an O(N×M) measurement cost is added, which can become the dominant factor of performance degradation on large-data export.  
   If there are many rows, specifying a fixed width via `@PxlColumn(exportColumnWidth = ...)` or an option is recommended.
+
+- Export heap and `SXSSF`  
+  `XSSF` (the default) builds the whole workbook as an object graph before a single byte is written, so the heap it holds is far larger than the file it finally produces.  
+  `SXSSF` writes the same `.xlsx` while keeping only a sliding window of rows in memory (`exportSXSSFRowAccessWindowSize`, default 100) and spilling the rest to temp files, which makes the heap roughly independent of the row count.  
+  It applies to XLSX only — it has no effect on `HSSF` (`.xls`).  
+  Note that a column left at automatic width must be tracked in order to be measured, and a tracked column stays in memory, which eats into the saving. Pair `SXSSF` with a fixed `exportColumnWidth`.
 
 ---
 

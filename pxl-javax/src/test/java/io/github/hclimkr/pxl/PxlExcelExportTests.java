@@ -1,5 +1,6 @@
 package io.github.hclimkr.pxl;
 
+import io.github.hclimkr.pxl.builder.PxlExcelExportBuilder;
 import io.github.hclimkr.pxl.exception.PxlCellCodecException;
 import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.option.*;
@@ -67,6 +68,44 @@ public class PxlExcelExportTests {
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             return workbook.getSheetAt(0).getSheetName();
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Builder reuse — running the same builder again with the same configuration
+    // ------------------------------------------------------------------
+
+    @Test
+    public void exportExcel_sameBuilderRunTwice_producesIdenticalContent() throws Exception {
+        final List<Employee> employees = twoEmployees();
+
+        // The configuration stays on the builder, so each terminal call builds a fresh workbook out of it.
+        final PxlExcelExportBuilder builder = pxl.exportExcel()
+                .sheet(Employee.class, employees, "People")
+                .override(noValidationOption());
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        builder.toFile(excelFile);
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        builder.toStream(outputStream);
+        final byte[] secondRun = outputStream.toByteArray();
+
+        // Running a terminal a second time must not add the sheet again.
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(secondRun))) {
+            assertThat(workbook.getNumberOfSheets()).isEqualTo(1);
+        }
+        assertThat(firstSheetName(secondRun)).isEqualTo("People");
+
+        final List<Employee> fromFile = pxl.importExcel()
+                .sheet(Employee.class, Arrays.asList("People"))
+                .fromFile(excelFile);
+        final List<Employee> fromStream = pxl.importExcel()
+                .sheet(Employee.class, Arrays.asList("People"))
+                .fromStream(new ByteArrayInputStream(secondRun));
+
+        // Both runs carry exactly the same rows.
+        assertThat(fromFile).extracting(Employee::getName).containsExactly("Alice", "Bob");
+        assertThat(fromStream).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
 
     // ------------------------------------------------------------------
