@@ -48,7 +48,7 @@ public class PxlExcelExportTests {
     private <T> List<T> roundTripSheet(final String sheetName, final List<T> rows, final Class<T> rowClass) throws Exception {
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet(sheetName, rows, rowClass)
+                .sheet(rowClass, rows, sheetName)
                 .override(noValidationOption())
                 .toFile(excelFile);
         return pxl.importExcel()
@@ -81,8 +81,8 @@ public class PxlExcelExportTests {
         final File excelFile = TestPaths.exportFile(testInfo);
         // Call sheet() multiple times to specify a different rowClass per sheet.
         pxl.exportExcel()
-                .sheet("Employees", employees, Employee.class)
-                .sheet("AllTypes", allTypes, AllTypesRow.class)
+                .sheet(Employee.class, employees, "Employees")
+                .sheet(AllTypesRow.class, allTypes, "AllTypes")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -113,9 +113,9 @@ public class PxlExcelExportTests {
         final File excelFile = TestPaths.exportFile(testInfo);
         // Three sheet() calls -> three sheets; the same rowClass may repeat and the call order is the sheet order.
         pxl.exportExcel()
-                .sheet("Engineering", engineering, Employee.class)
-                .sheet("Sales", sales, Employee.class)
-                .sheet("Departments", departments, Department.class)
+                .sheet(Employee.class, engineering, "Engineering")
+                .sheet(Employee.class, sales, "Sales")
+                .sheet(Department.class, departments, "Departments")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -154,7 +154,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Masking", Arrays.asList(row), MaskingRow.class)
+                .sheet(MaskingRow.class, Arrays.asList(row), "Masking")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -178,7 +178,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Trim", Arrays.asList(row), TrimRow.class)
+                .sheet(TrimRow.class, Arrays.asList(row), "Trim")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -240,7 +240,7 @@ public class PxlExcelExportTests {
                 .build();
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice), "People")
                 .override(exportOption)
                 .toFile(excelFile);
 
@@ -271,7 +271,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice), "People")
                 .override(option)
                 .toFile(excelFile);
 
@@ -298,7 +298,7 @@ public class PxlExcelExportTests {
 
         final File xlsFile = TestPaths.exportFile(testInfo, ".xls");
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice), "People")
                 .override(option)
                 .toFile(xlsFile);
 
@@ -326,7 +326,7 @@ public class PxlExcelExportTests {
                 .build();
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice), "People")
                 .override(exportOption)
                 .toFile(excelFile);
 
@@ -354,7 +354,7 @@ public class PxlExcelExportTests {
                 .build();
         final File xlsFile = TestPaths.exportFile(testInfo, ".xls");
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice), "People")
                 .override(exportOption)
                 .toFile(xlsFile);
 
@@ -376,7 +376,7 @@ public class PxlExcelExportTests {
                 .build();
         final File plainXls = TestPaths.exportFile("hssf-plain-after-encrypted.xls");
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice), "People")
                 .override(plainOption)
                 .toFile(plainXls);
         final List<Employee> plainPeople = pxl.importExcel()
@@ -402,7 +402,7 @@ public class PxlExcelExportTests {
         };
 
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice), "People")
                 .override(noValidationOption())
                 .toStream(tracking);
 
@@ -455,7 +455,7 @@ public class PxlExcelExportTests {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         pxl.exportExcel()
-                .sheet("Derived", Arrays.asList(row), DerivedRow.class)
+                .sheet(DerivedRow.class, Arrays.asList(row), "Derived")
                 .override(noValidationOption())
                 .toStream(outputStream);
 
@@ -502,7 +502,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", twoEmployees(), Employee.class)
+                .sheet(Employee.class, twoEmployees(), "People")
                 .override(exportOption)
                 .toFile(excelFile);
 
@@ -526,7 +526,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", twoEmployees(), Employee.class)
+                .sheet(Employee.class, twoEmployees(), "People")
                 .override(exportOption)
                 .toFile(excelFile);
 
@@ -559,7 +559,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet(longName, twoEmployees(), Employee.class)
+                .sheet(Employee.class, twoEmployees(), longName)
                 .override(noValidationOption())
                 .toFile(excelFile);
         final byte[] bytes = java.nio.file.Files.readAllBytes(excelFile.toPath());
@@ -587,7 +587,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet(badName, twoEmployees(), Employee.class)
+                .sheet(Employee.class, twoEmployees(), badName)
                 .override(noValidationOption())
                 .toFile(excelFile);
         final byte[] bytes = java.nio.file.Files.readAllBytes(excelFile.toPath());
@@ -663,7 +663,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("DateTimes", Arrays.asList(row), DateTimeNumericRow.class)
+                .sheet(DateTimeNumericRow.class, Arrays.asList(row), "DateTimes")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -715,7 +715,7 @@ public class PxlExcelExportTests {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice), "People")
                 .override(option)
                 .toStream(outputStream);
 
@@ -745,7 +745,7 @@ public class PxlExcelExportTests {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice), "People")
                 .override(option)
                 .toStream(outputStream);
 
@@ -770,7 +770,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Formula", Arrays.asList(row), FormulaRow.class)
+                .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -794,7 +794,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("FormulaRef", Arrays.asList(row), FormulaRefRow.class)
+                .sheet(FormulaRefRow.class, Arrays.asList(row), "FormulaRef")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -820,7 +820,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Formula", Arrays.asList(row), FormulaRow.class)
+                .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
                 .override(option)
                 .toFile(excelFile);
 
@@ -850,7 +850,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Types", Arrays.asList(row), AllTypesRow.class)
+                .sheet(AllTypesRow.class, Arrays.asList(row), "Types")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -882,7 +882,7 @@ public class PxlExcelExportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Types", Arrays.asList(row), AllTypesRow.class)
+                .sheet(AllTypesRow.class, Arrays.asList(row), "Types")
                 .override(option)
                 .toFile(excelFile);
 
@@ -918,7 +918,7 @@ public class PxlExcelExportTests {
 
         final File file = TestPaths.exportFile(testInfo, ext(format));
         pxl.exportExcel()
-                .sheet("Types", Arrays.asList(row), AllTypesRow.class)
+                .sheet(AllTypesRow.class, Arrays.asList(row), "Types")
                 .override(formatOption(format, false))
                 .toFile(file);
 
@@ -951,7 +951,7 @@ public class PxlExcelExportTests {
 
         final File file = TestPaths.exportFile(testInfo, ext(format));
         pxl.exportExcel()
-                .sheet("Opt", Arrays.asList(row), OptionItemsRow.class)
+                .sheet(OptionItemsRow.class, Arrays.asList(row), "Opt")
                 .override(formatOption(format, true))
                 .toFile(file);
 
@@ -1010,7 +1010,7 @@ public class PxlExcelExportTests {
     public void sxssf_autoSizeColumn_appliedWithinClamp() throws Exception {
         final File file = TestPaths.exportFile(testInfo, ".xlsx");
         pxl.exportExcel()
-                .sheet("Types", Arrays.asList(Fixtures.sampleAllTypesRow()), AllTypesRow.class)
+                .sheet(AllTypesRow.class, Arrays.asList(Fixtures.sampleAllTypesRow()), "Types")
                 .override(formatOption(PxlFileFormat.SXSSF, false))
                 .toFile(file);
 

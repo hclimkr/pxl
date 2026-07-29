@@ -283,13 +283,13 @@ pxl.exportExcel()
 
 ```java
 pxl.exportExcel()
-   .sheet("Employees", employees, Employee.class)
+   .sheet(Employee.class, employees, "Employees")
    .toFile(new File("employees.xlsx"));
 ```
 
 ### Export 결과 엑셀 모양 (단일 시트)
 
-위 `Employee` 리스트를 `sheet("Employees", employees, Employee.class)`로 export하면 "Employees" 시트가 다음처럼 만들어진다(열 문자 A~F·행 번호는 엑셀 화면 기준).
+위 `Employee` 리스트를 `sheet(Employee.class, employees, "Employees")`로 export하면 "Employees" 시트가 다음처럼 만들어진다(열 문자 A~F·행 번호는 엑셀 화면 기준).
 
 |       | A     | B   | C      | D      | E          | F     |
 |-------|-------|-----|--------|--------|------------|-------|
@@ -305,8 +305,8 @@ pxl.exportExcel()
 
 ```java
 pxl.exportExcel()
-   .sheet("Employees", employees, Employee.class)
-   .sheet("Departments", departments, Department.class)
+   .sheet(Employee.class, employees, "Employees")
+   .sheet(Department.class, departments, "Departments")
    .toFile(new File("company.xlsx"));
 ```
 
@@ -331,7 +331,7 @@ pxl.exportExcel()
 ```java
 // 1) 파일 (PXL 내부에서 파일을 열고 닫는다)
 pxl.exportExcel()
-   .sheet("S", rows, Row.class)
+   .sheet(Row.class, rows, "S")
    .toFile(new File("out.xlsx"));
 ```
 
@@ -339,7 +339,7 @@ pxl.exportExcel()
 // 2) 스트림 (HTTP 응답 등) — PXL는 스트림을 닫지 않고 호출자가 닫는다
 try (OutputStream os = response.getOutputStream()) {
     pxl.exportExcel()
-       .sheet("S", rows, Row.class)
+       .sheet(Row.class, rows, "S")
        .toStream(os);
 }
 ```
@@ -347,7 +347,7 @@ try (OutputStream os = response.getOutputStream()) {
 ```java
 // 3) POI Workbook — 반환된 워크북은 호출자가 닫는다
 Workbook workbook = pxl.exportExcel()
-                       .sheet("S", rows, Row.class)
+                       .sheet(Row.class, rows, "S")
                        .toWorkbook();
 ```
 
@@ -368,21 +368,21 @@ pxl.exportSampleExcel()
 ```java
 // 단일 시트 형태
 pxl.exportSampleExcel()
-   .sheet("Employees", Employee.class)
+   .sheet(Employee.class, "Employees")
    .toFile(new File("sample.xlsx"));
 ```
 
 ```java
 // 다중 시트 형태
 pxl.exportSampleExcel()
-   .sheet("Employees", Employee.class)
-   .sheet("Departments", Department.class)
+   .sheet(Employee.class, "Employees")
+   .sheet(Department.class, "Departments")
    .toFile(new File("sample.xlsx"));
 ```
 
 ### Export 샘플 결과 엑셀 모양
 
-위 `Employee`로 `exportSampleExcel().sheet("Employees", Employee.class)`를 만들면 헤더 행 + 샘플 데이터 행 1개짜리 "Employees" 시트가 생긴다.
+위 `Employee`로 `exportSampleExcel().sheet(Employee.class, "Employees")`를 만들면 헤더 행 + 샘플 데이터 행 1개짜리 "Employees" 시트가 생긴다.
 
 |       | A        | B   | C      | D      | E          | F     |
 |-------|----------|-----|--------|--------|------------|-------|
@@ -432,7 +432,7 @@ List<Employee> rows = pxl.importExcel()
 ```java
 // 파일에서 Set로 반환
 Set<Employee> set = pxl.importExcel()
-                       .sheet(Set.class, Employee.class, "Employees")
+                       .sheet(Employee.class, Set.class, "Employees")
                        .fromFile(new File("employees.xlsx"));
 ```
 

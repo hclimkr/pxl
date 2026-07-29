@@ -126,7 +126,7 @@ public class PxlSampleExcelExportTests {
     @Test
     public void exportSampleToWorkbook_fromSheetClass_writesHeaders() throws Exception {
         final Workbook workbook = pxl.exportSampleExcel()
-                .sheet("Sample", Employee.class)
+                .sheet(Employee.class, "Sample")
                 .toWorkbook();
         try {
             assertThat(headerValuesOf(workbook, "Sample")).contains(EMPLOYEE_HEADERS);
@@ -177,7 +177,7 @@ public class PxlSampleExcelExportTests {
     public void exportSampleToFile_fromSheetClass_writesSampleValues() throws Exception {
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportSampleExcel()
-                .sheet("Sample", Employee.class)
+                .sheet(Employee.class, "Sample")
                 .toFile(excelFile);
 
         try (Workbook workbook = WorkbookFactory.create(excelFile)) {
@@ -210,7 +210,7 @@ public class PxlSampleExcelExportTests {
     public void exportSampleToStream_fromSheetClass_writesHeaders() throws Exception {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         pxl.exportSampleExcel()
-                .sheet("Sample", Employee.class)
+                .sheet(Employee.class, "Sample")
                 .toStream(outputStream);
 
         try (InputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
@@ -227,7 +227,7 @@ public class PxlSampleExcelExportTests {
     @Test
     public void columnExportSampleDisabled_excludedFromSample() throws Exception {
         final Workbook workbook = pxl.exportSampleExcel()
-                .sheet("S", SampleColumnRow.class)
+                .sheet(SampleColumnRow.class, "S")
                 .toWorkbook();
         try {
             final Set<String> headerSet = headerValuesOf(workbook, "S");
@@ -245,8 +245,8 @@ public class PxlSampleExcelExportTests {
     @Test
     public void exportSampleMultiSheet_perSheetRowClass_writesEachSheet() throws Exception {
         final Workbook workbook = pxl.exportSampleExcel()
-                .sheet("People", Employee.class)
-                .sheet("Cols", SampleColumnRow.class)
+                .sheet(Employee.class, "People")
+                .sheet(SampleColumnRow.class, "Cols")
                 .toWorkbook();
         try {
             assertThat(workbook.getNumberOfSheets()).isEqualTo(2);
@@ -268,9 +268,9 @@ public class PxlSampleExcelExportTests {
     public void exportSampleMultiSheet_threeSheets_preservesCallOrder() throws Exception {
         // Three sheet() calls -> three sheets, created in call order.
         final Workbook workbook = pxl.exportSampleExcel()
-                .sheet("People", Employee.class)
-                .sheet("Depts", Department.class)
-                .sheet("Cols", SampleColumnRow.class)
+                .sheet(Employee.class, "People")
+                .sheet(Department.class, "Depts")
+                .sheet(SampleColumnRow.class, "Cols")
                 .toWorkbook();
         try {
             assertThat(workbook.getNumberOfSheets()).isEqualTo(3);
@@ -298,7 +298,7 @@ public class PxlSampleExcelExportTests {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlCellCodecException.class, () ->
                 pxl.exportSampleExcel()
-                        .sheet("S", BadEnumSampleRow.class)
+                        .sheet(BadEnumSampleRow.class, "S")
                         .toStream(outputStream));
     }
 
@@ -309,7 +309,7 @@ public class PxlSampleExcelExportTests {
     @Test
     public void exportSample_generatesExactlyHeaderRowAndOneSampleRow() throws Exception {
         final Workbook workbook = pxl.exportSampleExcel()
-                .sheet("Sample", Employee.class)
+                .sheet(Employee.class, "Sample")
                 .toWorkbook();
         try {
             final Sheet sheet = workbook.getSheet("Sample");
@@ -325,7 +325,7 @@ public class PxlSampleExcelExportTests {
     @Test
     public void exportSample_everyColumn_getsASampleValue() throws Exception {
         final Workbook workbook = pxl.exportSampleExcel()
-                .sheet("Sample", Employee.class)
+                .sheet(Employee.class, "Sample")
                 .toWorkbook();
         try {
             final Map<String, String> values = sampleValuesOf(workbook, "Sample");
@@ -363,7 +363,7 @@ public class PxlSampleExcelExportTests {
     @Test
     public void exportSample_enabledColumn_writesItsSampleValue() throws Exception {
         final Workbook workbook = pxl.exportSampleExcel()
-                .sheet("S", SampleColumnRow.class)
+                .sheet(SampleColumnRow.class, "S")
                 .toWorkbook();
         try {
             assertThat(sampleValuesOf(workbook, "S")).containsEntry("Keep", "K");
@@ -375,7 +375,7 @@ public class PxlSampleExcelExportTests {
     @Test
     public void exportSample_columnWithoutExportSample_rendersBlankCell() throws Exception {
         final Workbook workbook = pxl.exportSampleExcel()
-                .sheet("S", SampleMixedRow.class)
+                .sheet(SampleMixedRow.class, "S")
                 .toWorkbook();
         try {
             assertThat(headerValuesOf(workbook, "S")).contains("Filled", "Empty");
@@ -408,7 +408,7 @@ public class PxlSampleExcelExportTests {
     @Test
     public void exportSample_optionOverridesFormatToHssf_producesXlsWorkbook() throws Exception {
         final Workbook workbook = pxl.exportSampleExcel()
-                .sheet("Sample", Employee.class)
+                .sheet(Employee.class, "Sample")
                 .override(PxlExportWorkbookOption.builder().exportFileFormat(PxlFileFormat.HSSF).build())
                 .toWorkbook();
         try {
@@ -430,7 +430,7 @@ public class PxlSampleExcelExportTests {
         assertThrows(PxlArgumentException.class, () ->
                 pxl.exportSampleExcel()
                         .workbook(AllTypesWorkbook.class)
-                        .sheet("S", Employee.class)
+                        .sheet(Employee.class, "S")
                         .toStream(outputStream));
     }
 
@@ -445,13 +445,13 @@ public class PxlSampleExcelExportTests {
     @Test
     public void exportSample_blankSheetName_throws() {
         assertThrows(PxlArgumentException.class, () -> pxl.exportSampleExcel()
-                .sheet("  ", Employee.class));
+                .sheet(Employee.class, "  "));
     }
 
     @Test
     public void exportSample_nullRowClass_throws() {
         assertThrows(PxlNullPointerException.class, () -> pxl.exportSampleExcel()
-                .sheet("S", null));
+                .sheet(null, "S"));
     }
 
     @Test

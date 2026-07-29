@@ -110,18 +110,18 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
      * Configures parsing a single CSV into the specified collection type. Specify the source and run the parse with
      * the returned {@link Source}. (There must be exactly one file/stream)
      *
-     * @param collectionClass the return collection implementation/interface type (e.g. {@code List.class}, {@code Set.class})
      * @param rowClass        the row class
+     * @param collectionClass the return collection implementation/interface type (e.g. {@code List.class}, {@code Set.class})
      * @param <C>             the collection type
      * @return the source-terminal step returning the parsed collection of row objects
-     * @throws PxlNullPointerException if {@code collectionClass} or {@code rowClass} is {@code null}
+     * @throws PxlNullPointerException if {@code rowClass} or {@code collectionClass} is {@code null}
      */
-    public <C extends Collection<?>> Source<C> sheet(final Class<C> collectionClass,
-                                                     final Class<?> rowClass)
+    public <C extends Collection<?>> Source<C> sheet(final Class<?> rowClass,
+                                                     final Class<C> collectionClass)
             throws PxlNullPointerException {
 
-        PxlAssertSupport.notNull(collectionClass, "collectionClass");
         PxlAssertSupport.notNull(rowClass, "rowClass");
+        PxlAssertSupport.notNull(collectionClass, "collectionClass");
 
         return Source.forSheet(validator, workbookName, option, collectionClass, rowClass);
     }

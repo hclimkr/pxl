@@ -262,7 +262,7 @@ public class PxlWorkbookOptionTests {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         pxl.exportExcel()
-                .sheet("C", Arrays.asList(row), DerivedColRow.class)
+                .sheet(DerivedColRow.class, Arrays.asList(row), "C")
                 .override(noValidationOption())
                 .toStream(outputStream);
 
@@ -283,7 +283,7 @@ public class PxlWorkbookOptionTests {
     public void streamReaderCacheBuffer_variants_work() throws Exception {
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", twoEmployees(), Employee.class)
+                .sheet(Employee.class, twoEmployees(), "People")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -320,7 +320,7 @@ public class PxlWorkbookOptionTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", twoEmployees(), Employee.class)
+                .sheet(Employee.class, twoEmployees(), "People")
                 .override(exportOption)
                 .toFile(excelFile);
 
@@ -343,7 +343,7 @@ public class PxlWorkbookOptionTests {
         row.setZ("z");
 
         final Workbook workbook = pxl.exportExcel()
-                .sheet("Order", Arrays.asList(row), OrderedRow.class)
+                .sheet(OrderedRow.class, Arrays.asList(row), "Order")
                 .override(noValidationOption())
                 .toWorkbook();
         try {
@@ -401,7 +401,7 @@ public class PxlWorkbookOptionTests {
                 .build();
 
         final Workbook workbook = pxl.exportExcel()
-                .sheet("People", Arrays.asList(employee), Employee.class)
+                .sheet(Employee.class, Arrays.asList(employee), "People")
                 .override(option)
                 .toWorkbook();
         try {
@@ -423,7 +423,7 @@ public class PxlWorkbookOptionTests {
         // Export two employees (ages 30, 42) with every column present.
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", twoEmployees(), Employee.class)
+                .sheet(Employee.class, twoEmployees(), "People")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -459,7 +459,7 @@ public class PxlWorkbookOptionTests {
 
         // option null -> exportDataValidation defaults to true -> dropdown created on the Grade enum column
         final Workbook workbook = pxl.exportExcel()
-                .sheet("People", Arrays.asList(employee), Employee.class)
+                .sheet(Employee.class, Arrays.asList(employee), "People")
                 .toWorkbook();
         try {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("People");

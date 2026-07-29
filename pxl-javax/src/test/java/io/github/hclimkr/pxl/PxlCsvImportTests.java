@@ -134,7 +134,7 @@ public class PxlCsvImportTests {
         // collectionClass=Set.class -> the return must be a Set implementation (the default sheet() returns a List).
         @SuppressWarnings("unchecked") final Set<Employee> employees =
                 pxl.importCsv()
-                        .sheet(Set.class, Employee.class)
+                        .sheet(Employee.class, Set.class)
                         .fromStream("Employees", stream(EMPLOYEES_CSV));
 
         assertThat(employees).isInstanceOf(Set.class);

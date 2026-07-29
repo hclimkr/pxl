@@ -52,7 +52,7 @@ public class PxlTypeConversionTests {
     private List<AllTypesRow> roundTrip(final List<AllTypesRow> rows) throws Exception {
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Types", rows, AllTypesRow.class)
+                .sheet(AllTypesRow.class, rows, "Types")
                 .override(noValidationOption())
                 .toFile(excelFile);
         return pxl.importExcel()
@@ -690,7 +690,7 @@ public class PxlTypeConversionTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Big", Arrays.asList(row), LongPatternRow.class)
+                .sheet(LongPatternRow.class, Arrays.asList(row), "Big")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -962,7 +962,7 @@ public class PxlTypeConversionTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("PP", Arrays.asList(row), PrimitivePatternRow.class)
+                .sheet(PrimitivePatternRow.class, Arrays.asList(row), "PP")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -997,7 +997,7 @@ public class PxlTypeConversionTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("NP", Arrays.asList(row), NumberPatternRow.class)
+                .sheet(NumberPatternRow.class, Arrays.asList(row), "NP")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -1028,7 +1028,7 @@ public class PxlTypeConversionTests {
     private CollectionTypesRow roundTripCollections(final CollectionTypesRow row) throws Exception {
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("C", Arrays.asList(row), CollectionTypesRow.class)
+                .sheet(CollectionTypesRow.class, Arrays.asList(row), "C")
                 .override(noValidationOption())
                 .toFile(excelFile);
         return pxl.importExcel()
@@ -1202,7 +1202,7 @@ public class PxlTypeConversionTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("DT", Arrays.asList(row), DateTimePatternRow.class)
+                .sheet(DateTimePatternRow.class, Arrays.asList(row), "DT")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -1377,7 +1377,7 @@ public class PxlTypeConversionTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("E", Arrays.asList(row), ConverterEnumRow.class)
+                .sheet(ConverterEnumRow.class, Arrays.asList(row), "E")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -1400,7 +1400,7 @@ public class PxlTypeConversionTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("O", Arrays.asList(row), StaticConverterObjectRow.class)
+                .sheet(StaticConverterObjectRow.class, Arrays.asList(row), "O")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -1433,7 +1433,7 @@ public class PxlTypeConversionTests {
         row.setBigDec(new BigDecimal("12.34"));
 
         final Workbook workbook = pxl.exportExcel()
-                .sheet("M", Arrays.asList(row), NumberMaskingRow.class)
+                .sheet(NumberMaskingRow.class, Arrays.asList(row), "M")
                 .override(noValidationOption())
                 .toWorkbook();
         try {

@@ -57,7 +57,7 @@ public class PxlRegressionTests {
     private <T> List<T> roundTrip(final String sheetName, final List<T> rows, final Class<T> rowClass) throws Exception {
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet(sheetName, rows, rowClass)
+                .sheet(rowClass, rows, sheetName)
                 .override(noValidationOption())
                 .toFile(excelFile);
         return pxl.importExcel()
@@ -115,7 +115,7 @@ public class PxlRegressionTests {
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         pxl.exportExcel()
-                .sheet("Spaced", Arrays.asList(row), SpacedNameRow.class)
+                .sheet(SpacedNameRow.class, Arrays.asList(row), "Spaced")
                 .override(noValidationOption())
                 .toStream(outputStream);
 
@@ -138,7 +138,7 @@ public class PxlRegressionTests {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlArgumentException.class, () ->
                 pxl.exportExcel()
-                        .sheet("Mask", Arrays.asList(row), BadMaskingRow.class)
+                        .sheet(BadMaskingRow.class, Arrays.asList(row), "Mask")
                         .override(noValidationOption())
                         .toStream(outputStream));
     }
@@ -155,7 +155,7 @@ public class PxlRegressionTests {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlArgumentException.class, () ->
                 pxl.exportExcel()
-                        .sheet("Bad", Arrays.asList(row), BadPatternRow.class)
+                        .sheet(BadPatternRow.class, Arrays.asList(row), "Bad")
                         .override(noValidationOption())
                         .toStream(outputStream));
     }
@@ -188,7 +188,7 @@ public class PxlRegressionTests {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlArgumentException.class, () ->
                 pxl.exportExcel()
-                        .sheet("BadConv", Arrays.asList(row), BadConverterRow.class)
+                        .sheet(BadConverterRow.class, Arrays.asList(row), "BadConv")
                         .override(noValidationOption())
                         .toStream(outputStream));
     }
@@ -259,7 +259,7 @@ public class PxlRegressionTests {
 
         // Option null -> exportDataValidation defaults to true. Comma items are handled via a hidden sheet, creating a dropdown without exception.
         final Workbook workbook = pxl.exportExcel()
-                .sheet("Opt", Arrays.asList(row), OptionItemsCommaRow.class)
+                .sheet(OptionItemsCommaRow.class, Arrays.asList(row), "Opt")
                 .toWorkbook();
         try {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("Opt");

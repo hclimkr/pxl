@@ -283,13 +283,13 @@ pxl.exportExcel()
 
 ```java
 pxl.exportExcel()
-   .sheet("Employees", employees, Employee.class)
+   .sheet(Employee.class, employees, "Employees")
    .toFile(new File("employees.xlsx"));
 ```
 
 ### Export Result Excel Layout (Single Sheet)
 
-Exporting the `Employee` list above with `sheet("Employees", employees, Employee.class)` produces an "Employees" sheet like the following (column letters A–F and row numbers are as shown on the Excel screen).
+Exporting the `Employee` list above with `sheet(Employee.class, employees, "Employees")` produces an "Employees" sheet like the following (column letters A–F and row numbers are as shown on the Excel screen).
 
 |       | A     | B   | C      | D      | E          | F     |
 |-------|-------|-----|--------|--------|------------|-------|
@@ -305,8 +305,8 @@ Exporting the `Employee` list above with `sheet("Employees", employees, Employee
 
 ```java
 pxl.exportExcel()
-   .sheet("Employees", employees, Employee.class)
-   .sheet("Departments", departments, Department.class)
+   .sheet(Employee.class, employees, "Employees")
+   .sheet(Department.class, departments, "Departments")
    .toFile(new File("company.xlsx"));
 ```
 
@@ -331,7 +331,7 @@ Exporting a workbook object (`Company`) or repeated `.sheet(...)` calls produces
 ```java
 // 1) File (PXL opens and closes the file internally)
 pxl.exportExcel()
-   .sheet("S", rows, Row.class)
+   .sheet(Row.class, rows, "S")
    .toFile(new File("out.xlsx"));
 ```
 
@@ -339,7 +339,7 @@ pxl.exportExcel()
 // 2) Stream (e.g. an HTTP response) — PXL does not close the stream; the caller closes it
 try (OutputStream os = response.getOutputStream()) {
     pxl.exportExcel()
-       .sheet("S", rows, Row.class)
+       .sheet(Row.class, rows, "S")
        .toStream(os);
 }
 ```
@@ -347,7 +347,7 @@ try (OutputStream os = response.getOutputStream()) {
 ```java
 // 3) POI Workbook — the caller closes the returned workbook
 Workbook workbook = pxl.exportExcel()
-                       .sheet("S", rows, Row.class)
+                       .sheet(Row.class, rows, "S")
                        .toWorkbook();
 ```
 
@@ -368,21 +368,21 @@ pxl.exportSampleExcel()
 ```java
 // Single sheet form
 pxl.exportSampleExcel()
-   .sheet("Employees", Employee.class)
+   .sheet(Employee.class, "Employees")
    .toFile(new File("sample.xlsx"));
 ```
 
 ```java
 // Multiple sheet form
 pxl.exportSampleExcel()
-   .sheet("Employees", Employee.class)
-   .sheet("Departments", Department.class)
+   .sheet(Employee.class, "Employees")
+   .sheet(Department.class, "Departments")
    .toFile(new File("sample.xlsx"));
 ```
 
 ### Export Sample Result Excel Layout
 
-Creating `exportSampleExcel().sheet("Employees", Employee.class)` with the `Employee` above produces an "Employees" sheet with a header row plus one sample data row.
+Creating `exportSampleExcel().sheet(Employee.class, "Employees")` with the `Employee` above produces an "Employees" sheet with a header row plus one sample data row.
 
 |       | A        | B   | C      | D      | E          | F     |
 |-------|----------|-----|--------|--------|------------|-------|
@@ -432,7 +432,7 @@ List<Employee> rows = pxl.importExcel()
 ```java
 // Return as a Set from a file
 Set<Employee> set = pxl.importExcel()
-                       .sheet(Set.class, Employee.class, "Employees")
+                       .sheet(Employee.class, Set.class, "Employees")
                        .fromFile(new File("employees.xlsx"));
 ```
 

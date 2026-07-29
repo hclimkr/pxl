@@ -429,7 +429,7 @@ PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
 
 // 2) Pass it via .override(...) before execution to override the annotation values
 pxl.exportExcel()
-   .sheet("Employees", employees, Employee.class)
+   .sheet(Employee.class, employees, "Employees")
    .override(exportOption)                                   // overrides @PxlWorkbook(exportPassword=...) etc.
    .toFile(new File("secured.xlsx"));
 ```
@@ -846,15 +846,15 @@ private String b;
 ```java
 // Call order = sheet order (Engineering, Sales, Departments); each sheet may take a different row class
 pxl.exportExcel()
-   .sheet("Engineering", engineering, Employee.class)
-   .sheet("Sales", sales, Employee.class)
-   .sheet("Departments", departments, Department.class)
+   .sheet(Employee.class, engineering, "Engineering")
+   .sheet(Employee.class, sales, "Sales")
+   .sheet(Department.class, departments, "Departments")
    .toFile(new File("company.xlsx"));
 
 // Sample export works the same way
 pxl.exportSampleExcel()
-   .sheet("Employees", Employee.class)
-   .sheet("Departments", Department.class)
+   .sheet(Employee.class, "Employees")
+   .sheet(Department.class, "Departments")
    .toFile(new File("template.xlsx"));
 ```
 
@@ -941,7 +941,7 @@ List<Employee> rows = pxl.importCsv()
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 
 pxl.exportExcel()
-   .sheet("Employees", employees, Employee.class)
+   .sheet(Employee.class, employees, "Employees")
    .override(PxlExportWorkbookOption.builder()
                                     .exportPassword("secret")
                                     .build())

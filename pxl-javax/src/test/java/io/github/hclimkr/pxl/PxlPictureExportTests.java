@@ -63,7 +63,7 @@ public class PxlPictureExportTests {
         row.setGallery(galleryUrls);
 
         final Workbook workbook = pxl.exportExcel()
-                .sheet("Pictures", Arrays.asList(row), PictureRow.class)
+                .sheet(PictureRow.class, Arrays.asList(row), "Pictures")
                 .override(noValidationOption())
                 .toWorkbook();
         try {
@@ -91,7 +91,7 @@ public class PxlPictureExportTests {
         row.setGallery(Arrays.asList(validUrl, missingUrl));        // 1 valid + 1 invalid
 
         final Workbook workbook = pxl.exportExcel()
-                .sheet("Pictures", Arrays.asList(row), PictureRow.class)
+                .sheet(PictureRow.class, Arrays.asList(row), "Pictures")
                 .override(noValidationOption())
                 .toWorkbook();
         try {

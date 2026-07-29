@@ -429,7 +429,7 @@ PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
 
 // 2) 실행 전 .override(...) 으로 넘겨 애노테이션 값을 오버라이드한다
 pxl.exportExcel()
-   .sheet("Employees", employees, Employee.class)
+   .sheet(Employee.class, employees, "Employees")
    .override(exportOption)                                   // @PxlWorkbook(exportPassword=...) 등을 오버라이드
    .toFile(new File("secured.xlsx"));
 ```
@@ -846,15 +846,15 @@ private String b;
 ```java
 // 호출 순서 = 시트 순서(Engineering, Sales, Departments), 시트마다 행 클래스를 달리 줄 수 있다
 pxl.exportExcel()
-   .sheet("Engineering", engineering, Employee.class)
-   .sheet("Sales", sales, Employee.class)
-   .sheet("Departments", departments, Department.class)
+   .sheet(Employee.class, engineering, "Engineering")
+   .sheet(Employee.class, sales, "Sales")
+   .sheet(Department.class, departments, "Departments")
    .toFile(new File("company.xlsx"));
 
 // 샘플 export도 동일하다
 pxl.exportSampleExcel()
-   .sheet("Employees", Employee.class)
-   .sheet("Departments", Department.class)
+   .sheet(Employee.class, "Employees")
+   .sheet(Department.class, "Departments")
    .toFile(new File("template.xlsx"));
 ```
 
@@ -941,7 +941,7 @@ List<Employee> rows = pxl.importCsv()
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 
 pxl.exportExcel()
-   .sheet("Employees", employees, Employee.class)
+   .sheet(Employee.class, employees, "Employees")
    .override(PxlExportWorkbookOption.builder()
                                     .exportPassword("secret")
                                     .build())

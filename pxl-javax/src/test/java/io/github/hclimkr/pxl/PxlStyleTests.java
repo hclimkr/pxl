@@ -41,7 +41,7 @@ public class PxlStyleTests {
 
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder().exportDataValidation(false).build();
         workbook = pxl.exportExcel()
-                .sheet("Styled", Arrays.asList(row), StyledRow.class)
+                .sheet(StyledRow.class, Arrays.asList(row), "Styled")
                 .override(option)
                 .toWorkbook();
         sheet = workbook.getSheet("Styled");
@@ -185,7 +185,7 @@ public class PxlStyleTests {
                 .build();
 
         final Workbook workbook = pxl.exportExcel()
-                .sheet("T", Arrays.asList(sampleRow()), HeaderStyleRow.class)
+                .sheet(HeaderStyleRow.class, Arrays.asList(sampleRow()), "T")
                 .override(option)
                 .toWorkbook();
         try {
@@ -253,7 +253,7 @@ public class PxlStyleTests {
                 .build();
 
         final Workbook poi = pxl.exportExcel()
-                .sheet("People", twoEmployees(), Employee.class)
+                .sheet(Employee.class, twoEmployees(), "People")
                 .override(option)
                 .toWorkbook();
         try {
@@ -275,7 +275,7 @@ public class PxlStyleTests {
         row.setCustom("x");
 
         final Workbook poi = pxl.exportExcel()
-                .sheet("T", Arrays.asList(row), ColumnHeaderStylerRow.class)
+                .sheet(ColumnHeaderStylerRow.class, Arrays.asList(row), "T")
                 .override(noValidationOption())
                 .toWorkbook();
         try {

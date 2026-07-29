@@ -151,7 +151,7 @@ public class PxlRoundTripTests {
             case FILE: {
                 final File file = TestPaths.exportFile(testInfo);
                 pxl.exportExcel()
-                        .sheet(sheetName, rows, rowClass)
+                        .sheet(rowClass, rows, sheetName)
                         .override(option)
                         .toFile(file);
                 return new RoundTripSource(file);
@@ -159,7 +159,7 @@ public class PxlRoundTripTests {
             case STREAM: {
                 final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
                 pxl.exportExcel()
-                        .sheet(sheetName, rows, rowClass)
+                        .sheet(rowClass, rows, sheetName)
                         .override(option)
                         .toStream(outputStream);
                 return new RoundTripSource(outputStream.toByteArray());
@@ -167,7 +167,7 @@ public class PxlRoundTripTests {
             case POI:
             default:
                 return new RoundTripSource(toBytes(pxl.exportExcel()
-                        .sheet(sheetName, rows, rowClass)
+                        .sheet(rowClass, rows, sheetName)
                         .override(option)
                         .toWorkbook()));
         }
@@ -330,8 +330,8 @@ public class PxlRoundTripTests {
 
         final RoundTripSource source = exportMultiSheet(transport,
                 builder -> builder
-                        .sheet("Engineering", engineering, Employee.class)
-                        .sheet("Sales", sales, Employee.class),
+                        .sheet(Employee.class, engineering, "Engineering")
+                        .sheet(Employee.class, sales, "Sales"),
                 noValidationOption());
 
         @SuppressWarnings("unchecked") final List<Employee> importedEng =
@@ -356,7 +356,7 @@ public class PxlRoundTripTests {
                 .exportDataValidation(false)
                 .build();
         pxl.exportExcel()
-                .sheet("AllTypes", Arrays.asList(Fixtures.sampleAllTypesRow()), AllTypesRow.class)
+                .sheet(AllTypesRow.class, Arrays.asList(Fixtures.sampleAllTypesRow()), "AllTypes")
                 .override(option)
                 .toFile(file);
 

@@ -127,7 +127,7 @@ public class PxlNameMatchingTests {
                 Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering"),
                 Fixtures.employee("Bob", 42, "72000", false, null, Grade.B, "Sales"));
         pxl.exportExcel()
-                .sheet("Employee", employees, Employee.class)
+                .sheet(Employee.class, employees, "Employee")
                 .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build())
                 .toFile(excelFile);
 

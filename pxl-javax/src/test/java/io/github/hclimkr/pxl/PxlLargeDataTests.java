@@ -66,7 +66,7 @@ public class PxlLargeDataTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Big", generateRows(ROW_COUNT), BigDataRow.class)
+                .sheet(BigDataRow.class, generateRows(ROW_COUNT), "Big")
                 .override(exportOption)
                 .toFile(excelFile);
 
@@ -109,7 +109,7 @@ public class PxlLargeDataTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Big", generateRows(ROW_COUNT), BigDataRow.class)
+                .sheet(BigDataRow.class, generateRows(ROW_COUNT), "Big")
                 .override(exportOption)
                 .toFile(excelFile);
 

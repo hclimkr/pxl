@@ -32,6 +32,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING** Every `sheet(...)` overload on the builders now leads with `rowClass`, and
+  the parameters after it line up across builders — the collection second, the sheet name
+  last — so a given position always carries the same meaning:
+  `exportExcel().sheet(Employee.class, employees, "Employees")`,
+  `exportSampleExcel().sheet(Employee.class, "Employees")`,
+  `importExcel().sheet(Employee.class, Set.class, "Employees")` and
+  `importCsv().sheet(Employee.class, Set.class)`. The import overloads that already led
+  with `rowClass` are unchanged: `importExcel().sheet(Class, String...)`,
+  `importExcel().sheet(Class, List)` and `importCsv().sheet(Class)`. Argument validation
+  follows the new order, so `rowClass` is now the first argument reported as invalid.
 - **BREAKING** `Pxl.getWorkbookFileFormatFromWorkbookObject(Class)` moved to
   `PxlFileFormat.fromWorkbookObject(Class)`. The lookup itself is unchanged.
 - **BREAKING** `Pxl.getWorkbookNameFromWorkbookObject(Object)` moved to

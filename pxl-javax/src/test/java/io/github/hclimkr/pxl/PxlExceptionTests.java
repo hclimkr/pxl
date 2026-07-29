@@ -103,7 +103,7 @@ public class PxlExceptionTests {
         // Data validation is enabled by default (null option), so validation is performed on export.
         assertThrows(PxlValidationException.class, () ->
                 pxl.exportExcel()
-                        .sheet("V", Arrays.asList(row), ValidatedRow.class)
+                        .sheet(ValidatedRow.class, Arrays.asList(row), "V")
                         .toStream(outputStream));
     }
 
@@ -116,7 +116,7 @@ public class PxlExceptionTests {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlValidationException.class, () ->
                 pxl.exportExcel()
-                        .sheet("V", Arrays.asList(row), ValidatedRow.class)
+                        .sheet(ValidatedRow.class, Arrays.asList(row), "V")
                         .toStream(outputStream));
     }
 
@@ -132,7 +132,7 @@ public class PxlExceptionTests {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlCellCodecException.class, () ->
                 pxl.exportExcel()
-                        .sheet("AllTypes", Arrays.asList(row), AllTypesRow.class)
+                        .sheet(AllTypesRow.class, Arrays.asList(row), "AllTypes")
                         .override(noValidationOption())
                         .toStream(outputStream));
     }
@@ -145,7 +145,7 @@ public class PxlExceptionTests {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlCellCodecException.class, () ->
                 pxl.exportExcel()
-                        .sheet("AllTypes", Arrays.asList(row), AllTypesRow.class)
+                        .sheet(AllTypesRow.class, Arrays.asList(row), "AllTypes")
                         .override(noValidationOption())
                         .toStream(outputStream));
     }
@@ -163,8 +163,8 @@ public class PxlExceptionTests {
         // Specifying the same sheet name ("Dup") twice -> exception
         assertThrows(PxlDataException.class, () ->
                 pxl.exportExcel()
-                        .sheet("Dup", some, Employee.class)
-                        .sheet("Dup", new ArrayList<Employee>(), Employee.class)
+                        .sheet(Employee.class, some, "Dup")
+                        .sheet(Employee.class, new ArrayList<Employee>(), "Dup")
                         .override(noValidationOption())
                         .toStream(outputStream));
     }
@@ -184,7 +184,7 @@ public class PxlExceptionTests {
         assertThrows(PxlArgumentException.class, () ->
                 pxl.exportExcel()
                         .workbook(workbook)
-                        .sheet("People", some, Employee.class)
+                        .sheet(Employee.class, some, "People")
                         .toStream(outputStream));
     }
 
@@ -195,7 +195,7 @@ public class PxlExceptionTests {
         assertThrows(PxlArgumentException.class, () ->
                 pxl.exportSampleExcel()
                         .workbook(AllTypesWorkbook.class)
-                        .sheet("People", Employee.class)
+                        .sheet(Employee.class, "People")
                         .toStream(outputStream));
     }
 
@@ -268,7 +268,7 @@ public class PxlExceptionTests {
                 .build();
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice), "People")
                 .override(exportOption)
                 .toFile(excelFile);
 
@@ -295,7 +295,7 @@ public class PxlExceptionTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Formula", Arrays.asList(row), FormulaRow.class)
+                .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -487,7 +487,7 @@ public class PxlExceptionTests {
 
             assertThrows(PxlCellCodecException.class,
                     () -> pxl.exportSampleExcel()
-                            .sheet("Sample", AllTypesRow.class)
+                            .sheet(AllTypesRow.class, "Sample")
                             .override(workbookOption)
                             .toWorkbook(),
                     fieldName + " field: an invalid exportSample must be rejected with PxlCellCodecException");
@@ -700,7 +700,9 @@ public class PxlExceptionTests {
         assertThrows(PxlNullPointerException.class, () -> pxl.importExcel()
                 .sheet(null, Arrays.asList("Any")));
         assertThrows(PxlNullPointerException.class, () -> pxl.importExcel()
-                .sheet(List.class, null, Arrays.asList("Any")));
+                .sheet(null, List.class, Arrays.asList("Any")));
+        assertThrows(PxlNullPointerException.class, () -> pxl.importExcel()
+                .sheet(Employee.class, null, Arrays.asList("Any")));
 
         // candidateSheetNames array null -> PxlNullPointerException
         assertThrows(PxlNullPointerException.class, () -> pxl.importExcel()
@@ -720,7 +722,9 @@ public class PxlExceptionTests {
         assertThrows(PxlNullPointerException.class, () -> pxl.importCsv()
                 .sheet(null));
         assertThrows(PxlNullPointerException.class, () -> pxl.importCsv()
-                .sheet(List.class, null));
+                .sheet(null, List.class));
+        assertThrows(PxlNullPointerException.class, () -> pxl.importCsv()
+                .sheet(Employee.class, null));
     }
 
     @Test
@@ -728,18 +732,18 @@ public class PxlExceptionTests {
         assertThrows(PxlNullPointerException.class, () -> pxl.exportExcel()
                 .workbook(null));
         assertThrows(PxlArgumentException.class, () -> pxl.exportExcel()
-                .sheet("  ", new ArrayList<Employee>(), Employee.class));
+                .sheet(Employee.class, new ArrayList<Employee>(), "  "));
         assertThrows(PxlNullPointerException.class, () -> pxl.exportExcel()
-                .sheet("V", null, Employee.class));
+                .sheet(Employee.class, null, "V"));
         assertThrows(PxlNullPointerException.class, () -> pxl.exportExcel()
-                .sheet("V", new ArrayList<Employee>(), null));
+                .sheet(null, new ArrayList<Employee>(), "V"));
 
         assertThrows(PxlNullPointerException.class, () -> pxl.exportSampleExcel()
                 .workbook(null));
         assertThrows(PxlArgumentException.class, () -> pxl.exportSampleExcel()
-                .sheet("  ", Employee.class));
+                .sheet(Employee.class, "  "));
         assertThrows(PxlNullPointerException.class, () -> pxl.exportSampleExcel()
-                .sheet("Sample", null));
+                .sheet(null, "Sample"));
     }
 
     @Test
@@ -777,10 +781,10 @@ public class PxlExceptionTests {
     public void exportBuilderTerminals_nullDestination_throwPxlNullPointer() {
         final List<Employee> rows = new ArrayList<>();
         assertThrows(PxlNullPointerException.class, () -> pxl.exportExcel()
-                .sheet("Sheet1", rows, Employee.class)
+                .sheet(Employee.class, rows, "Sheet1")
                 .toFile(null));
         assertThrows(PxlNullPointerException.class, () -> pxl.exportExcel()
-                .sheet("Sheet1", rows, Employee.class)
+                .sheet(Employee.class, rows, "Sheet1")
                 .toStream(null));
     }
 

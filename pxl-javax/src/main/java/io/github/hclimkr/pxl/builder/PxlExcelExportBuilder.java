@@ -27,14 +27,14 @@ import java.util.Objects;
  * <p>There are two usage forms.</p>
  * <ul>
  *   <li>{@code @PxlWorkbook} object form: {@link #workbook(Object)}</li>
- *   <li>Sheet form (multiple calls for multiple sheets): {@link #sheet(String, Collection, Class)}</li>
+ *   <li>Sheet form (multiple calls for multiple sheets): {@link #sheet(Class, Collection, String)}</li>
  * </ul>
  *
  * <p>The two forms are mutually exclusive — specifying both {@code workbook(...)} and {@code sheet(...)} throws an exception.</p>
  *
  * <p>The terminal methods (returning a workbook / file / stream) and resource handling are provided by {@link PxlAbstractExportBuilder}.</p>
  *
- * <p>Example: {@code pxl.exportExcel().sheet("Users", users, User.class).override(opt).toFile(file);}</p>
+ * <p>Example: {@code pxl.exportExcel().sheet(User.class, users, "Users").override(opt).toFile(file);}</p>
  */
 public final class PxlExcelExportBuilder extends PxlAbstractExportBuilder {
 
@@ -75,22 +75,22 @@ public final class PxlExcelExportBuilder extends PxlAbstractExportBuilder {
     /**
      * Adds a sheet. Calling multiple times produces multiple sheets. (Mutually exclusive with the workbook object form)
      *
-     * @param sheetName the sheet name; must not be blank
-     * @param rows      the row objects for this sheet
      * @param rowClass  the row class
+     * @param rows      the row objects for this sheet
+     * @param sheetName the sheet name; must not be blank
      * @param <T>       the row type
      * @return this builder
-     * @throws PxlNullPointerException if {@code sheetName}, {@code rows}, or {@code rowClass} is {@code null}
+     * @throws PxlNullPointerException if {@code rowClass}, {@code rows}, or {@code sheetName} is {@code null}
      * @throws PxlArgumentException    if {@code sheetName} is blank
      */
-    public <T> PxlExcelExportBuilder sheet(final String sheetName,
+    public <T> PxlExcelExportBuilder sheet(final Class<T> rowClass,
                                            final Collection<T> rows,
-                                           final Class<T> rowClass)
+                                           final String sheetName)
             throws PxlNullPointerException, PxlArgumentException {
 
-        PxlAssertSupport.notBlank(sheetName, "sheetName");
-        PxlAssertSupport.notNull(rows, "rows");
         PxlAssertSupport.notNull(rowClass, "rowClass");
+        PxlAssertSupport.notNull(rows, "rows");
+        PxlAssertSupport.notBlank(sheetName, "sheetName");
 
         this.sheetNames.add(sheetName);
         this.sheetObjects.add(rows);

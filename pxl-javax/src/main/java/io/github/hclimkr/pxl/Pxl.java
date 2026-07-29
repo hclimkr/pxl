@@ -26,7 +26,7 @@ import java.util.Locale;
  * <p>Example:</p>
  * <pre>{@code
  * Pxl pxl = new Pxl();
- * pxl.exportExcel().sheet("Users", users, User.class).override(opt).toFile(file);
+ * pxl.exportExcel().sheet(User.class, users, "Users").override(opt).toFile(file);
  * List<User> loaded = pxl.importExcel().sheet(User.class, "Users").fromFile(file);
  * }</pre>
  */

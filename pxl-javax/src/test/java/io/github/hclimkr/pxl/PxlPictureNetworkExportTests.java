@@ -67,7 +67,7 @@ public class PxlPictureNetworkExportTests {
         row.setGallery(GALLERY_URLS);
 
         final Workbook workbook = pxl.exportExcel()
-                .sheet("Pictures", Arrays.asList(row), PictureRow.class)
+                .sheet(PictureRow.class, Arrays.asList(row), "Pictures")
                 .override(noValidationOption())
                 .toWorkbook();
         try {

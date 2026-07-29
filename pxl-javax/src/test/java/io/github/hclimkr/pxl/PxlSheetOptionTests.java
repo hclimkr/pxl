@@ -260,7 +260,7 @@ public class PxlSheetOptionTests {
                 Fixtures.employee("Bob", 42, "72000", false, null, Grade.B, "Sales"),
                 Fixtures.employee("Carol", 35, "68000", true, null, Grade.A, "Finance"));
         pxl.exportExcel()
-                .sheet("People", three, Employee.class)
+                .sheet(Employee.class, three, "People")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -381,7 +381,7 @@ public class PxlSheetOptionTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", employees, Employee.class)
+                .sheet(Employee.class, employees, "People")
                 .override(option)
                 .toFile(excelFile);
 

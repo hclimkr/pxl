@@ -59,7 +59,7 @@ public class PxlColumnOptionTests {
     private <T> List<T> roundTrip(final String sheetName, final List<T> rows, final Class<T> rowClass) throws Exception {
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet(sheetName, rows, rowClass)
+                .sheet(rowClass, rows, sheetName)
                 .override(noValidationOption())
                 .toFile(excelFile);
         return pxl.importExcel()
@@ -71,7 +71,7 @@ public class PxlColumnOptionTests {
                                           final PxlExportWorkbookOption option) throws Exception {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         pxl.exportExcel()
-                .sheet(sheetName, rows, rowClass)
+                .sheet(rowClass, rows, sheetName)
                 .override(option)
                 .toStream(outputStream);
         return outputStream.toByteArray();
@@ -349,7 +349,7 @@ public class PxlColumnOptionTests {
 
         // option null -> exportDataValidation defaults to true -> dropdown created
         final Workbook workbook = pxl.exportExcel()
-                .sheet("Opt", Arrays.asList(row), OptionItemsRow.class)
+                .sheet(OptionItemsRow.class, Arrays.asList(row), "Opt")
                 .toWorkbook();
         try {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("Opt");
@@ -370,7 +370,7 @@ public class PxlColumnOptionTests {
         row.setGradeSorted(Grade.B);
 
         final Workbook workbook = pxl.exportExcel()
-                .sheet("EnumStyle", Arrays.asList(row), EnumStyleRow.class)
+                .sheet(EnumStyleRow.class, Arrays.asList(row), "EnumStyle")
                 .toWorkbook();
         try {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("EnumStyle");
@@ -390,7 +390,7 @@ public class PxlColumnOptionTests {
         row.setGradeSorted(Grade.B);
 
         final Workbook workbook = pxl.exportExcel()
-                .sheet("Dropdowns", Arrays.asList(row), EnumOptionItemsRow.class)
+                .sheet(EnumOptionItemsRow.class, Arrays.asList(row), "Dropdowns")
                 .toWorkbook();
         try {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("Dropdowns");
@@ -420,7 +420,7 @@ public class PxlColumnOptionTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Toggle", Arrays.asList(row), ColumnToggleRow.class)
+                .sheet(ColumnToggleRow.class, Arrays.asList(row), "Toggle")
                 .override(noValidationOption())
                 .toFile(excelFile);
 

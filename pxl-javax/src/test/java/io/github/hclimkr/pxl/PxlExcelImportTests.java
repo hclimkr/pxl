@@ -423,7 +423,7 @@ public class PxlExcelImportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("AllTypes", Arrays.asList(expected), AllTypesRow.class)
+                .sheet(AllTypesRow.class, Arrays.asList(expected), "AllTypes")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -869,7 +869,7 @@ public class PxlExcelImportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice, bob), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice, bob), "People")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
@@ -902,14 +902,14 @@ public class PxlExcelImportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("People", Arrays.asList(alice, bob), Employee.class)
+                .sheet(Employee.class, Arrays.asList(alice, bob), "People")
                 .override(noValidationOption())
                 .toFile(excelFile);
 
         // collectionClass=Set.class -> the return must be a Set implementation (default sheet() returns a List).
         @SuppressWarnings("unchecked") final Set<Employee> people =
                 pxl.importExcel()
-                        .sheet(Set.class, Employee.class, Arrays.asList("People"))
+                        .sheet(Employee.class, Set.class, Arrays.asList("People"))
                         .fromFile(excelFile);
 
         assertThat(people).isInstanceOf(Set.class);
@@ -929,7 +929,7 @@ public class PxlExcelImportTests {
 
         final File excelFile = TestPaths.exportFile(testInfo);
         pxl.exportExcel()
-                .sheet("Formula", Arrays.asList(row), FormulaRow.class)
+                .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
                 .override(noValidationOption())
                 .toFile(excelFile);
 

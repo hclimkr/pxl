@@ -134,43 +134,43 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
      * Configures parsing, from one of the candidate sheet names, into the specified collection type. Specify the source
      * and run the parse with the returned {@link Source}.
      *
-     * @param collectionClass     the return collection implementation/interface type (e.g. {@code List.class}, {@code Set.class})
      * @param rowClass            the row class
+     * @param collectionClass     the return collection implementation/interface type (e.g. {@code List.class}, {@code Set.class})
      * @param candidateSheetNames the candidate sheet names (one or more)
      * @param <C>                 the collection type
      * @return the source-terminal step returning the parsed collection of row objects
-     * @throws PxlNullPointerException if {@code collectionClass}, {@code rowClass}, or {@code candidateSheetNames} is {@code null}
+     * @throws PxlNullPointerException if {@code rowClass}, {@code collectionClass}, or {@code candidateSheetNames} is {@code null}
      * @throws PxlArgumentException    if {@code candidateSheetNames} is empty
      */
-    public <C extends Collection<?>> Source<C> sheet(final Class<C> collectionClass,
-                                                     final Class<?> rowClass,
+    public <C extends Collection<?>> Source<C> sheet(final Class<?> rowClass,
+                                                     final Class<C> collectionClass,
                                                      final String... candidateSheetNames)
             throws PxlNullPointerException, PxlArgumentException {
 
         PxlAssertSupport.notNull(candidateSheetNames, "candidateSheetNames");
 
-        return sheet(collectionClass, rowClass, Arrays.asList(candidateSheetNames));
+        return sheet(rowClass, collectionClass, Arrays.asList(candidateSheetNames));
     }
 
     /**
      * Configures parsing, from the candidate sheet name list, into the specified collection type. Specify the source
      * and run the parse with the returned {@link Source}.
      *
-     * @param collectionClass     the return collection implementation/interface type (e.g. {@code List.class}, {@code Set.class})
      * @param rowClass            the row class
+     * @param collectionClass     the return collection implementation/interface type (e.g. {@code List.class}, {@code Set.class})
      * @param candidateSheetNames the candidate sheet name list (one or more)
      * @param <C>                 the collection type
      * @return the source-terminal step returning the parsed collection of row objects
-     * @throws PxlNullPointerException if {@code collectionClass}, {@code rowClass}, or {@code candidateSheetNames} is {@code null}
+     * @throws PxlNullPointerException if {@code rowClass}, {@code collectionClass}, or {@code candidateSheetNames} is {@code null}
      * @throws PxlArgumentException    if {@code candidateSheetNames} is empty
      */
-    public <C extends Collection<?>> Source<C> sheet(final Class<C> collectionClass,
-                                                     final Class<?> rowClass,
+    public <C extends Collection<?>> Source<C> sheet(final Class<?> rowClass,
+                                                     final Class<C> collectionClass,
                                                      final List<String> candidateSheetNames)
             throws PxlNullPointerException, PxlArgumentException {
 
-        PxlAssertSupport.notNull(collectionClass, "collectionClass");
         PxlAssertSupport.notNull(rowClass, "rowClass");
+        PxlAssertSupport.notNull(collectionClass, "collectionClass");
         PxlAssertSupport.notEmpty(candidateSheetNames, "candidateSheetNames");
 
         return Source.forSheet(validator, workbookName, option, collectionClass, rowClass, candidateSheetNames);
