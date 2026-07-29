@@ -16,9 +16,9 @@ Maven 멀티모듈 프로젝트다.
 | `pxl-javax` | Java 8+, `javax.*` | source/target 8 |
 | `pxl-jakarta` | Java 17+, `jakarta.*` | source/target 17 |
 
-> ⚠️ 소스는 `pxl-javax`에만 있다. `pxl-jakarta`는 직접 편집하지 않는다.
+> ⚠️ 소스 코드는 `pxl-javax`에만 있다. `pxl-jakarta`는 직접 편집하지 않는다.
 
-`pxl-jakarta`에는 직접 작성한 소스가 없다.
+`pxl-jakarta`에는 직접 작성한 소스 코드가 없다.
 빌드 시 형제 모듈 `pxl-javax`의 소스 트리(`src/main/java`·`src/main/resources`, test는 `src/test`)를 파일시스템 복사해 아래 문자열 치환을 거친 뒤 컴파일해 생성된다(`pxl-jakarta/pom.xml`의 `maven-antrun-plugin`).
 
 ```

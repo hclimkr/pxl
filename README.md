@@ -396,7 +396,7 @@ Creating `exportSampleExcel().sheet(Employee.class, "Employees")` with the `Empl
 ## Import (Excel → Objects)
 
 Start with `importExcel()`, compose the target to read as a workbook form (`workbook(Class)`) or a sheet form (`sheet(Class, candidateSheetNames...)`),
-and finally specify the source (`fromFile`/`fromStream`) to parse it on the spot.
+and specify the final (execute) method (`fromFile`/`fromStream`) to parse it on the spot.
 
 ### Import Source Excel Layout
 
@@ -449,7 +449,7 @@ try (InputStream is = new FileInputStream("employees.xlsx")) {
 
 ## Import (CSV → Objects)
 
-This works the same way as Excel import (start → compose workbook/sheet → specify the source at the end). For CSV, the file name (without extension) becomes the sheet name, and the final source methods expand to `fromFile`/`fromFiles`/`fromStream`/`fromStreams`.
+This works the same way as Excel import (start → compose workbook/sheet → call the final (execute) method). For CSV, the file name (without extension) becomes the sheet name, and the final (execute) methods expand to `fromFile`/`fromFiles`/`fromStream`/`fromStreams`.
 The sheet form uses `sheet(Class)` without candidate sheet name arguments (single CSV), while the workbook form groups multiple CSVs by sheet.
 
 ### Import Source CSV File Layout

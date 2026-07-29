@@ -396,7 +396,7 @@ pxl.exportSampleExcel()
 ## Import (엑셀 → 객체)
 
 `importExcel()`로 시작해 워크북 형태(`workbook(Class)`) 또는 시트 형태(`sheet(Class, 후보시트명...)`)로 읽을 대상을 구성한 뒤,
-마지막에 소스(`fromFile`/`fromStream`)를 지정하면 그 자리에서 파싱된다.
+마지막 실행 메서드(`fromFile`/`fromStream`)를 지정하면 그 자리에서 파싱된다.
 
 ### Import 대상 엑셀 모양
 
@@ -449,7 +449,7 @@ try (InputStream is = new FileInputStream("employees.xlsx")) {
 
 ## Import (CSV → 객체)
 
-엑셀 import와 같은 방식이다(시작 → 워크북/시트 구성 → 마지막에 소스 지정). CSV는 파일명(확장자 제외)이 시트명이 되고, 마지막 소스 메서드가 `fromFile`/`fromFiles`/`fromStream`/`fromStreams`로 늘어난다.
+엑셀 import와 같은 방식이다(시작 → 워크북/시트 구성 → 마지막 실행 메서드 호출). CSV는 파일명(확장자 제외)이 시트명이 되고, 마지막 실행 메서드가 `fromFile`/`fromFiles`/`fromStream`/`fromStreams`로 늘어난다.
 시트 형태는 후보 시트명 인자 없이 `sheet(Class)`(단일 CSV), 워크북 형태는 여러 CSV를 시트별로 묶는다.
 
 ### Import 대상 CSV 파일 모양
@@ -515,8 +515,8 @@ List<Employee> employees = pxl.importCsv()
 
 ## 빌드 & 기여
 
-소스는 `pxl-javax`에만 있고 `pxl-jakarta`는 빌드 시 문자열 치환으로 생성된다.  
-빌드·테스트 명령, 소스 편집 규칙, 테스트 작성 규칙은 [CONTRIBUTING_ko.md](CONTRIBUTING_ko.md) 에 정리돼 있다.
+소스 코드는 `pxl-javax`에만 있고 `pxl-jakarta`는 빌드 시 문자열 치환으로 생성된다.  
+빌드·테스트 명령, 소스 코드 편집 규칙, 테스트 작성 규칙은 [CONTRIBUTING_ko.md](CONTRIBUTING_ko.md) 에 정리돼 있다.
 
 ---
 

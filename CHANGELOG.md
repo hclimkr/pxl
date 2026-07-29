@@ -57,6 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `PxlColumnUtils`, `PxlRowUtils`, `PxlSheetUtils`, `PxlWorkbookUtils`) now states what each
   class covers and how it behaves on a streaming sheet, and `@PxlWorkbookName` documents the
   file-name fallback and that it applies to CSV import as well.
+- Docs: the README and reference pairs now name the chain's closing step the same way in both
+  languages — the final (execute) method (`fromFile`/`fromStream`/`toFile`/`toStream`/...) —
+  instead of calling it a "source method" in one place and an execute step in another. The
+  Korean docs also spell out 소스 코드 where they mean the source tree, keeping it distinct
+  from the import source a chain reads from.
 
 ## [0.9.1] - 2026-07-27
 

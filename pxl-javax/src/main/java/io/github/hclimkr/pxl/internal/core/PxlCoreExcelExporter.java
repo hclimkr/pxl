@@ -798,7 +798,6 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      * @return the field value cast to {@code Collection}, or {@code null} if it is {@code null} or not a collection
      * @throws PxlReflectionException if the field value cannot be read
      */
-    //@SuppressWarnings("unchecked")
     private static Collection<?> getRowObjects(final Field sheetField,
                                                final Object workbookObject)
             throws PxlReflectionException {
