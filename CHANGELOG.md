@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-07-29
+
 ### Added
 
 - Excel import in the workbook form now names the workbook after its source file when
@@ -21,14 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `SXSSFWorkbook` to `SXSSF`, while `XSSFWorkbook` and the streaming reader's
   `StreamingWorkbook` both map to `XSSF` — a streamed read opens the same OOXML
   container, and `SXSSF` denotes the streaming export workbook only.
-
-### Fixed
-
-- CSV import in the workbook form now matches a file whose name is in the decomposed (NFD)
-  Unicode form against the composed (NFC) name written in `@PxlSheet`. macOS file systems
-  hand back decomposed file names, so a sheet named in Korean was not found there even
-  though the file name and the annotation read identically. Names derived from file names
-  are now normalized to NFC on both import paths.
 
 ### Changed
 
@@ -48,26 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(Object)`. The lookup itself is
   unchanged, including the fail-safe `null` it returns for a missing or unreadable
   `@PxlWorkbookName` field.
-- Both `PxlFileFormat` lookups are plain lookups: they throw nothing and never return
-  `null`. A `null` argument, a class carrying no `@PxlWorkbook`, or an unrecognized
-  workbook type falls back to `PxlConstants.DEFAULT_EXPORT_FILE_FORMAT` (`XSSF`).
-- Internal only, not part of the public API: the `internal/core` binder entry points are
-  now `PxlCoreCsvImporter`, `PxlCoreExcelImporter` and `PxlCoreExcelExporter`.
-- Javadoc: the published class documentation for the `util` helpers (`PxlCellUtils`,
-  `PxlColumnUtils`, `PxlRowUtils`, `PxlSheetUtils`, `PxlWorkbookUtils`) now states what each
-  class covers and how it behaves on a streaming sheet, and `@PxlWorkbookName` documents the
-  file-name fallback and that it applies to CSV import as well.
-- Docs: the README and reference pairs now name the chain's closing step the same way in both
-  languages — the final (execute) method (`fromFile`/`fromStream`/`toFile`/`toStream`/...) —
-  instead of calling it a "source method" in one place and an execute step in another. The
-  Korean docs also spell out 소스 코드 where they mean the source tree, keeping it distinct
-  from the import source a chain reads from.
-- Docs: the reference now covers builder lifecycle and thread safety — `Pxl` is stateless and
-  reusable, no builder is thread-safe, an export builder can be re-run as-is but not
-  re-configured (`sheet(...)` accumulates), and an import builder is meant to be re-configured
-  one run per sheet. It also explains what `SXSSF` buys over the default `XSSF` on the heap,
-  and that a column left at automatic width has to be tracked and stays in memory, eating into
-  that saving.
 
 ## [0.9.1] - 2026-07-27
 
@@ -105,6 +79,7 @@ First public release.
   full `java.time` including zoned/offset/`Duration`/`Period`, enums, collections,
   and custom objects), with per-column custom converters.
 
-[Unreleased]: https://github.com/hclimkr/pxl/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/hclimkr/pxl/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/hclimkr/pxl/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/hclimkr/pxl/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/hclimkr/pxl/releases/tag/v0.9.0
