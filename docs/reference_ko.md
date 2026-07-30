@@ -517,7 +517,7 @@ List<Employee> rows = pxl.importExcel()
                          .override(option)                          // 트리 전체를 한 번에 넘긴다
                          .sheet(Employee.class, "People")
                          .fromFile(file);
-// → age는 스킵되어 기본값(int 0), 나머지 컬럼은 정상 바인딩
+// → age는 바인딩되지 않아 초기값 그대로(Integer이므로 null), 나머지 컬럼은 정상 바인딩
 ```
 
 export도 `exportSheetOptions`/`exportColumnOptions`로 동일하게 구성한다.

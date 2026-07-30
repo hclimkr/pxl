@@ -517,7 +517,7 @@ List<Employee> rows = pxl.importExcel()
                          .override(option)                          // pass the entire tree at once
                          .sheet(Employee.class, "People")
                          .fromFile(file);
-// → age is skipped, defaulting to int 0; the other columns bind normally
+// → age is not bound, so it keeps its initial value (null for Integer); the other columns bind normally
 ```
 
 Export is configured the same way with `exportSheetOptions`/`exportColumnOptions`.
