@@ -462,7 +462,7 @@ try (InputStream is = new FileInputStream("employees.xlsx")) {
 ### Import 대상 CSV 파일 모양
 
 CSV는 첫 줄이 헤더, 이후가 데이터인 일반 텍스트다(엑셀과 달리 셀 타입이 없어 날짜·불리언도 문자열로 적는다).
-파일명에서 확장자를 뺀 이름이 시트명이 된다 — 예: `employees.csv` → 시트 `Employees`.
+파일명에서 확장자를 뺀 이름이 시트명이 된다 — 예: `Employees.csv` → 시트 `Employees`. 워크북 형태에서는 이 이름이 `@PxlSheet` 시트명과 정확히 일치해야 바인딩된다(공백은 무시, 대소문자는 구분).
 
 ```text
 Name,Age,Salary,Active,HireDate,Grade
@@ -470,7 +470,7 @@ Alice,30,50000,true,2020-01-15,A
 Bob,42,72000,false,2018-06-01,B
 ```
 
-위 `employees.csv`를 `sheet(Employee.class).fromFile(...)`로 읽으면 아래 `List<Employee>`가 된다.
+위 `Employees.csv`를 `sheet(Employee.class).fromFile(...)`로 읽으면 아래 `List<Employee>`가 된다.
 
 | Name  | Age | Salary | Active | HireDate   | Grade |
 |-------|-----|--------|--------|------------|-------|
@@ -479,7 +479,7 @@ Bob,42,72000,false,2018-06-01,B
 
 - 기본 인코딩은 `UTF-8`, 구분자는 `,`다.
 - 헤더 이름 매칭·값 해석(불리언 토큰, 열 순서 자유, 정의에 없는 열 무시 등)은 엑셀 import와 동일하다(위 [Import 대상 엑셀 모양](#import-대상-엑셀-모양) 참고).
-- 워크북 형태로 여러 CSV를 묶을 때는 각 파일이 한 시트가 된다 — 예: `departments.csv` → 시트 `Departments`.
+- 워크북 형태로 여러 CSV를 묶을 때는 각 파일이 한 시트가 된다 — 예: `Departments.csv` → 시트 `Departments`.
 
 ### 워크북 형태 (여러 CSV를 시트별로 묶기)
 
@@ -504,7 +504,7 @@ Company company = pxl.importCsv()
 // 파일 (시트명 인자 없음 — CSV는 단일 표)
 List<Employee> employees = pxl.importCsv()
                               .sheet(Employee.class)
-                              .fromFile(new File("employees.csv"));
+                              .fromFile(new File("Employees.csv"));
 ```
 
 ```java

@@ -462,7 +462,7 @@ The sheet form uses `sheet(Class)` without candidate sheet name arguments (singl
 ### Import Source CSV File Layout
 
 CSV is plain text with the first line as the header and subsequent lines as data (unlike Excel, there are no cell types, so dates and booleans are also written as strings).
-The name of the file with its extension removed becomes the sheet name — e.g. `employees.csv` → sheet `Employees`.
+The name of the file with its extension removed becomes the sheet name — e.g. `Employees.csv` → sheet `Employees`. In the workbook form it has to match the `@PxlSheet` name exactly to bind (whitespace is ignored, case is significant).
 
 ```text
 Name,Age,Salary,Active,HireDate,Grade
@@ -470,7 +470,7 @@ Alice,30,50000,true,2020-01-15,A
 Bob,42,72000,false,2018-06-01,B
 ```
 
-Reading the `employees.csv` above with `sheet(Employee.class).fromFile(...)` produces the `List<Employee>` below.
+Reading the `Employees.csv` above with `sheet(Employee.class).fromFile(...)` produces the `List<Employee>` below.
 
 | Name  | Age | Salary | Active | HireDate   | Grade |
 |-------|-----|--------|--------|------------|-------|
@@ -479,7 +479,7 @@ Reading the `employees.csv` above with `sheet(Employee.class).fromFile(...)` pro
 
 - The default encoding is `UTF-8` and the delimiter is `,`.
 - Header name matching and value interpretation (boolean tokens, free column order, ignoring columns not in the definition, etc.) are the same as Excel import (see [Import Source Excel Layout](#import-source-excel-layout) above).
-- When grouping multiple CSVs in the workbook form, each file becomes one sheet — e.g. `departments.csv` → sheet `Departments`.
+- When grouping multiple CSVs in the workbook form, each file becomes one sheet — e.g. `Departments.csv` → sheet `Departments`.
 
 ### Workbook Form (Grouping Multiple CSVs into Sheets)
 
@@ -504,7 +504,7 @@ Company company = pxl.importCsv()
 // File (no sheet name argument — CSV is a single table)
 List<Employee> employees = pxl.importCsv()
                               .sheet(Employee.class)
-                              .fromFile(new File("employees.csv"));
+                              .fromFile(new File("Employees.csv"));
 ```
 
 ```java
