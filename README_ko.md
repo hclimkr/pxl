@@ -118,6 +118,7 @@ public class Employee {
 - `name`을 생략하면 필드명이 열 이름이 된다.
 - `name`은 실제 헤더와 일치해야 바인딩된다(공백은 무시, 대소문자는 구분).
 - `exportSample`은 [Export 샘플](#export-샘플-클래스--샘플-엑셀)에 들어갈 예시 값이다(일반 export에는 영향 없음).
+- `exportSample`은 `String`으로 쓰지만 컬럼 타입으로 파싱되므로 그 타입이 받아들이는 값이어야 한다(아니면 `PxlCellCodecException`). 지정하지 않은 컬럼은 샘플 행에 `exportNullString`(기본 `""`)이 들어간다.
 
 `Grade`는 예제에서 쓰는 사용자 정의 enum이다.
 

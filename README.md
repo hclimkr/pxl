@@ -118,6 +118,7 @@ public class Employee {
 - If `name` is omitted, the field name becomes the column name.
 - `name` must match the actual header for binding to occur (whitespace is ignored, case is significant).
 - `exportSample` is the example value that goes into [Export Sample](#export-sample-class--sample-excel) (it has no effect on a regular export).
+- `exportSample` is written as a `String` but parsed into the column type, so it must be a value that type accepts (`PxlCellCodecException` otherwise). A column left without one gets `exportNullString` (default `""`) in the sample row.
 
 `Grade` is a user-defined enum used in the examples.
 
