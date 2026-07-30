@@ -751,10 +751,10 @@ private Grade grade;   // matched against the toString() override value or the c
 Put `@PxlImportConverter` (static, return type = target type) / `@PxlExportConverter` (instance or static, returns `String`).
 
 ```java
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter                     // (optional) for your convenience — PXL converts this type through the converters below, so a getter is not required.
+@Setter                     // (optional) for your convenience — PXL converts this type through the converters below, so a setter is not required.
+@NoArgsConstructor          // (optional) PXL never instantiates a custom object with a no-arg constructor.
+@AllArgsConstructor         // used by parse() below — PXL itself does not require it.
 public class Money {
 
     private String currency;

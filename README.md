@@ -81,13 +81,15 @@ A row class maps each field to a header with `@PxlColumn`.
 ```java
 import io.github.hclimkr.pxl.annotation.PxlColumn;
 import io.github.hclimkr.pxl.annotation.PxlRowIndex;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
 
-@Setter
-@NoArgsConstructor          // no-arg constructor is required for import
+@Getter                     // (optional) for your convenience — PXL binds fields directly, so a getter is not required.
+@Setter                     // (optional) for your convenience — PXL binds fields directly, so a setter is not required.
+@NoArgsConstructor          // (required) no-arg constructor is required for import
 public class Employee {
 
     @PxlRowIndex            // (optional) 1-based spreadsheet row number. Type: byte/short/int/long + wrapper classes (Byte/Short/Integer/Long)
@@ -129,11 +131,13 @@ The row class used as the second sheet in the multi-sheet example is defined the
 
 ```java
 import io.github.hclimkr.pxl.annotation.PxlColumn;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Setter
-@NoArgsConstructor          // no-arg constructor is required for import
+@Getter                     // (optional) for your convenience — PXL binds fields directly, so a getter is not required.
+@Setter                     // (optional) for your convenience — PXL binds fields directly, so a setter is not required.
+@NoArgsConstructor          // (required) no-arg constructor is required for import
 public class Department {
 
     @PxlColumn(name = "Code")
@@ -154,13 +158,15 @@ Each sheet field is a `Collection` type and is bound with `@PxlSheet`.
 ```java
 import io.github.hclimkr.pxl.annotation.PxlSheet;
 import io.github.hclimkr.pxl.annotation.PxlWorkbookName;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
 
-@Setter
-@NoArgsConstructor          // no-arg constructor is required for import
+@Getter                     // (optional) for your convenience — PXL binds fields directly, so a getter is not required.
+@Setter                     // (optional) for your convenience — PXL binds fields directly, so a setter is not required.
+@NoArgsConstructor          // (required) no-arg constructor is required for import
 public class Company {
 
     @PxlWorkbookName        // (optional) a String field to hold the workbook name

@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   repository's policy — issue reports and suggestions only, pull requests are not
   accepted — and asks for the version and artifact, expected versus actual behavior, and
   a minimal reproduction, with sensitive data stripped from any attached source file.
+- The example DTOs in the READMEs and the reference now carry `@Getter` next to `@Setter`,
+  with a comment on each Lombok annotation: accessors are there for your own code, since
+  PXL binds fields directly, and only the no-arg constructor is required.
 
 ## [0.9.2] - 2026-07-29
 

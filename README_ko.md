@@ -81,13 +81,15 @@ implementation 'io.github.hclimkr:pxl-jakarta:0.9.2'
 ```java
 import io.github.hclimkr.pxl.annotation.PxlColumn;
 import io.github.hclimkr.pxl.annotation.PxlRowIndex;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
 
-@Setter
-@NoArgsConstructor          // import 시에 무인자 생성자 필수
+@Getter                     // (선택) 사용자 편의용 — PXL은 직접 바인딩하기 때문에 Getter가 필요하지는 않다.
+@Setter                     // (선택) 사용자 편의용 — PXL은 직접 바인딩하기 때문에 Setter가 필요하지는 않다.
+@NoArgsConstructor          // (필수) import 시에 무인자 생성자 필수
 public class Employee {
 
     @PxlRowIndex            // (선택) 1-based 스프레드시트 행 번호. 타입: byte/short/int/long + 래퍼 클래스(Byte/Short/Integer/Long)
@@ -129,11 +131,13 @@ public enum Grade {
 
 ```java
 import io.github.hclimkr.pxl.annotation.PxlColumn;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Setter
-@NoArgsConstructor          // import 시에 무인자 생성자 필수
+@Getter                     // (선택) 사용자 편의용 — PXL은 직접 바인딩하기 때문에 Getter가 필요하지는 않다.
+@Setter                     // (선택) 사용자 편의용 — PXL은 직접 바인딩하기 때문에 Setter가 필요하지는 않다.
+@NoArgsConstructor          // (필수) import 시에 무인자 생성자 필수
 public class Department {
 
     @PxlColumn(name = "Code")
@@ -154,13 +158,15 @@ public class Department {
 ```java
 import io.github.hclimkr.pxl.annotation.PxlSheet;
 import io.github.hclimkr.pxl.annotation.PxlWorkbookName;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
 
-@Setter
-@NoArgsConstructor          // import 시에 무인자 생성자 필수
+@Getter                     // (선택) 사용자 편의용 — PXL은 직접 바인딩하기 때문에 Getter가 필요하지는 않다.
+@Setter                     // (선택) 사용자 편의용 — PXL은 직접 바인딩하기 때문에 Setter가 필요하지는 않다.
+@NoArgsConstructor          // (필수) import 시에 무인자 생성자 필수
 public class Company {
 
     @PxlWorkbookName        // (선택) 워크북 이름을 담을 String 필드

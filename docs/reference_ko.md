@@ -751,10 +751,10 @@ private Grade grade;   // toString() 오버라이드값 또는 상수명과 매�
 `@PxlImportConverter`(static, 반환 타입=대상 타입) / `@PxlExportConverter`(인스턴스 또는 static, 반환 `String`)를 붙인다.
 
 ```java
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter                     // (선택) 사용자 편의용 — PXL은 아래 컨버터로만 변환하기 때문에 Getter가 필요하지는 않다.
+@Setter                     // (선택) 사용자 편의용 — PXL은 아래 컨버터로만 변환하기 때문에 Setter가 필요하지는 않다.
+@NoArgsConstructor          // (선택) PXL은 커스텀 객체를 무인자 생성자로 만들지 않는다.
+@AllArgsConstructor         // 아래 parse()가 쓴다 — PXL 자체가 요구하는 것은 아니다.
 public class Money {
 
     private String currency;
