@@ -193,7 +193,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
 
     /**
      * Locates the physical sheet matching the sheet meta's name (or candidate names) and records its index. (import)
-     * Sheet names are compared after whitespace removal.
+     * Sheet names are compared after whitespace removal, ignoring case.
      *
      * @param workbook  the open POI workbook to inspect
      * @param sheetMeta the sheet meta to resolve; its actual index/name are set on match
@@ -224,7 +224,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
                 continue;
             }
 
-            if (sheetNames.contains(workbookSheetName)) {
+            if (matchesSheetName(sheetNames, workbookSheetName)) {
                 if (sheetMeta.getActualImportSheetIndex() >= 0) {
                     throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_DUPLICATE, sheetNames));
                 }

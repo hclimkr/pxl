@@ -678,6 +678,90 @@ public class PxlExcelImportTests {
         assertThat(((SuperCompanyWorkbook) sub).departments).as("superclass departments (overridden)").isNull();
     }
 
+    /**
+     * Writes an .xlsx carrying the Employees and Departments sheets, the source the override tests read back.
+     */
+    private File companyFixtureFile() throws Exception {
+        final CompanyWorkbook source = new CompanyWorkbook();
+        source.setEmployees(Arrays.asList(
+                Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"),
+                Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales")));
+        source.setDepartments(Arrays.asList(
+                Fixtures.department("ENG", "Engineering", 12),
+                Fixtures.department("SAL", "Sales", 7)));
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .workbook(source)
+                .override(noValidationOption())
+                .toFile(excelFile);
+        return excelFile;
+    }
+
+    @Test
+    public void importExcel_inheritedSheet_overrideDifferentCase_resolves() throws Exception {
+        // Sheet names are matched ignoring case, so an override declared in a different case ("DEPARTMENTS" against
+        // the super's "Departments") names the same sheet and overrides it - otherwise both fields would bind the
+        // one physical sheet that matches either name.
+        final SubCaseCompanyWorkbook sub = pxl.importExcel()
+                .workbook(SubCaseCompanyWorkbook.class)
+                .fromFile(companyFixtureFile());
+
+        assertThat(sub.departments).as("subclass departments").hasSize(2);
+        assertThat(((SuperCompanyWorkbook) sub).departments).as("superclass departments (overridden)").isNull();
+    }
+
+    @Test
+    public void importExcel_inheritedSheet_overrideBySheetNameNotFieldName_resolves() throws Exception {
+        // The override is keyed on the sheet name, not the field name: a field named depts that lists "Departments"
+        // among its candidate names still suppresses the super's departments field. One overlapping candidate is
+        // enough - the unused "Divisions" alias does not matter.
+        final SubAliasOverrideCompanyWorkbook sub = pxl.importExcel()
+                .workbook(SubAliasOverrideCompanyWorkbook.class)
+                .fromFile(companyFixtureFile());
+
+        assertThat(sub.depts).as("subclass depts").hasSize(2);
+        assertThat(((SuperCompanyWorkbook) sub).departments).as("superclass departments (overridden)").isNull();
+        // A sheet the subclass says nothing about is unaffected.
+        assertThat(((SuperCompanyWorkbook) sub).employees).as("superclass employees").hasSize(2);
+    }
+
+    @Test
+    public void importExcel_inheritedSheet_overrideWithDifferentSheetName_doesNotOverride() throws Exception {
+        // Shadowing the field is not by itself an override: this departments field names a different sheet
+        // ("Divisions"), so the super's "Departments" binds as usual and the subclass field finds no such sheet.
+        final SubOtherNameOverrideCompanyWorkbook sub = pxl.importExcel()
+                .workbook(SubOtherNameOverrideCompanyWorkbook.class)
+                .fromFile(companyFixtureFile());
+
+        assertThat(sub.departments).as("subclass departments (no such sheet)").isNull();
+        assertThat(((SuperCompanyWorkbook) sub).departments).as("superclass departments").hasSize(2);
+    }
+
+    @Test
+    public void importExcel_inheritedSheet_overrideOnDisabledSheet_doesNotOverride() throws Exception {
+        // A sheet excluded from import claims no name, so its override never takes effect:
+        // the super's departments field is bound as usual.
+        final SubDisabledOverrideCompanyWorkbook sub = pxl.importExcel()
+                .workbook(SubDisabledOverrideCompanyWorkbook.class)
+                .fromFile(companyFixtureFile());
+
+        assertThat(sub.departments).as("subclass departments (import disabled)").isNull();
+        assertThat(((SuperCompanyWorkbook) sub).departments).as("superclass departments").hasSize(2);
+    }
+
+    @Test
+    public void importExcel_inheritedSheet_overrideDeclaredOnSuperClass_bindsBoth() throws Exception {
+        // The flag runs from a subclass toward its superclass only. Declared on the superclass it suppresses
+        // nothing - the subclass field is resolved first - so both fields bind the same sheet.
+        final SubOverrideCompanyWorkbook sub = pxl.importExcel()
+                .workbook(SubOverrideCompanyWorkbook.class)
+                .fromFile(companyFixtureFile());
+
+        assertThat(sub.departments).as("subclass departments").hasSize(2);
+        assertThat(((SuperOverrideCompanyWorkbook) sub).departments).as("superclass departments").hasSize(2);
+    }
+
     // ------------------------------------------------------------------
     // Sheet name mapping via the importSheetNames option
     // ------------------------------------------------------------------

@@ -462,7 +462,7 @@ The sheet form uses `sheet(Class)` without candidate sheet name arguments (singl
 ### Import Source CSV File Layout
 
 CSV is plain text with the first line as the header and subsequent lines as data (unlike Excel, there are no cell types, so dates and booleans are also written as strings).
-The name of the file with its extension removed becomes the sheet name — e.g. `Employees.csv` → sheet `Employees`. In the workbook form it has to match the `@PxlSheet` name exactly to bind (whitespace is ignored, case is significant).
+The name of the file with its extension removed becomes the sheet name. In the workbook form it has to match the `@PxlSheet` name to bind, with whitespace and case ignored.
 
 ```text
 Name,Age,Salary,Active,HireDate,Grade

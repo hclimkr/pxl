@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -167,6 +168,59 @@ public class PxlExceptionTests {
                         .sheet(Employee.class, new ArrayList<Employee>(), "Dup")
                         .override(noValidationOption())
                         .toStream(outputStream));
+    }
+
+    @Test
+    public void exportWorkbook_duplicateSheetNamesDifferentCase_throws() {
+        // "Dup" and "DUP" are one sheet to a workbook, so the export is rejected up front rather than failing
+        // later when POI refuses the second sheet - and the message names the offender.
+        final List<Employee> some = Arrays.asList(
+                Fixtures.employee("Alice", 30, "50000", true, null, null, "Engineering"));
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        final PxlDataException exception = assertThrows(PxlDataException.class, () ->
+                pxl.exportExcel()
+                        .sheet(Employee.class, some, "Dup")
+                        .sheet(Employee.class, new ArrayList<Employee>(), "DUP")
+                        .override(noValidationOption())
+                        .toStream(outputStream));
+
+        assertThat(exception).hasMessageContaining("DUP");
+    }
+
+    @Test
+    public void exportSampleWorkbook_duplicateSheetNamesDifferentCase_throws() {
+        // A sample export names its sheets the same way, so it is checked the same way.
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        final PxlDataException exception = assertThrows(PxlDataException.class, () ->
+                pxl.exportSampleExcel()
+                        .sheet(Employee.class, "Dup")
+                        .sheet(Employee.class, "DUP")
+                        .toStream(outputStream));
+
+        assertThat(exception).hasMessageContaining("DUP");
+    }
+
+    @Test
+    public void exportWorkbookObject_duplicateSheetNamesDifferentCase_throws() {
+        // The workbook form is checked on the names its @PxlSheet fields resolve to. Field order is not
+        // guaranteed, so either of the two names may be reported as the duplicate.
+        final List<Employee> some = Arrays.asList(
+                Fixtures.employee("Alice", 30, "50000", true, null, null, "Engineering"));
+
+        final DuplicateCaseSheetWorkbook workbook = new DuplicateCaseSheetWorkbook();
+        workbook.setWorkbookName("W");
+        workbook.setEmployees(some);
+        workbook.setStaff(some);
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        final PxlDataException exception = assertThrows(PxlDataException.class, () ->
+                pxl.exportExcel()
+                        .workbook(workbook)
+                        .override(noValidationOption())
+                        .toStream(outputStream));
+
+        assertThat(exception.getMessage().toUpperCase(Locale.ROOT)).contains("EMPLOYEES");
     }
 
     // ------------------------------------------------------------------

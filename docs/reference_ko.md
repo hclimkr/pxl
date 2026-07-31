@@ -200,10 +200,10 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 | CSV import   | `pxl.importCsv()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromFiles(List<File>)` / `.fromStream(String, InputStream)` / `.fromStreams(List<String>, List<InputStream>)` |
 
 - 구성 단계의 `.workbook(...)`과 `.sheet(...)`은 서로 배타적이다 — 한 체인에서 둘을 함께 지정하면 `PxlArgumentException`이 발생한다(둘 다 생략해도 같다).
-- export는 `.sheet(...)`를 여러 번 호출해 여러 시트를 만든다 — 호출 순서가 그대로 워크북 내 시트 순서가 되며, 시트마다 다른 행 클래스를 줄 수 있다. 시트 이름이 중복되면(안전한 이름으로 정규화한 뒤 비교) `PxlDataException`이 발생한다.
+- export는 `.sheet(...)`를 여러 번 호출해 여러 시트를 만든다 — 호출 순서가 그대로 워크북 내 시트 순서가 되며, 시트마다 다른 행 클래스를 줄 수 있다. 시트 이름이 중복되면(안전한 이름으로 정규화한 뒤 대소문자를 무시하고 비교) 겹친 이름을 담은 `PxlDataException`이 발생한다 — 대소문자만 다른 두 시트는 한 워크북에 공존할 수 없다.
 - import는 `.sheet(...)`를 연달아 체인할 수 없다 — 여러 시트를 읽는 방법은 두 가지다.
     - 워크북 형태로 한 번에: `@PxlWorkbook` 클래스를 `.workbook(...)`에 주면 `@PxlSheet` 필드별로 여러 시트가 한 번에 바인딩된다.  
-      CSV는 한 파일이 한 시트이므로 이 형태에서 소스를 `.fromFiles(List<File>)`·`.fromStreams(List<String>, List<InputStream>)`로 여러 개 넘긴다(파일명에서 확장자를 뗀 이름·`csvNames`가 `@PxlSheet` 이름과 매칭된다).
+      CSV는 한 파일이 한 시트이므로 이 형태에서 소스를 `.fromFiles(List<File>)`·`.fromStreams(List<String>, List<InputStream>)`로 여러 개 넘긴다(파일명에서 확장자를 뗀 이름·`csvNames`가 `@PxlSheet` 이름과 매칭된다 — 공백과 대소문자를 무시한다).
     - 시트별로 나눠서: 같은 빌더 인스턴스로 `.sheet(...)`를 시트마다 호출하고 각각 마지막(실행) 단계까지 실행한다. 소스는 실행 단계에서 지정하므로 스트림은 호출마다 새로 열어 준다(파일은 매번 내부에서 열고 닫는다).
 - 구성 단계의 `.override(...)`은 선택적이며 체인 안에서 위치를 자유롭게 정할 수 있다 — `.workbook(...)`/`.sheet(...)`의 앞이든 뒤든 마지막(실행) 단계 전이기만 하면 된다(여러 번 지정하면 마지막 값이 적용된다). 옵션 객체에 담긴 값으로 애노테이션 값을 런타임에 오버라이드한다.  
   export는 `.override(...)`에 `PxlExportWorkbookOption`을, import는 `PxlImportWorkbookOption`을 인자로 넘긴다(생략하면 애노테이션 값을 그대로 쓴다).
@@ -365,15 +365,15 @@ export(및 샘플 export)에서는 사용되지 않는다.
 
 | 속성                                                                                                          | 기본값     | 설명                                                       |
 |-------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------|
-| `name`                                                                                                      | 필드명     | 시트 이름(배열). 실제 시트명과 일치해야 바인딩됨.<br/>배열로 지정 시 그중 하나만 존재해야 함 |
+| `name`                                                                                                      | 필드명     | 시트 이름(배열). 실제 시트명과 일치해야 바인딩됨(공백·대소문자 무시).<br/>배열로 지정 시 그중 하나만 존재해야 함 |
 | `importEnabled`                                                                                             | `true`  | Import 사용 여부                                             |
-| `importOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지 여부                          |
+| `importOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지 여부(대소문자 무시)                          |
 | `importExcludeHiddenRows` / `importExcludeHiddenColumns`                                                    | `false` | 숨겨진 행/열 제외 여부                                            |
 | `importEachCellOfMergedRegion`                                                                              | `false` | 병합 셀을 개별 셀에 동일 값으로 처리할지                                  |
 | `importHeaderRowIndex` / `importFirstDataRowIndex` / `importLastDataRowIndex`                               | `0`     | Import 시 Header/시작/끝 데이터 행 (1-based, 아래 *인덱스 규칙* 참고) |
 | `importFirstDataColumnIndex` / `importLastDataColumnIndex`                                                  | `0`     | Import 시 시작/끝 데이터 열 (1-based)                        |
 | `exportEnabled` / `exportSampleEnabled`                                                                     | `true`  | Export / 샘플 Export 사용 여부                                 |
-| `exportOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지                             |
+| `exportOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지(대소문자 무시)                             |
 | `exportRowHeightInPoints`                                                                                   | `-1.0`  | 시트 내 행 높이(point). 미설정 시 기본 높이                            |
 | `exportOrder`                                                                                               | `""`    | 시트 생성 순서 키 (문자열 비교, 아래 *Export 순서* 참고)                   |
 | `exportGroupingFieldName`                                                                                   | `""`    | 이 필드 값으로 그룹핑하여 여러 시트로 분할                                 |
@@ -396,7 +396,7 @@ import 전용: export(및 샘플 export)에서는 사용되지 않는다.
 
 | 속성                                                                                                             | 기본값        | 설명                                                                                                             |
 |----------------------------------------------------------------------------------------------------------------|------------|----------------------------------------------------------------------------------------------------------------|
-| `name`                                                                                                         | 필드명        | 열 이름(배열). 실제 열명과 일치해야 바인딩됨.<br/>배열로 지정 시 그중 하나만 존재해야 함                                                         |
+| `name`                                                                                                         | 필드명        | 열 이름(배열). 실제 열명과 일치해야 바인딩됨(공백은 무시, 대소문자는 구분).<br/>배열로 지정 시 그중 하나만 존재해야 함                                                         |
 | `pattern`                                                                                                      | `""`       | `importPattern` / `exportPattern`이 비었을 때 쓰는 공통 폴백 패턴                                                           |
 | `collectionSeparator`                                                                                          | `";"`      | `importCollectionSeparator` / `exportCollectionSeparator`가 비었을 때 쓰는 공통 폴백                                      |
 | `importEnabled`                                                                                                | `true`     | Import 사용 여부                                                                                                   |
@@ -1037,7 +1037,7 @@ List<Employee> rows = pxl.importExcel()
   import 시 리플렉션으로 행 객체를 만든다.  
   Lombok을 쓸 때 `@AllArgsConstructor`만 붙이면 무인자 생성자가 사라지므로 `@NoArgsConstructor`를 함께 붙인다.
 - ✅ **이름 매칭**  
-  `@PxlColumn`/`@PxlSheet`의 `name`(미지정 시 필드명)이 실제 헤더/시트명과 일치해야 한다. 공백은 무시되지만 대소문자는 구분된다.
+  `@PxlColumn`/`@PxlSheet`의 `name`(미지정 시 필드명)이 실제 헤더/시트명과 일치해야 한다. 둘 다 공백은 무시한다. 시트명은 대소문자도 무시하지만 컬럼 헤더는 대소문자를 구분한다.
 - ✅ **이름 안 맞는 컬럼**  
   필수(`@NotNull`/`@NotEmpty`/`@NotBlank`)면 예외 발생, 필수가 아니면 조용히 제외된다.
 - ✅ **인덱스는 1-based**  

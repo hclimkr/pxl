@@ -232,8 +232,9 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
             throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_EXPORT_SHEET_NAME_ROW_CLASS_COUNT_MISMATCH));
         }
 
-        if (PxlCollectionUtils.hasDuplicates(sheetNames, WorkbookUtil::createSafeSheetName)) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_EXPORT_DUPLICATE_SHEET_NAME));
+        final Set<String> duplicatedSheetNames = PxlWorkbookSupport.findDuplicateSheetNames(sheetNames);
+        if (!duplicatedSheetNames.isEmpty()) {
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_EXPORT_DUPLICATE_SHEET_NAME, duplicatedSheetNames));
         }
 
         for (int index = 0; index < PxlCollectionUtils.size(sheetObjects); index++) {
@@ -374,8 +375,9 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
             throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_EXPORT_SHEET_NAME_ROW_CLASS_COUNT_MISMATCH));
         }
 
-        if (PxlCollectionUtils.hasDuplicates(sheetNames, WorkbookUtil::createSafeSheetName)) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_EXPORT_DUPLICATE_SHEET_NAME));
+        final Set<String> duplicatedSheetNames = PxlWorkbookSupport.findDuplicateSheetNames(sheetNames);
+        if (!duplicatedSheetNames.isEmpty()) {
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_EXPORT_DUPLICATE_SHEET_NAME, duplicatedSheetNames));
         }
 
         for (int index = 0; index < PxlCollectionUtils.size(rowClasses); index++) {

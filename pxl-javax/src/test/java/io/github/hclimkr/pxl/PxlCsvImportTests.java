@@ -458,6 +458,30 @@ public class PxlCsvImportTests {
     }
 
     @Test
+    public void importCsvFile_workbookForm_differentCaseFileName_matchesSheetName(@TempDir final Path tempDir) throws Exception {
+        // A file name carries whatever casing the file system holds - Windows does not distinguish it at all - so the
+        // derived sheet name is matched against @PxlSheet ignoring case: "EMPLOYEES.csv" still selects "Employees".
+        final File employeesCsv = writeCsv(tempDir, "EMPLOYEES.csv", EMPLOYEES_CSV);
+
+        final CompanyWorkbook workbook = pxl.importCsv()
+                .workbook(CompanyWorkbook.class)
+                .fromFile(employeesCsv);
+
+        assertEmployees(workbook.getEmployees());
+        assertThat(workbook.getDepartments()).isNullOrEmpty();
+    }
+
+    @Test
+    public void importCsvStream_workbookForm_differentCaseCsvName_matchesSheetName() throws Exception {
+        // The explicitly given csvName is matched the same way as a file-derived one.
+        final CompanyWorkbook workbook = pxl.importCsv()
+                .workbook(CompanyWorkbook.class)
+                .fromStream("employees", stream(EMPLOYEES_CSV));
+
+        assertEmployees(workbook.getEmployees());
+    }
+
+    @Test
     public void importCsv_shortAndBlankRows_skipped() throws Exception {
         // A row shorter than the mapped column index leaves that field null; a row whose only mapped column is
         // blank is treated as an ignorable row and skipped.

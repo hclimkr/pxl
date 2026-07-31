@@ -179,7 +179,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
     /**
      * Matches each sheet meta to a CSV stream by name and records its stream index. (import)
-     * Names are compared after whitespace removal; each CSV may match at most one sheet.
+     * Names are compared after whitespace removal, ignoring case; each CSV may match at most one sheet.
      *
      * @param csvNames   the CSV/sheet names; must be the same size as {@code csvStreams}
      * @param csvStreams the CSV input streams
@@ -224,7 +224,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
                     continue;
                 }
 
-                if (sheetNames.contains(csvName)) {
+                if (matchesSheetName(sheetNames, csvName)) {
                     if (sheetMeta.getActualImportSheetIndex() >= 0) {
                         throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_DUPLICATE, sheetNames));
                     }

@@ -188,7 +188,10 @@ public final class PxlImportSheetMeta {
 //        final Field[] sheetFields = workbookClass.getDeclaredFields();
         final List<Field> sheetFields = PxlReflectionSupport.getAllFields(workbookClass);
         final List<PxlImportSheetMeta> sheetMetas = new ArrayList<>(PxlCollectionUtils.size(sheetFields));
-        final Set<String> overriddenSheetNames = new HashSet<>();
+        // Names differing only in case denote the same sheet on import, so an override must be recognized the same
+        // way - a sheet declared as "EMPLOYEES" overrides a super-class sheet declared as "Employees", or else both
+        // would bind the one physical sheet that matches either name.
+        final Set<String> overriddenSheetNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
         for (final Field sheetField : sheetFields) {
             // Get the @PxlSheet annotation for the sheet field.

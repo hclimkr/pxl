@@ -10,6 +10,7 @@ import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlImportWorkbookMeta;
+import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.commons.lang3.StringUtils;
@@ -32,7 +33,8 @@ import java.io.*;
 import java.lang.reflect.Field;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Workbook lifecycle and naming for the binder: creating an empty workbook for an export format, opening a source
@@ -328,6 +330,30 @@ public final class PxlWorkbookSupport {
         } catch (IOException | ReadException e) {
             throw new IOException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.SUPPORT_WORKBOOK_FILE_UNREADABLE, e.getMessage()));
         }
+    }
+
+    /**
+     * Returns the sheet names that collide with an earlier name in the given sequence, so an export can reject them
+     * before writing anything.
+     *
+     * <p>Names are compared as the safe names they will become ({@link WorkbookUtil#createSafeSheetName(String)} —
+     * invalid characters replaced, truncated to 31 chars), <strong>ignoring case</strong>: a workbook cannot hold two
+     * sheets whose names differ only in case, which is also how a sheet name is matched on import. The comparison is
+     * locale-independent. Sanitizing is idempotent, so a caller may pass names that are already safe.</p>
+     *
+     * <p>The returned names are the <em>original</em> ones, in encounter order, keeping the diagnostic message
+     * pointing at what the caller actually declared.</p>
+     *
+     * @param desiredNames the sheet names about to be written, in order; may be {@code null}
+     * @return the colliding names (every occurrence after the first), empty when all are unique
+     */
+    public static Set<String> findDuplicateSheetNames(final Collection<String> desiredNames) {
+
+        final Set<String> safeNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        return PxlCollectionUtils.emptyIfNull(desiredNames).stream()
+                .filter(Objects::nonNull)
+                .filter(desiredName -> !safeNames.add(WorkbookUtil.createSafeSheetName(desiredName)))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**

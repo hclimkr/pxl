@@ -13,6 +13,7 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.internal.support.PxlClassSupport;
 import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
+import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
 import io.github.hclimkr.pxl.option.PxlExportColumnOption;
 import io.github.hclimkr.pxl.option.PxlExportSheetOption;
 import io.github.hclimkr.pxl.styler.PxlStyler;
@@ -229,7 +230,9 @@ public final class PxlExportSheetMeta {
 //        final Field[] sheetFields = workbookClass.getDeclaredFields();
         final List<Field> sheetFields = PxlReflectionSupport.getAllFields(workbookClass);
         final List<PxlExportSheetMeta> sheetMetas = new ArrayList<>(PxlCollectionUtils.size(sheetFields));
-        final Set<String> overriddenSheetNames = new HashSet<>();
+        // Names differing only in case denote the same sheet - a workbook cannot hold both - so an override is
+        // recognized ignoring case, the way import matches sheet names.
+        final Set<String> overriddenSheetNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
         for (final Field sheetField : sheetFields) {
             // Get the @PxlSheet annotation for the sheet field.
@@ -456,7 +459,7 @@ public final class PxlExportSheetMeta {
                 .map(PxlExportSheetMeta::getActualExportSheetName)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-        final Set<String> duplicatedSheetNames = PxlCollectionUtils.findDuplicates(exportedSheetNames);
+        final Set<String> duplicatedSheetNames = PxlWorkbookSupport.findDuplicateSheetNames(exportedSheetNames);
         if (!duplicatedSheetNames.isEmpty()) {
             throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_DUPLICATE_SHEET_NAME, duplicatedSheetNames));
         }

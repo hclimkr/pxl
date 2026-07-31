@@ -8,6 +8,7 @@ import io.github.hclimkr.pxl.internal.meta.PxlImportColumnMeta;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
 import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
+import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -57,6 +58,27 @@ abstract class PxlAbstractImporter extends PxlAbstractBinder {
                 .filter(o -> Objects.nonNull(o.getAnnotation(PxlRowIndex.class)))
                 .findFirst()
                 .orElse(null);
+    }
+
+    /**
+     * Returns whether the sheet name read from the source matches any of the candidate names, ignoring case.
+     *
+     * <p>A sheet name is not always typed by hand where the binding is declared: a CSV sheet is named after its
+     * file, and file names carry the casing the file system happens to hold — Windows does not distinguish it at
+     * all, so {@code Employees.csv} and {@code employees.csv} name the same sheet. Excel sheets match the same way
+     * so that the rule does not depend on the source format. Comparison is locale-independent.</p>
+     *
+     * <p>Both sides are expected to be whitespace-stripped already, which is what the callers compare.</p>
+     *
+     * @param candidateSheetNames the candidate sheet names to match against
+     * @param sheetName           the sheet name read from the source
+     * @return {@code true} if any candidate equals {@code sheetName} ignoring case; {@code false} otherwise
+     */
+    protected static boolean matchesSheetName(final List<String> candidateSheetNames,
+                                              final String sheetName) {
+
+        return candidateSheetNames.stream()
+                .anyMatch(candidateSheetName -> StringUtils.equalsIgnoreCase(candidateSheetName, sheetName));
     }
 
     /**

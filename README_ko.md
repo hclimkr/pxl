@@ -462,7 +462,7 @@ try (InputStream is = new FileInputStream("employees.xlsx")) {
 ### Import 대상 CSV 파일 모양
 
 CSV는 첫 줄이 헤더, 이후가 데이터인 일반 텍스트다(엑셀과 달리 셀 타입이 없어 날짜·불리언도 문자열로 적는다).
-파일명에서 확장자를 뺀 이름이 시트명이 된다 — 예: `Employees.csv` → 시트 `Employees`. 워크북 형태에서는 이 이름이 `@PxlSheet` 시트명과 정확히 일치해야 바인딩된다(공백은 무시, 대소문자는 구분).
+파일명에서 확장자를 뺀 이름이 시트명이 된다. 워크북 형태에서는 이 이름이 `@PxlSheet` 시트명과 일치해야 바인딩되며, 공백과 대소문자는 무시한다.
 
 ```text
 Name,Age,Salary,Active,HireDate,Grade

@@ -200,10 +200,10 @@ The direction (export/import) and format (excel/csv) are embedded in the start m
 | CSV import      | `pxl.importCsv()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromFiles(List<File>)` / `.fromStream(String, InputStream)` / `.fromStreams(List<String>, List<InputStream>)` |
 
 - The configuration steps `.workbook(...)` and `.sheet(...)` are mutually exclusive — specifying both in one chain throws `PxlArgumentException` (as does omitting both).
-- For export, calling `.sheet(...)` multiple times creates multiple sheets — the call order becomes the sheet order within the workbook, and each sheet may take a different row class. A duplicated sheet name (compared after normalization to a safe name) throws `PxlDataException`.
+- For export, calling `.sheet(...)` multiple times creates multiple sheets — the call order becomes the sheet order within the workbook, and each sheet may take a different row class. A duplicated sheet name (compared after normalization to a safe name, ignoring case) throws `PxlDataException` naming the offender — a workbook cannot hold two sheets whose names differ only in case.
 - For import, `.sheet(...)` cannot be chained consecutively — there are two ways to read multiple sheets.
     - All at once, in workbook form: passing a `@PxlWorkbook` class to `.workbook(...)` binds multiple sheets at once, one per `@PxlSheet` field.  
-      Since one CSV file is one sheet, in this form you pass multiple sources via `.fromFiles(List<File>)` / `.fromStreams(List<String>, List<InputStream>)` (the file name without its extension, or the `csvNames` entry, is matched against the `@PxlSheet` name).
+      Since one CSV file is one sheet, in this form you pass multiple sources via `.fromFiles(List<File>)` / `.fromStreams(List<String>, List<InputStream>)` (the file name without its extension, or the `csvNames` entry, is matched against the `@PxlSheet` name — whitespace and case are ignored).
     - One sheet at a time: call `.sheet(...)` once per sheet on the same builder instance and run each through its final (execute) step. The source is given at the execute step, so open a fresh stream per call (files are opened and closed internally each time).
 - The configuration-step `.override(...)` is optional, and its position within the chain can be set freely — before or after `.workbook(...)`/`.sheet(...)`, as long as it comes before the final (execute) step (if specified more than once, the last value wins). It overrides annotation values at runtime with the values carried in the option object.  
   For export, pass a `PxlExportWorkbookOption` to `.override(...)`; for import, pass a `PxlImportWorkbookOption` (if omitted, the annotation values are used as-is).
@@ -365,15 +365,15 @@ The default value `0` of an index attribute means "auto" (first row/column autom
 
 | Attribute                                                                                                    | Default | Description                                              |
 |-------------------------------------------------------------------------------------------------------------|---------|---------------------------------------------------------|
-| `name`                                                                                                      | field name | Sheet name (array). Must match the actual sheet name to bind.<br/>When specified as an array, only one of them must exist |
+| `name`                                                                                                      | field name | Sheet name (array). Must match the actual sheet name to bind (whitespace and case ignored).<br/>When specified as an array, only one of them must exist |
 | `importEnabled`                                                                                             | `true`  | Whether import is enabled                               |
-| `importOverrideSuperClassSheet`                                                                             | `false` | Whether to override the superclass field of the same sheet name |
+| `importOverrideSuperClassSheet`                                                                             | `false` | Whether to override the superclass field of the same sheet name (case ignored) |
 | `importExcludeHiddenRows` / `importExcludeHiddenColumns`                                                    | `false` | Whether to exclude hidden rows/columns                  |
 | `importEachCellOfMergedRegion`                                                                              | `false` | Whether to treat a merged cell as the same value in each individual cell |
 | `importHeaderRowIndex` / `importFirstDataRowIndex` / `importLastDataRowIndex`                               | `0`     | Header/first/last data row on import (1-based, see *Index Rules* below) |
 | `importFirstDataColumnIndex` / `importLastDataColumnIndex`                                                  | `0`     | First/last data column on import (1-based)              |
 | `exportEnabled` / `exportSampleEnabled`                                                                     | `true`  | Whether export / sample export is enabled               |
-| `exportOverrideSuperClassSheet`                                                                             | `false` | Whether to override the superclass field of the same sheet name |
+| `exportOverrideSuperClassSheet`                                                                             | `false` | Whether to override the superclass field of the same sheet name (case ignored) |
 | `exportRowHeightInPoints`                                                                                   | `-1.0`  | Row height within the sheet (points). Default height if unset |
 | `exportOrder`                                                                                               | `""`    | Sheet creation order key (string comparison, see *Export Order* below) |
 | `exportGroupingFieldName`                                                                                   | `""`    | Group by this field value and split into multiple sheets |
@@ -396,7 +396,7 @@ Import-only: It is not used on export (or sample export).
 
 | Attribute                                                                                                       | Default    | Description                                                                                                     |
 |----------------------------------------------------------------------------------------------------------------|------------|----------------------------------------------------------------------------------------------------------------|
-| `name`                                                                                                         | field name | Column name (array). Must match the actual column name to bind.<br/>When specified as an array, only one of them must exist |
+| `name`                                                                                                         | field name | Column name (array). Must match the actual column name to bind (whitespace ignored, case-sensitive).<br/>When specified as an array, only one of them must exist |
 | `pattern`                                                                                                      | `""`       | Common fallback pattern used when `importPattern` / `exportPattern` are empty                                   |
 | `collectionSeparator`                                                                                          | `";"`      | Common fallback used when `importCollectionSeparator` / `exportCollectionSeparator` are empty                   |
 | `importEnabled`                                                                                                | `true`     | Whether import is enabled                                                                                       |
@@ -1037,7 +1037,7 @@ List<Employee> rows = pxl.importExcel()
   Row objects are created by reflection on import.  
   When using Lombok, putting only `@AllArgsConstructor` removes the no-arg constructor, so add `@NoArgsConstructor` as well.
 - ✅ **Name matching**  
-  The `name` of `@PxlColumn`/`@PxlSheet` (the field name if unspecified) must match the actual header/sheet name. Whitespace is ignored, but case is distinguished.
+  The `name` of `@PxlColumn`/`@PxlSheet` (the field name if unspecified) must match the actual header/sheet name. Whitespace is ignored on both. A sheet name ignores case as well while a column header is matched case-sensitively.
 - ✅ **Columns whose names do not match**  
   If required (`@NotNull`/`@NotEmpty`/`@NotBlank`), an exception is raised; if not required, it is silently excluded.
 - ✅ **Indices are 1-based**  

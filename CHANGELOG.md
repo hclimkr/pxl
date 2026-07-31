@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Sheet names are now matched **ignoring case** on import, in both the Excel and the CSV
+  reader: `Employees.csv` binds a sheet declared as `@PxlSheet(name = "employees")`, and an
+  Excel sheet named `EMPLOYEE` binds the alias `Employee`. A sheet name is not always typed
+  by hand where the binding is declared — a CSV sheet is named after its file, and a file
+  name carries whatever casing the file system holds, which on Windows is not distinguished
+  at all. Whitespace is still removed from both sides before comparing, and **column headers
+  are unchanged: they remain case-sensitive**.
+
+- The duplicate-sheet-name check on export ignores case too, so two sheets named `Employees` and
+  `EMPLOYEES` are rejected with `PxlDataException` before anything is written, instead of
+  reaching POI and surfacing as a `PxlSystemException` with sheets already created. It covers
+  the sheet form, the sample export, and the workbook form alike, and the message now carries
+  the offending names. No export that used to succeed fails now — a workbook could never hold
+  both sheets.
+
+- `importOverrideSuperClassSheet` / `exportOverrideSuperClassSheet` now recognize an override
+  ignoring case as well, so a subclass field declared as `@PxlSheet(name = "EMPLOYEES")`
+  overrides a superclass sheet named `Employees`. The two names denote one sheet — on import
+  both fields would otherwise bind the single sheet that matches either name, and on export a
+  workbook cannot hold both.
+
 - The contributing guide (`CONTRIBUTING.md` / `CONTRIBUTING_ko.md`) now states the
   repository's policy — issue reports and suggestions only, pull requests are not
   accepted — and asks for the version and artifact, expected versus actual behavior, and

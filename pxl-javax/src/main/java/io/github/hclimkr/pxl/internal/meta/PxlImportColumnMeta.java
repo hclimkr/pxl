@@ -227,7 +227,7 @@ public final class PxlImportColumnMeta {
 //        final Field[] columnFields = rowClass.getDeclaredFields();
         final List<Field> columnFields = PxlReflectionSupport.getAllFields(rowClass);
         final List<PxlImportColumnMeta> columnMetas = new ArrayList<>(PxlCollectionUtils.size(columnFields));
-        final Set<String> overriddenSheetNames = new HashSet<>();
+        final Set<String> overriddenColumnNames = new HashSet<>();
 
         for (final Field columnField : columnFields) {
             final PxlColumn columnAnnotation = columnField.getAnnotation(PxlColumn.class);
@@ -248,9 +248,9 @@ public final class PxlImportColumnMeta {
                 }
 
                 // Ignore if the column name is already overridden and in use.
-                final boolean overriddenSheet = candidateColumnNames.stream()
-                        .anyMatch(overriddenSheetNames::contains);
-                if (overriddenSheet) {
+                final boolean overriddenColumn = candidateColumnNames.stream()
+                        .anyMatch(overriddenColumnNames::contains);
+                if (overriddenColumn) {
                     continue;
                 }
 
@@ -306,7 +306,7 @@ public final class PxlImportColumnMeta {
                         ));
 
                 if (importEnabled && importOverrideSuperClassColumn) {
-                    overriddenSheetNames.addAll(candidateColumnNames);
+                    overriddenColumnNames.addAll(candidateColumnNames);
                 }
             }
         }

@@ -15,6 +15,8 @@ public @interface PxlSheet {
 
     /**
      * Specifies the name for the Excel sheet.
+     * On import, it is matched against the actual sheet name (the CSV file name, extension removed, for a CSV source)
+     * after whitespace removal, ignoring case.
      *
      * @return the sheet name(s); when empty ({@code {}}), the field name is used
      */
@@ -29,6 +31,7 @@ public @interface PxlSheet {
 
     /**
      * Specifies whether, on import, to override a superclass field that uses the same sheet name, if one exists.
+     * Names differing only in case count as the same sheet name here, as they do when matching a sheet.
      *
      * @return {@code true} to override a same-named superclass sheet on import; defaults to {@link PxlConstants#DEFAULT_IMPORT_OVERRIDE_SUPER_CLASS_SHEET} ({@code false})
      */
@@ -111,6 +114,7 @@ public @interface PxlSheet {
 
     /**
      * Specifies whether, on export, to override a superclass field that uses the same sheet name, if one exists.
+     * Names differing only in case count as the same sheet name here, since a workbook cannot hold both.
      *
      * @return {@code true} to override a same-named superclass sheet on export; defaults to {@link PxlConstants#DEFAULT_EXPORT_OVERRIDE_SUPER_CLASS_SHEET} ({@code false})
      */

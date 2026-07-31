@@ -250,6 +250,130 @@ public class PxlWorkbookOptionTests {
         assertThat(imported).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
 
+    @Test
+    public void exportOverrideSuperClassSheet_differentCase_childSheetWins() throws Exception {
+        // The child names the same sheet in a different case ("EMPLOYEES" against the super's "Employees").
+        // Names differing only in case denote one sheet - a workbook cannot hold both - so the override applies.
+        final SubCaseExportSheetWorkbook workbook = new SubCaseExportSheetWorkbook();
+        workbook.workbookName = "W";
+        workbook.employees = twoEmployees();                                   // child data (Alice, Bob)
+        ((SuperExportSheetWorkbook) workbook).employees = Arrays.asList(
+                Fixtures.employee("Carol", 35, "68000", true, null, Grade.A, "Finance"));   // parent data
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .workbook(workbook)
+                .override(noValidationOption())
+                .toFile(excelFile);
+
+        // child overrides -> a single sheet with only the child data, read back with the differently cased name
+        final List<Employee> imported = pxl.importExcel()
+                .sheet(Employee.class, Arrays.asList("Employees"))
+                .fromFile(excelFile);
+
+        assertThat(imported).extracting(Employee::getName).containsExactly("Alice", "Bob");
+    }
+
+    // Returns the "Name" column values of the given sheet's data rows (header row 0).
+    private static List<String> employeeNames(final Sheet sheet) {
+        final int nameColumn = colIndex(sheet, "Name");
+        final List<String> names = new ArrayList<>();
+        for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+            names.add(sheet.getRow(rowIndex).getCell(nameColumn).getStringCellValue());
+        }
+        return names;
+    }
+
+    // A workbook whose super field carries data too, so a suppressed sheet is suppressed by the override
+    // rather than by having nothing to write.
+    private static List<Employee> oneParentEmployee() {
+        return Arrays.asList(Fixtures.employee("Carol", 35, "68000", true, null, Grade.A, "Finance"));
+    }
+
+    @Test
+    public void exportOverrideSuperClassSheet_bySheetNameNotFieldName_childSheetWins() throws Exception {
+        // The override is keyed on the sheet name, not the field name: a field named staff that lists "Employees"
+        // among its candidate names still suppresses the super's employees field. The sheet it writes is named
+        // after the FIRST candidate ("Crew") - matching decides the override, the first name decides the label.
+        final SubAliasOverrideExportSheetWorkbook workbook = new SubAliasOverrideExportSheetWorkbook();
+        workbook.workbookName = "W";
+        workbook.staff = twoEmployees();                                       // child data (Alice, Bob)
+        ((SuperExportSheetWorkbook) workbook).employees = oneParentEmployee();  // parent data
+
+        final Workbook poi = pxl.exportExcel()
+                .workbook(workbook)
+                .override(noValidationOption())
+                .toWorkbook();
+        try {
+            assertThat(poi.getNumberOfSheets()).isEqualTo(1);
+            assertThat(poi.getSheetName(0)).isEqualTo("Crew");
+            assertThat(employeeNames(poi.getSheetAt(0))).containsExactly("Alice", "Bob");
+        } finally {
+            poi.close();
+        }
+    }
+
+    @Test
+    public void exportOverrideSuperClassSheet_withDifferentSheetName_doesNotOverride() throws Exception {
+        // Shadowing the field is not by itself an override: this employees field names a different sheet
+        // ("Staff"), so the super's "Employees" is written as well and the workbook carries both.
+        final SubOtherNameOverrideExportSheetWorkbook workbook = new SubOtherNameOverrideExportSheetWorkbook();
+        workbook.workbookName = "W";
+        workbook.employees = twoEmployees();
+        ((SuperExportSheetWorkbook) workbook).employees = oneParentEmployee();
+
+        final Workbook poi = pxl.exportExcel()
+                .workbook(workbook)
+                .override(noValidationOption())
+                .toWorkbook();
+        try {
+            assertThat(poi.getNumberOfSheets()).isEqualTo(2);
+            assertThat(employeeNames(poi.getSheet("Staff"))).containsExactly("Alice", "Bob");
+            assertThat(employeeNames(poi.getSheet("Employees"))).containsExactly("Carol");
+        } finally {
+            poi.close();
+        }
+    }
+
+    @Test
+    public void exportOverrideSuperClassSheet_onDisabledSheet_doesNotOverride() throws Exception {
+        // A sheet excluded from export claims no name, so its override never takes effect:
+        // the super's employees field writes the "Employees" sheet.
+        final SubDisabledOverrideExportSheetWorkbook workbook = new SubDisabledOverrideExportSheetWorkbook();
+        workbook.workbookName = "W";
+        workbook.employees = twoEmployees();
+        ((SuperExportSheetWorkbook) workbook).employees = oneParentEmployee();
+
+        final Workbook poi = pxl.exportExcel()
+                .workbook(workbook)
+                .override(noValidationOption())
+                .toWorkbook();
+        try {
+            assertThat(poi.getNumberOfSheets()).isEqualTo(1);
+            assertThat(poi.getSheetName(0)).isEqualTo("Employees");
+            assertThat(employeeNames(poi.getSheetAt(0))).containsExactly("Carol");
+        } finally {
+            poi.close();
+        }
+    }
+
+    @Test
+    public void exportOverrideSuperClassSheet_declaredOnSuperClass_throws() throws Exception {
+        // The flag runs from a subclass toward its superclass only. Declared on the superclass it suppresses
+        // nothing - the subclass field is resolved first - so both fields ask for an "Employees" sheet and the
+        // export fails, where the same pair with the flag on the child (see above) succeeds.
+        // The duplicate is caught while resolving the sheet metadata, before any sheet is created.
+        final SubOverrideExportSheetWorkbook workbook = new SubOverrideExportSheetWorkbook();
+        workbook.workbookName = "W";
+        workbook.employees = twoEmployees();
+        ((SuperOverrideExportSheetWorkbook) workbook).employees = oneParentEmployee();
+
+        assertThrows(PxlDataException.class, () -> pxl.exportExcel()
+                .workbook(workbook)
+                .override(noValidationOption())
+                .toWorkbook());
+    }
+
     // ------------------------------------------------------------------
     // Column override on export (exportOverrideSuperClassColumn)
     // ------------------------------------------------------------------

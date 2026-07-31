@@ -23,8 +23,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Column/sheet name matching rule tests.
  * <p>
- * Names are matched whitespace-insensitively but case-sensitively; verifies array (alias), numeric-header,
- * and enum-value matching rules, plus behavior when a required/optional column header is missing.
+ * Names are matched whitespace-insensitively; a column header is matched case-sensitively while a sheet name is not.
+ * Verifies array (alias), numeric-header, and enum-value matching rules, plus behavior when a required/optional
+ * column header is missing.
  */
 public class PxlNameMatchingTests {
 
@@ -116,8 +117,34 @@ public class PxlNameMatchingTests {
     }
 
     // ------------------------------------------------------------------
-    // Sheet name matching: alias
+    // Sheet name matching: alias / case-insensitive
     // ------------------------------------------------------------------
+
+    @Test
+    public void sheetName_differentCase_matches() throws Exception {
+        // Actual sheet "Data" == candidate name "DATA" -> matched ignoring case
+        // (a sheet name is not always typed by hand: a CSV sheet is named after its file)
+        final byte[] bytes = stringSheet("Data", new String[]{"Full Name", "Id"}, new String[][]{{"Alice", "1"}});
+        assertThat(importList(bytes, "DATA", NameMatchRow.class).get(0).getName()).isEqualTo("Alice");
+    }
+
+    @Test
+    public void sheetName_workbookForm_differentCase_matches() throws Exception {
+        // The workbook form matches the same way: the actual sheet "EMPLOYEE" binds the @PxlSheet alias "Employee"
+        final File excelFile = TestPaths.exportFile(testInfo);
+        final List<Employee> employees = Arrays.asList(
+                Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering"));
+        pxl.exportExcel()
+                .sheet(Employee.class, employees, "EMPLOYEE")
+                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build())
+                .toFile(excelFile);
+
+        final AliasSheetWorkbook imported = pxl.importExcel()
+                .workbook(AliasSheetWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(imported.getData()).extracting(Employee::getName).containsExactly("Alice");
+    }
 
     @Test
     public void sheetName_alias_anyOfArrayMatches() throws Exception {
