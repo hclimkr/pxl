@@ -10,7 +10,6 @@ import io.github.hclimkr.pxl.internal.support.PxlDateCellSupport;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.DateUtil;
 
 import java.time.DateTimeException;
 import java.time.LocalDate;
@@ -58,13 +57,8 @@ final class PxlLocalDateCodec {
         final CellType cellType = cell.getCellType();
         switch (cellType) {
             case NUMERIC:
-                final double numericValue = cell.getNumericCellValue();
                 try {
-                    if (DateUtil.isCellDateFormatted(cell)) {
-                        localDateValue = cell.getLocalDateTimeCellValue().toLocalDate();
-                    } else {
-                        localDateValue = DateUtil.getLocalDateTime(numericValue).toLocalDate();
-                    }
+                    localDateValue = PxlDateCellSupport.readNumericCellAsLocalDateTime(cell, "LocalDate").toLocalDate();
                 } catch (NumberFormatException numberFormatException) {
                     throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), "LocalDate"), numberFormatException);
                 }

@@ -42,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A numeric cell whose serial number is no Excel date — a negative one, for instance — is now rejected with a
+  `PxlCellCodecException` naming the value. POI answers `null` for such a serial, which every java.time codec
+  dereferenced into a message-less `NullPointerException`, while the `Date` codec bound it as no value at all;
+  both paths now read the cell through one helper and report the same diagnostic.
+
 - `exportSample` is now translated on `Collection<String>` and `Collection<Enum>` columns too. The i18n gate
   read the field type, so only String and enum scalars passed and a collection sample kept its raw bundle
   keys — or failed outright on `Collection<Enum>`, whose keys could not be parsed back into constants. Each

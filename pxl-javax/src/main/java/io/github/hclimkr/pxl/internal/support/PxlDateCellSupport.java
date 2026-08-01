@@ -1,8 +1,12 @@
 package io.github.hclimkr.pxl.internal.support;
 
+import io.github.hclimkr.pxl.exception.PxlCellCodecException;
+import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
+import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlExportColumnMeta;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DateUtil;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -11,11 +15,14 @@ import java.util.Date;
 import java.util.Objects;
 
 /**
- * Shared helper for exporting date/time values as Numeric (Excel date serial) cells rather than as strings.
+ * Shared helper for the Numeric (Excel date serial) cell of a date/time column, in both directions.
  * <p>
- * Each date/time codec writes the value through this helper when no pattern or masking is specified ({@link PxlExportColumnMeta#isExportedToString()} is false).
+ * On export, each date/time codec writes the value through this helper when no pattern or masking is specified ({@link PxlExportColumnMeta#isExportedToString()} is false).
  * In this case the cell gets a date display-format style (inherited from the column-common data style), so that
  * the value itself is numeric but is displayed on screen as a date/time, and Excel's date sorting, filtering, and functions work correctly.
+ * <p>
+ * On import, the codecs read a numeric cell through {@link #readNumericCellAsLocalDateTime} / {@link #readNumericCellAsJavaDate},
+ * which turn a serial number that is no Excel date into a diagnostic naming the value.
  */
 public final class PxlDateCellSupport {
 
@@ -119,6 +126,61 @@ public final class PxlDateCellSupport {
 
         applyDateFormat(cell, columnMeta, excelFormatCode);
         cell.setCellValue((double) value.toNanoOfDay() / NANOS_PER_DAY);
+    }
+
+    /**
+     * Reads a numeric cell as a {@link LocalDateTime}, rejecting a serial number that is no Excel date. (import)
+     * <p>
+     * A date-formatted cell is read through POI's own date conversion, any other numeric cell as a raw Excel date
+     * serial. POI answers {@code null} for a serial outside the Excel date range — a negative one, for instance —
+     * so the value is checked here instead of being dereferenced by each caller, which would surface the failure as
+     * a message-less {@code NullPointerException} that names neither the cell nor the value.
+     *
+     * @param cell     the numeric cell to read
+     * @param typeName the name of the target type, used in the diagnostic message
+     * @return the cell value as a {@code LocalDateTime}
+     * @throws PxlCellCodecException if the cell holds a serial number that is not a valid Excel date
+     */
+    public static LocalDateTime readNumericCellAsLocalDateTime(final Cell cell,
+                                                               final String typeName)
+            throws PxlCellCodecException {
+
+        final LocalDateTime localDateTimeValue = DateUtil.isCellDateFormatted(cell)
+                ? cell.getLocalDateTimeCellValue()
+                : DateUtil.getLocalDateTime(cell.getNumericCellValue());
+
+        if (Objects.isNull(localDateTimeValue)) {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), typeName));
+        }
+
+        return localDateTimeValue;
+    }
+
+    /**
+     * Reads a numeric cell as a {@link Date}, rejecting a serial number that is no Excel date. (import)
+     * <p>
+     * The {@code java.util.Date} counterpart of {@link #readNumericCellAsLocalDateTime}: POI answers {@code null} for
+     * the same out-of-range serials, and the Date codec assigned that {@code null} straight to the field, leaving an
+     * invalid cell to bind as no value at all instead of being reported.
+     *
+     * @param cell     the numeric cell to read
+     * @param typeName the name of the target type, used in the diagnostic message
+     * @return the cell value as a {@code Date}
+     * @throws PxlCellCodecException if the cell holds a serial number that is not a valid Excel date
+     */
+    public static Date readNumericCellAsJavaDate(final Cell cell,
+                                                 final String typeName)
+            throws PxlCellCodecException {
+
+        final Date dateValue = DateUtil.isCellDateFormatted(cell)
+                ? cell.getDateCellValue()
+                : DateUtil.getJavaDate(cell.getNumericCellValue());
+
+        if (Objects.isNull(dateValue)) {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), typeName));
+        }
+
+        return dateValue;
     }
 
 }

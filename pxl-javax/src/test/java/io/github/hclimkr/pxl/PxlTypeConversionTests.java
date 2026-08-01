@@ -796,6 +796,30 @@ public class PxlTypeConversionTests {
     }
 
     @Test
+    public void dateTimeTypes_negativeSerialNumericCell_throws() throws Exception {
+        // POI answers null for a serial number outside the Excel date range (isValidExcelDate(-1) is false). The
+        // java.time codecs used to dereference that null straight away, so the failure reached the caller as a
+        // message-less NPE wrapped in PxlCellCodecException, while the Date codec assigned the null and bound
+        // nothing at all. Every date/time column must reject the cell with a message that names the value.
+        final String[] headers = {
+                "JavaDate", "LocalDate", "LocalTime", "LocalDateTime",
+                "ZonedDateTime", "OffsetTime", "OffsetDateTime"};
+        for (final String header : headers) {
+            final byte[] bytes = sheet("Neg", s -> {
+                s.createRow(0).createCell(0).setCellValue(header);
+                s.createRow(1).createCell(0).setCellValue(-1.0);   // plain numeric cell -> read as a raw Excel serial
+            });
+
+            final PxlCellCodecException exception = assertThrows(PxlCellCodecException.class,
+                    () -> importList(bytes, "Neg", AllTypesRow.class),
+                    header + " column: a negative Excel serial must be rejected with PxlCellCodecException");
+            assertThat(exception)
+                    .as(header + " column: the message must name the offending value instead of hiding behind an NPE")
+                    .hasMessageContaining("-1");
+        }
+    }
+
+    @Test
     public void integer_numericOutOfRange_throws() throws Exception {
         // A finite NUMERIC value beyond the Integer range -> the unified requireWithinRange(double, ...) passes finiteness then rejects via range check.
         // (The Period path is covered by period_numericOutOfRange_throws - here we verify the range check is retained for the integer codec family.)

@@ -60,13 +60,8 @@ final class PxlJavaDateCodec {
         final CellType cellType = cell.getCellType();
         switch (cellType) {
             case NUMERIC:
-                final double numericValue = cell.getNumericCellValue();
                 try {
-                    if (DateUtil.isCellDateFormatted(cell)) {
-                        dateValue = cell.getDateCellValue();
-                    } else {
-                        dateValue = DateUtil.getJavaDate(numericValue);
-                    }
+                    dateValue = PxlDateCellSupport.readNumericCellAsJavaDate(cell, "Date");
                 } catch (NumberFormatException numberFormatException) {
                     throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), "Date"), numberFormatException);
                 }
