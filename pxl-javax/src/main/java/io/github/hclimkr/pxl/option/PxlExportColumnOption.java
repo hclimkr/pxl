@@ -28,6 +28,10 @@ public final class PxlExportColumnOption {
 
     /**
      * Specifies the name of the column on export.
+     * <p>
+     * Doubles as a content-i18n key, just like the {@link PxlColumn#name()} it overrides: when the workbook sets
+     * {@code exportI18nBaseName}, the name is resolved through that bundle first and it is the translation that is
+     * written as the header. A name the bundle does not carry is used as it stands.
      */
     @Builder.Default
     private List<String> exportColumnNames = null;
@@ -46,6 +50,9 @@ public final class PxlExportColumnOption {
 
     /**
      * Specifies the sample value on export.
+     * <p>
+     * Carries the content-i18n behaviour of the {@link PxlColumn#exportSample()} it overrides: a String or enum
+     * column resolves it through the export bundle, and a Collection of those is translated element by element.
      */
     @Builder.Default
     private String exportSample = null;
@@ -96,6 +103,9 @@ public final class PxlExportColumnOption {
 
     /**
      * Sets the list of selectable options on export.
+     * <p>
+     * Carries the content-i18n behaviour of the {@link PxlColumn#exportOptionItems()} it overrides: a String column
+     * resolves each item through the export bundle, and any other type uses the items verbatim.
      */
     @Builder.Default
     private String[] exportOptionItems = null;

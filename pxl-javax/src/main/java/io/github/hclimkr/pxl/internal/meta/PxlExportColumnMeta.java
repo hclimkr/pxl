@@ -18,6 +18,7 @@ import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import io.github.hclimkr.pxl.util.PxlMiscUtils;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
@@ -275,6 +276,12 @@ public final class PxlExportColumnMeta {
      * Each {@link PxlColumn}-annotated field becomes one column; column options (matched by field name) override the
      * annotation, i18n-resolved names are computed, columns are sorted by {@code exportOrder}, and actual 0-based
      * column indexes/names are assigned within the sheet's configured column range.
+     * <p>
+     * Besides the names, two more values are read through the workbook's export bundle. The {@code exportSample} of a
+     * String or enum column is translated, element by element when the column is a Collection; and the
+     * {@code exportOptionItems} of a String column are translated as well, so the dropdown lists the same text the
+     * sample cell holds. An enum, numeric or temporal column always writes its value in canonical form, so its
+     * dropdown is left untranslated to stay consistent with what is written.
      *
      * @param sheetMeta   the enclosing sheet metadata, supplying the row class, column options and cascaded stylers
      * @param isForSample {@code true} to select columns by {@code exportSampleEnabled}, {@code false} by {@code exportEnabled}
@@ -335,12 +342,10 @@ public final class PxlExportColumnMeta {
                         .flatMap(option -> Optional.ofNullable(option.getExportSampleEnabled()))
                         .orElseGet(columnAnnotation::exportSampleEnabled);
 
+                // Translated below, once the collection separator this sample is split on is resolved.
                 String exportSample = Optional.ofNullable(columnOption)
                         .flatMap(option -> Optional.ofNullable(option.getExportSample()))
                         .orElseGet(columnAnnotation::exportSample);
-                if (StringUtils.isNotBlank(exportSample) && (columnField.getType() == String.class || columnField.getType().isEnum())) {
-                    exportSample = PxlI18nContent.translate(exportResourceBundle, exportSample);
-                }
 
                 final boolean exportTrim = Optional.ofNullable(columnOption)
                         .flatMap(option -> Optional.ofNullable(option.getExportTrim()))
@@ -363,6 +368,21 @@ public final class PxlExportColumnMeta {
                 if (StringUtils.isEmpty(exportCollectionSeparator)) {
                     exportCollectionSeparator = PxlConstants.DEFAULT_COLLECTION_SEPARATOR;
                 }
+
+                // The sample of a String/enum column is a content-i18n key as well. A Collection of those carries one
+                // key per element, so it is split on the separator resolved just above and translated element by element.
+                if (exportSampleEnabled
+                        && Objects.nonNull(exportResourceBundle)
+                        && StringUtils.isNotBlank(exportSample)) {
+
+                    final Class<?> sampleContentClass = resolveContentClass(columnField);
+                    if (sampleContentClass == String.class || sampleContentClass.isEnum()) {
+                        exportSample = PxlClassSupport.isCollectionClass(columnField.getType())
+                                ? translateCollectionSample(exportResourceBundle, exportSample, exportCollectionSeparator)
+                                : PxlI18nContent.translate(exportResourceBundle, exportSample);
+                    }
+                }
+
                 final boolean exportOverrideSuperClassColumn = Optional.ofNullable(columnOption)
                         .flatMap(option -> Optional.ofNullable(option.getExportOverrideSuperClassColumn()))
                         .orElseGet(columnAnnotation::exportOverrideSuperClassColumn);
@@ -372,9 +392,23 @@ public final class PxlExportColumnMeta {
                 final String exportMasking = Optional.ofNullable(columnOption)
                         .flatMap(option -> Optional.ofNullable(option.getExportMasking()))
                         .orElseGet(columnAnnotation::exportMasking);
-                final String[] exportOptionItems = Optional.ofNullable(columnOption)
+                String[] exportOptionItems = Optional.ofNullable(columnOption)
                         .flatMap(option -> Optional.ofNullable(option.getExportOptionItems()))
                         .orElseGet(columnAnnotation::exportOptionItems);
+
+                // A String column is the only one whose dropdown is translated, because it is the only one that writes
+                // translated text into the cell: an enum, numeric or temporal column always writes its canonical value,
+                // so translating its items would leave what is written outside the list it is validated against.
+                if ((exportEnabled || exportSampleEnabled)
+                        && Objects.nonNull(exportResourceBundle)
+                        && ArrayUtils.isNotEmpty(exportOptionItems)
+                        && resolveContentClass(columnField) == String.class) {
+
+                    exportOptionItems = Arrays.stream(exportOptionItems)
+                            .map(optionItem -> PxlI18nContent.translate(exportResourceBundle, optionItem))
+                            .toArray(String[]::new);
+                }
+
                 final PxlColumn.ExportEnumDropDownListStyle exportEnumDropDownListStyle = Optional.ofNullable(columnOption)
                         .flatMap(option -> Optional.ofNullable(option.getExportEnumDropDownListStyle()))
                         .orElseGet(columnAnnotation::exportEnumDropDownListStyle);
@@ -530,6 +564,51 @@ public final class PxlExportColumnMeta {
     public boolean isExportedToString() {
 
         return StringUtils.isNotBlank(exportPattern) || Objects.nonNull(exportMaskingPattern);
+    }
+
+    /**
+     * Resolves the type a column actually writes: the element type of a Collection column, the field type otherwise.
+     * (export)
+     * <p>
+     * A {@code List<String>} field is a {@code List} by declaration but writes strings, so the element type is what
+     * decides whether a value of this column can be translated. Mirrors how the codecs pick a Collection column's
+     * element type.
+     *
+     * @param columnField the column field to resolve
+     * @return the element type for a Collection column, the field type otherwise
+     * @throws PxlReflectionException if the column is a raw Collection or its element type is not a concrete class
+     */
+    private static Class<?> resolveContentClass(final Field columnField)
+            throws PxlReflectionException {
+
+        return PxlClassSupport.isCollectionClass(columnField.getType())
+                ? PxlReflectionSupport.getParameterizedArgument0(columnField)
+                : columnField.getType();
+    }
+
+    /**
+     * Translates a Collection column's {@code exportSample} one element at a time. (export)
+     * <p>
+     * The sample holds the elements joined by the column's export collection separator, the same form the collection
+     * codec splits back apart, so each element is translated on its own and the results are joined with that separator
+     * again. Translating the sample as a single key would instead put the separator inside the bundle value, where a
+     * change to {@code exportCollectionSeparator} could no longer reach it. Elements missing from the bundle pass
+     * through unchanged, and empty elements are preserved so the element count is kept.
+     *
+     * @param exportResourceBundle      the consumer bundle to translate through; {@code null} leaves the sample unchanged
+     * @param exportSample              the sample value holding the elements joined by the separator
+     * @param exportCollectionSeparator the separator the elements are joined with
+     * @return the sample with each of its elements translated
+     */
+    private static String translateCollectionSample(@Nullable final ResourceBundle exportResourceBundle,
+                                                    final String exportSample,
+                                                    final String exportCollectionSeparator) {
+
+        final String[] sampleElements = StringUtils.splitByWholeSeparatorPreserveAllTokens(exportSample, exportCollectionSeparator);
+
+        return Arrays.stream(sampleElements)
+                .map(sampleElement -> PxlI18nContent.translate(exportResourceBundle, sampleElement))
+                .collect(Collectors.joining(exportCollectionSeparator));
     }
 
     /**

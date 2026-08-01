@@ -25,7 +25,7 @@ public class I18nCountryWorkbook {
     @PxlWorkbookName
     private String workbookName;
 
-    @PxlSheet(name = "people")
+    @PxlSheet(name = "staff.sheet")
     private List<I18nRow> people;
 
 }

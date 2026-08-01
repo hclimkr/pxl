@@ -15,6 +15,11 @@ public @interface PxlColumn {
 
     /**
      * Specifies the Excel column name.
+     * <p>
+     * The value doubles as a content-i18n key: when the workbook sets {@code importI18nBaseName} /
+     * {@code exportI18nBaseName}, the name is resolved through that bundle first, and it is the translation that the
+     * header is matched against on import and written as on export. A name the bundle does not carry is used as it
+     * stands.
      *
      * @return the column name(s); when empty ({@code {}}), the field name is used
      */
@@ -112,6 +117,12 @@ public @interface PxlColumn {
 
     /**
      * Specifies the sample value on export.
+     * <p>
+     * On a String or enum column the value is also a content-i18n key, so a workbook that declares
+     * {@code exportI18nBaseName} writes the translation instead. A Collection of those types holds one key per
+     * element, separated by {@link #exportCollectionSeparator()}, and each element is translated on its own.
+     * An enum sample is parsed back into its constant before being written, so the cell ends up holding the
+     * canonical value rather than the translated text.
      *
      * @return the sample cell value written for this column in a sample export; empty ({@code ""}) by default
      */
@@ -171,6 +182,10 @@ public @interface PxlColumn {
 
     /**
      * Sets the list of selectable options on export.
+     * <p>
+     * On a String column each item is also a content-i18n key, so the dropdown offers the same text the cells hold.
+     * A column of any other type writes its value in canonical form, so its items are used verbatim — translating
+     * them would leave the written value outside the list it is validated against.
      *
      * @return the selectable dropdown option items offered on export; empty ({@code {}}) by default
      */

@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl.option;
 
 import io.github.hclimkr.pxl.PxlConstants;
+import io.github.hclimkr.pxl.annotation.PxlSheet;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
@@ -33,6 +34,10 @@ public final class PxlExportSheetOption {
 
     /**
      * Specifies the name of the sheet on export.
+     * <p>
+     * Doubles as a content-i18n key, just like the {@link PxlSheet#name()} it overrides:
+     * when the workbook sets {@code exportI18nBaseName}, the name is resolved through that bundle first and it is the
+     * translation that is written. A name the bundle does not carry is used as it stands.
      */
     @Builder.Default
     private List<String> exportSheetNames = null;

@@ -8,11 +8,11 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nContent;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
-import io.github.hclimkr.pxl.tcdata.I18nCountryWorkbook;
-import io.github.hclimkr.pxl.tcdata.I18nRow;
-import io.github.hclimkr.pxl.tcdata.I18nWorkbook;
-import io.github.hclimkr.pxl.tcdata.TestPaths;
+import io.github.hclimkr.pxl.option.*;
+import io.github.hclimkr.pxl.tcdata.*;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFDataValidation;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.*;
 /**
  * i18n (import/exportI18nBaseName, Language) verification.
  * <p>
- * Verifies that, via messages.properties (role=Role, fullname=Full Name, people=Staff),
+ * Verifies that, via messages.properties (staff.column.role=Role, staff.column.fullName=Full Name, staff.sheet=Staff),
  * sheet/column names are translated on export and re-matched by the translated header/sheet names on import.
  */
 public class PxlI18nTests {
@@ -73,11 +73,11 @@ public class PxlI18nTests {
                 .toStream(outputStream);
 
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
-            // sheet name "people" -> "Staff"
+            // sheet key staff.sheet -> "Staff"
             final Sheet sheet = workbook.getSheet("Staff");
             assertThat(sheet).as("sheet name should be translated to 'Staff'").isNotNull();
 
-            // column names role/fullname -> Role/Full Name
+            // column keys staff.column.role/fullName -> Role/Full Name
             final Row header = sheet.getRow(0);
             final Set<String> headers = new HashSet<>();
             for (final Cell cell : header) {
@@ -108,6 +108,87 @@ public class PxlI18nTests {
         final I18nRow row = imported.getPeople().get(0);
         assertThat(row.getRole()).isEqualTo("admin");
         assertThat(row.getFullName()).isEqualTo("Alice");
+    }
+
+    // ------------------------------------------------------------------
+    // The names an option overrides are bundle keys too, just like the annotation names they replace
+    // ------------------------------------------------------------------
+
+    private static PxlExportWorkbookOption overriddenNameExportOption() {
+        final PxlExportColumnOption columnOption = PxlExportColumnOption.builder()
+                .fieldName("role")
+                .exportColumnNames(Arrays.asList("staff.override.column"))
+                .build();
+        final PxlExportSheetOption sheetOption = PxlExportSheetOption.builder()
+                .fieldName("people")
+                .exportSheetNames(Arrays.asList("staff.override.sheet"))
+                .exportColumnOptions(Arrays.asList(columnOption))
+                .build();
+
+        return PxlExportWorkbookOption.builder()
+                .exportSheetOptions(Arrays.asList(sheetOption))
+                .exportDataValidation(false)
+                .build();
+    }
+
+    private static PxlImportWorkbookOption overriddenNameImportOption() {
+        final PxlImportColumnOption columnOption = PxlImportColumnOption.builder()
+                .fieldName("role")
+                .importColumnNames(Arrays.asList("staff.override.column"))
+                .build();
+        final PxlImportSheetOption sheetOption = PxlImportSheetOption.builder()
+                .fieldName("people")
+                .importSheetNames(Arrays.asList("staff.override.sheet"))
+                .importColumnOptions(Arrays.asList(columnOption))
+                .build();
+
+        return PxlImportWorkbookOption.builder()
+                .importSheetOptions(Arrays.asList(sheetOption))
+                .build();
+    }
+
+    @Test
+    public void exportI18n_optionOverriddenNames_translatedThroughBundle() throws Exception {
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        pxl.exportExcel()
+                .workbook(sampleWorkbook())
+                .override(overriddenNameExportOption())
+                .toStream(outputStream);
+
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+            // staff.override.sheet -> "Overridden Staff": the overriding name goes through the bundle as well
+            final Sheet sheet = workbook.getSheet("Overridden Staff");
+            assertThat(sheet).as("the sheet name supplied by the option should be translated too").isNotNull();
+
+            final Row header = sheet.getRow(0);
+            final Set<String> headers = new HashSet<>();
+            for (final Cell cell : header) {
+                headers.add(cell.getStringCellValue());
+            }
+            // the overridden column is translated from staff.override.column, the untouched one from its annotation name
+            assertThat(headers).contains("Overridden Role", "Full Name");
+        }
+    }
+
+    @Test
+    public void importI18n_optionOverriddenNames_matchThroughBundle() throws Exception {
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .workbook(sampleWorkbook())
+                .override(overriddenNameExportOption())
+                .toFile(excelFile);
+
+        // The import side resolves the overriding names through the bundle as well, so the translated
+        // sheet/header written above are found again.
+        final I18nWorkbook imported = pxl.importExcel()
+                .workbookName("W")
+                .override(overriddenNameImportOption())
+                .workbook(I18nWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(imported.getPeople()).as("should match via the translated overriding names").hasSize(1);
+        assertThat(imported.getPeople().get(0).getRole()).isEqualTo("admin");
+        assertThat(imported.getPeople().get(0).getFullName()).isEqualTo("Alice");
     }
 
     // ------------------------------------------------------------------
@@ -164,6 +245,107 @@ public class PxlI18nTests {
         assertThat(imported.getPeople()).hasSize(1);
         assertThat(imported.getPeople().get(0).getRole()).isEqualTo("admin");
         assertThat(imported.getPeople().get(0).getFullName()).isEqualTo("Bob");
+    }
+
+    // ------------------------------------------------------------------
+    // export sample: exportSample and exportOptionItems are translated as well
+    // ------------------------------------------------------------------
+
+    // Reads a sample sheet as a header-name -> sample-cell-text map. Rendered through DataFormatter so a numeric
+    // sample cell reads back as text too.
+    private static Map<String, String> samplesByHeader(final Sheet sheet) {
+        final DataFormatter dataFormatter = new DataFormatter();
+        final Row header = sheet.getRow(0);
+        final Row sampleRow = sheet.getRow(1);
+
+        final Map<String, String> samples = new HashMap<>();
+        for (final Cell headerCell : header) {
+            final Cell sampleCell = sampleRow.getCell(headerCell.getColumnIndex());
+            samples.put(headerCell.getStringCellValue(), dataFormatter.formatCellValue(sampleCell));
+        }
+        return samples;
+    }
+
+    @Test
+    public void exportSampleI18n_scalarAndCollection_translatesEveryElement() throws Exception {
+        final Workbook workbook = pxl.exportSampleExcel()
+                .workbook(I18nSampleWorkbook.class)
+                .toWorkbook();
+        try {
+            final Sheet sheet = workbook.getSheet("Staff");
+            assertThat(sheet).as("sheet name should be translated to 'Staff'").isNotNull();
+
+            final Map<String, String> samples = samplesByHeader(sheet);
+
+            // A String sample is a bundle key, exactly like a column name.
+            assertThat(samples.get("Role")).isEqualTo("Administrator");
+            // A Collection sample carries one key per element, so each element is translated on its own
+            // and they are joined back with the collection separator.
+            assertThat(samples.get("Roles")).isEqualTo("Administrator;User");
+            // Collection<Enum>: each element is translated first, then parsed back into its constant, so the
+            // cell holds the canonical names.
+            assertThat(samples.get("Grades")).isEqualTo("A;B");
+            assertThat(samples.get("Grade")).isEqualTo("A");
+        } finally {
+            workbook.close();
+        }
+    }
+
+    @Test
+    public void exportSampleI18n_customCollectionSeparator_splitsOnTheColumnSeparator() throws Exception {
+        final Workbook workbook = pxl.exportSampleExcel()
+                .workbook(I18nSampleWorkbook.class)
+                .toWorkbook();
+        try {
+            final Map<String, String> samples = samplesByHeader(workbook.getSheet("Staff"));
+
+            // The separator comes from exportCollectionSeparator ("::"), not from the bundle value, so changing it
+            // keeps working without touching the bundle.
+            assertThat(samples.get("Tags")).isEqualTo("Administrator::User");
+        } finally {
+            workbook.close();
+        }
+    }
+
+    @Test
+    public void exportSampleI18n_nonStringColumn_keepsSampleAndUnknownHeaderVerbatim() throws Exception {
+        final Workbook workbook = pxl.exportSampleExcel()
+                .workbook(I18nSampleWorkbook.class)
+                .toWorkbook();
+        try {
+            final Map<String, String> samples = samplesByHeader(workbook.getSheet("Staff"));
+
+            // "count" is not in the bundle, so the header passes through untranslated.
+            assertThat(samples).containsKey("count");
+            // The sample of a numeric column is never translated: "1234" is a bundle key (1234=9999), and applying it
+            // would put a value the column never declared into the cell.
+            assertThat(samples.get("count")).isEqualTo("1234");
+        } finally {
+            workbook.close();
+        }
+    }
+
+    @Test
+    public void exportOptionItemsI18n_stringColumnTranslated_enumColumnVerbatim() throws Exception {
+        final Workbook workbook = pxl.exportSampleExcel()
+                .workbook(I18nSampleWorkbook.class)
+                .toWorkbook();
+        try {
+            final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("Staff");
+
+            final List<List<String>> optionLists = new ArrayList<>();
+            for (final XSSFDataValidation dataValidation : sheet.getDataValidations()) {
+                optionLists.add(Arrays.asList(dataValidation.getValidationConstraint().getExplicitListValues()));
+            }
+
+            // String column: the dropdown offers the very text the sample cell holds, so the sample does not
+            // violate its own data validation.
+            assertThat(optionLists).contains(Arrays.asList("Administrator", "User"));
+            // Enum column: the cell always holds the canonical constant, so the items are used as declared.
+            assertThat(optionLists).contains(Arrays.asList("staff.grade.a", "staff.grade.b"));
+        } finally {
+            workbook.close();
+        }
     }
 
     // ------------------------------------------------------------------
@@ -376,12 +558,30 @@ public class PxlI18nTests {
     @Test
     public void contentTranslate_disabledOrMissingKey_returnsNameUnchanged() throws Exception {
         // When the bundle is null (content i18n disabled), the name is returned unchanged.
-        assertThat(PxlI18nContent.translate(null, "role")).isEqualTo("role");
+        assertThat(PxlI18nContent.translate(null, "staff.column.role")).isEqualTo("staff.column.role");
 
         final ResourceBundle bundle = PxlI18nContent.loadBundle("messages", "ko", "KR");
         assertThat(bundle).as("the messages_ko bundle should be loaded").isNotNull();
         // An existing key is translated, and a missing key silently passes the original name through.
-        assertThat(PxlI18nContent.translate(bundle, "role")).isEqualTo("역할");
+        assertThat(PxlI18nContent.translate(bundle, "staff.column.role")).isEqualTo("역할");
         assertThat(PxlI18nContent.translate(bundle, "nonexistent")).isEqualTo("nonexistent");
+    }
+
+    @Test
+    public void contentBundle_unmatchedLocale_doesNotFallBackToJvmDefault() throws Exception {
+        final Locale savedDefault = Locale.getDefault();
+        try {
+            // messages_ko exists and is made the JVM default, so a bundle asked for in French would land on the
+            // Korean one if the loader kept the JVM locale fallback.
+            Locale.setDefault(Locale.KOREAN);
+
+            final ResourceBundle bundle = PxlI18nContent.loadBundle("messages", "fr", "");
+            assertThat(bundle).as("an unmatched locale should still resolve to the base bundle").isNotNull();
+
+            // Utf8ResourceControl#getFallbackLocale returns null, so fr resolves to the English base, not messages_ko.
+            assertThat(PxlI18nContent.translate(bundle, "staff.column.role")).isEqualTo("Role");
+        } finally {
+            Locale.setDefault(savedDefault);
+        }
     }
 }

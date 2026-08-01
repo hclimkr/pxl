@@ -1,5 +1,6 @@
 package io.github.hclimkr.pxl.option;
 
+import io.github.hclimkr.pxl.annotation.PxlColumn;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import lombok.*;
 import org.apache.commons.lang3.StringUtils;
@@ -26,6 +27,10 @@ public final class PxlImportColumnOption {
 
     /**
      * Specifies the name of the column on import.
+     * <p>
+     * Doubles as a content-i18n key, just like the {@link PxlColumn#name()} it overrides:
+     * when the workbook sets {@code importI18nBaseName}, the name is resolved through that bundle first and it is the
+     * translation that the header is matched against. A name the bundle does not carry is used as it stands.
      */
     @Builder.Default
     private List<String> importColumnNames = null;

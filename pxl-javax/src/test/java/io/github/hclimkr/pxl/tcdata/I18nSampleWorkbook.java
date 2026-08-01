@@ -8,8 +8,8 @@ import lombok.*;
 import java.util.List;
 
 /**
- * Workbook for verifying i18n (import/exportI18nBaseName / Language).
- * Sheet key staff.sheet -> "Staff", column keys staff.column.role/fullName -> translated to Role/Full Name.
+ * Workbook for verifying content i18n of the sample row (exportSample / exportOptionItems).
+ * Sheet key staff.sheet -> "Staff"; the bundle is the same messages.properties the other i18n fixtures use.
  */
 @Getter
 @Setter
@@ -19,12 +19,12 @@ import java.util.List;
 @PxlWorkbook(
         exportI18nBaseName = "messages", exportI18nLanguage = "en",
         importI18nBaseName = "messages", importI18nLanguage = "en")
-public class I18nWorkbook {
+public class I18nSampleWorkbook {
 
     @PxlWorkbookName
     private String workbookName;
 
     @PxlSheet(name = "staff.sheet")
-    private List<I18nRow> people;
+    private List<I18nSampleRow> people;
 
 }

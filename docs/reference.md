@@ -625,31 +625,71 @@ Pxl.resetMessageLocale();               // revert to the JVM default locale
 
 If you specify a `ResourceBundle` via `@PxlWorkbook`'s `import/exportI18nBaseName`, `import/exportI18nLanguage`, `import/exportI18nCountry`,
 sheet/column names are translated for matching/output (UTF-8 properties supported).  
-The `name` value of `@PxlColumn`/`@PxlSheet` becomes the bundle key.
+The `name` value of `@PxlColumn`/`@PxlSheet` becomes the bundle key. It is an ordinary `ResourceBundle` key, and the
+bundle is usually shared with the rest of the application, so namespace it (`staff.column.role`) instead of using a
+bare word that another message could collide with.
 
 i18n is disabled by default (opt-in).  
 It works only when `import/exportI18nBaseName` is explicitly specified (or a `ResourceBundle` is injected into the option); if the base name is empty, no bundle is loaded and the name is used as-is.  
 If a base name is specified but its `ResourceBundle` cannot be found, it fails with `PxlI18nException`.
 
+`src/main/resources/messages.properties` — the base bundle, read as UTF-8:
+
+```properties
+staff.sheet=Staff
+staff.column.role=Role
+staff.column.fullName=Full Name
+```
+
+`src/main/resources/messages_ko.properties` — the variant `exportI18nLanguage = "ko"` picks instead:
+
+```properties
+staff.sheet=직원
+staff.column.role=역할
+staff.column.fullName=성명
+```
+
 ```java
-// messages.properties (UTF-8):  role=Role   fullname=Full Name   people=Staff
 @PxlWorkbook(
         exportI18nBaseName = "messages", exportI18nLanguage = "en",
         importI18nBaseName = "messages", importI18nLanguage = "en")
 public class StaffWorkbook {
 
-    @PxlSheet(name = "people")          // header/sheet name is translated to "Staff"
+    @PxlSheet(name = "staff.sheet")                 // header/sheet name is translated to "Staff"
     private List<Person> people;
 }
 
 public class Person {
 
-    @PxlColumn(name = "role")           // header is translated to "Role"
+    @PxlColumn(name = "staff.column.role")          // header is translated to "Role"
     private String role;
 
-    @PxlColumn(name = "fullname")       // header is translated to "Full Name"
+    @PxlColumn(name = "staff.column.fullName")      // header is translated to "Full Name"
     private String fullName;
 }
+```
+
+Besides names, two `@PxlColumn` attributes go through the same bundle on export:
+
+- **`exportSample`** on a `String`/enum column. When the column is a `Collection` of those, the sample holds one key per element, split by `exportCollectionSeparator`, and **each element is translated on its own** — the separator stays in the annotation instead of being baked into a bundle value. An enum sample is parsed back into its constant after translation, so the cell ends up holding the canonical name.
+- **`exportOptionItems`** on a `String` column, so the dropdown offers the very text the cells hold. A column of any other type writes its value in canonical form, so its items — and the enum constants used when no items are given — are taken verbatim; translating them would leave the written value outside the list Excel validates it against.
+
+`messages.properties`:
+
+```properties
+staff.column.role=Role
+staff.column.roles=Roles
+staff.role.admin=Administrator
+staff.role.user=User
+```
+
+```java
+@PxlColumn(name = "staff.column.role", exportSample = "staff.role.admin",
+        exportOptionItems = {"staff.role.admin", "staff.role.user"})   // sample cell "Administrator", dropdown Administrator/User
+private String role;
+
+@PxlColumn(name = "staff.column.roles", exportSample = "staff.role.admin;staff.role.user")   // sample cell "Administrator;User"
+private List<String> roles;
 ```
 
 > It works only when `i18nBaseName` is specified (untranslated by default). If specified but the bundle cannot be found, it does not silently pass but raises `PxlI18nException`.

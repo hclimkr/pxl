@@ -35,6 +35,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accepted — and asks for the version and artifact, expected versus actual behavior, and
   a minimal reproduction, with sensitive data stripped from any attached source file.
 
+- `exportOptionItems` on a `String` column now goes through the workbook's content-i18n bundle, so the
+  dropdown offers the same text the cells hold rather than the raw keys. A column of any other type writes
+  its value in canonical form, so its items — and the enum constants used when no items are given — stay
+  verbatim; a workbook without `exportI18nBaseName` is unaffected.
+
+### Fixed
+
+- `exportSample` is now translated on `Collection<String>` and `Collection<Enum>` columns too. The i18n gate
+  read the field type, so only String and enum scalars passed and a collection sample kept its raw bundle
+  keys — or failed outright on `Collection<Enum>`, whose keys could not be parsed back into constants. Each
+  element is now translated on its own, split by `exportCollectionSeparator`.
+
 ## [0.9.2] - 2026-07-29
 
 ### Added

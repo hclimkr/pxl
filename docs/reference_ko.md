@@ -625,31 +625,70 @@ Pxl.resetMessageLocale();               // JVM 기본 locale로 복귀
 
 `@PxlWorkbook`의 `import/exportI18nBaseName`, `import/exportI18nLanguage`, `import/exportI18nCountry`로 `ResourceBundle`을
 지정하면 시트명·컬럼명을 번역해 매칭/출력한다(UTF-8 properties 지원).  
-`@PxlColumn`/`@PxlSheet`의 `name` 값이 번들의 키가 된다.
+`@PxlColumn`/`@PxlSheet`의 `name` 값이 번들의 키가 된다. 평범한 `ResourceBundle` 키이고 번들은 대개 애플리케이션의 다른
+메시지와 공유하므로, 단순한 한 단어 대신 네임스페이스를 둔 키(`staff.column.role`)로 짓는다.
 
 i18n은 기본적으로 비활성(opt-in) 이다.  
 `import/exportI18nBaseName`을 명시적으로 지정(또는 옵션에 `ResourceBundle` 주입)했을 때만 동작하며, base name이 비어 있으면 번들을 로드하지 않아 이름이 그대로 사용된다.  
 base name을 지정했으나 해당 `ResourceBundle`을 찾지 못하면 `PxlI18nException`으로 실패한다.
 
+`src/main/resources/messages.properties` — base 번들이며 UTF-8로 읽는다.
+
+```properties
+staff.sheet=Staff
+staff.column.role=Role
+staff.column.fullName=Full Name
+```
+
+`src/main/resources/messages_ko.properties` — `exportI18nLanguage = "ko"`일 때 대신 선택되는 변형.
+
+```properties
+staff.sheet=직원
+staff.column.role=역할
+staff.column.fullName=성명
+```
+
 ```java
-// messages.properties (UTF-8):  role=Role   fullname=Full Name   people=Staff
 @PxlWorkbook(
         exportI18nBaseName = "messages", exportI18nLanguage = "en",
         importI18nBaseName = "messages", importI18nLanguage = "en")
 public class StaffWorkbook {
 
-    @PxlSheet(name = "people")          // 헤더/시트명이 "Staff"로 번역됨
+    @PxlSheet(name = "staff.sheet")                 // 헤더/시트명이 "Staff"로 번역됨
     private List<Person> people;
 }
 
 public class Person {
 
-    @PxlColumn(name = "role")           // 헤더가 "Role"로 번역됨
+    @PxlColumn(name = "staff.column.role")          // 헤더가 "Role"로 번역됨
     private String role;
 
-    @PxlColumn(name = "fullname")       // 헤더가 "Full Name"으로 번역됨
+    @PxlColumn(name = "staff.column.fullName")      // 헤더가 "Full Name"으로 번역됨
     private String fullName;
 }
+```
+
+이름 외에 `@PxlColumn`의 두 속성도 export 시 같은 번들을 거친다.
+
+- **`exportSample`** — `String`/enum 컬럼에서 번역된다. 그 타입의 `Collection` 컬럼이면 샘플이 `exportCollectionSeparator`로 나뉜 **원소별 키**이므로 **원소마다 따로 번역**한다. 구분자가 번들 값 안에 박히지 않고 애노테이션에 남는다. enum 샘플은 번역 후 다시 상수로 파싱되므로 셀에는 정규 이름이 들어간다.
+- **`exportOptionItems`** — `String` 컬럼에서 번역되어, 드롭다운이 셀에 든 것과 같은 텍스트를 제시한다. 그 외 타입은 값을 정규 형태로 쓰므로 항목(및 항목 미지정 시 쓰이는 enum 상수)을 적힌 그대로 둔다. 번역하면 실제로 쓰인 값이 Excel이 검사하는 목록 밖으로 벗어난다.
+
+`messages.properties`:
+
+```properties
+staff.column.role=Role
+staff.column.roles=Roles
+staff.role.admin=Administrator
+staff.role.user=User
+```
+
+```java
+@PxlColumn(name = "staff.column.role", exportSample = "staff.role.admin",
+        exportOptionItems = {"staff.role.admin", "staff.role.user"})   // 샘플 셀 "Administrator", 드롭다운 Administrator/User
+private String role;
+
+@PxlColumn(name = "staff.column.roles", exportSample = "staff.role.admin;staff.role.user")   // 샘플 셀 "Administrator;User"
+private List<String> roles;
 ```
 
 > `i18nBaseName`을 지정했을 때만 동작한다(기본은 미번역). 지정했는데 번들을 못 찾으면 조용히 넘어가지 않고 `PxlI18nException` 발생.

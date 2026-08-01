@@ -1112,14 +1112,14 @@ public class PxlUtilityTests {
 
         // a present bundle resolves; a known key returns its (locale-specific) message
         assertThat(PxlI18n.getBundle("messages", Locale.ENGLISH)).isNotNull();
-        assertThat(PxlI18n.getMessage("messages", Locale.ENGLISH, "role")).isEqualTo("Role");
-        assertThat(PxlI18n.getMessage("messages", Locale.KOREAN, "role")).isEqualTo("역할");
+        assertThat(PxlI18n.getMessage("messages", Locale.ENGLISH, "staff.column.role")).isEqualTo("Role");
+        assertThat(PxlI18n.getMessage("messages", Locale.KOREAN, "staff.column.role")).isEqualTo("역할");
         // a missing key falls back to the key itself
         assertThat(PxlI18n.getMessage("messages", Locale.ENGLISH, "no.such.key")).isEqualTo("no.such.key");
         // i18n disabled -> the key is returned unchanged
-        assertThat(PxlI18n.getMessage("", null, "role")).isEqualTo("role");
+        assertThat(PxlI18n.getMessage("", null, "staff.column.role")).isEqualTo("staff.column.role");
         // params overload (the message has no placeholder, so it is returned as-is)
-        assertThat(PxlI18n.getMessage("messages", Locale.ENGLISH, "people", new Object[]{"x"})).isEqualTo("Staff");
+        assertThat(PxlI18n.getMessage("messages", Locale.ENGLISH, "staff.sheet", new Object[]{"x"})).isEqualTo("Staff");
 
         // JVM-default-locale overload resolves the bundle
         assertThat(PxlI18n.getBundle("messages")).isNotNull();

@@ -17,6 +17,10 @@ public @interface PxlSheet {
      * Specifies the name for the Excel sheet.
      * On import, it is matched against the actual sheet name (the CSV file name, extension removed, for a CSV source)
      * after whitespace removal, ignoring case.
+     * <p>
+     * The value doubles as a content-i18n key: when the workbook sets {@code importI18nBaseName} /
+     * {@code exportI18nBaseName}, the name is resolved through that bundle first, and it is the translation that is
+     * matched on import and written on export. A name the bundle does not carry is used as it stands.
      *
      * @return the sheet name(s); when empty ({@code {}}), the field name is used
      */
