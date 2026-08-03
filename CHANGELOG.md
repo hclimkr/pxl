@@ -40,6 +40,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its value in canonical form, so its items — and the enum constants used when no items are given — stay
   verbatim; a workbook without `exportI18nBaseName` is unaffected.
 
+- Internal only: the shared base behind the export builders is now two layers. `PxlAbstractExportBuilder` keeps
+  the export option and the `toFile(File)` / `toStream(OutputStream)` terminals — resource handling and exception
+  normalization — and delegates the writing itself to three seams (`prepare()` before the destination is opened,
+  `writeTo(OutputStream)`, `cleanup()` in the terminal's `finally`), while a new POI-only
+  `PxlAbstractExcelExportBuilder` holds `toWorkbook()`, the workbook creation result, and the workbook
+  implementation of those seams. Both classes are package-private and no public signature moved, so nothing
+  changes for callers; the split is what lets a non-Excel writer reuse the terminals. The seam order is the
+  contract: preparing before the destination is opened keeps a failed export from leaving an empty file, and
+  releasing in the `finally` keeps a workbook (and, with `SXSSF`, its temp files) from being left behind when
+  opening the destination fails.
+
 ### Fixed
 
 - A numeric cell whose serial number is no Excel date — a negative one, for instance — is now rejected with a

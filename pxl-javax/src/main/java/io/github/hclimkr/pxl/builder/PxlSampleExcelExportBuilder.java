@@ -31,11 +31,12 @@ import java.util.Objects;
  *
  * <p>The two forms are mutually exclusive — specifying both {@code workbook(...)} and {@code sheet(...)} throws an exception.</p>
  *
- * <p>The terminal methods (returning a workbook / file / stream) and resource handling are provided by {@link PxlAbstractExportBuilder}.</p>
+ * <p>The terminal methods (returning a workbook / file / stream) and resource handling are provided by
+ * {@link PxlAbstractExcelExportBuilder} and its format-neutral base {@link PxlAbstractExportBuilder}.</p>
  *
  * <p>Example: {@code pxl.exportSampleExcel().sheet(User.class, "Users").sheet(Order.class, "Orders").toFile(file);}</p>
  */
-public final class PxlSampleExcelExportBuilder extends PxlAbstractExportBuilder {
+public final class PxlSampleExcelExportBuilder extends PxlAbstractExcelExportBuilder {
 
     private Class<?> workbookClass;
 

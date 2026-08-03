@@ -5,9 +5,7 @@ import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.exception.PxlSystemException;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
-import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.poi.ss.usermodel.Workbook;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -15,21 +13,31 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 
 /**
- * Common base for export/sample builders.
+ * Format-neutral common base for the export builders.
  *
- * <p>Subclass builders implement only {@link #build()}, which produces the workbook creation result ({@link Built}),
- * while the terminal methods (returning a workbook / file / stream) and resource handling and exception wrapping are shared here.</p>
+ * <p>Holds the export option and the file/stream terminal methods, which own nothing but resource handling
+ * and exception normalization. What is actually written is left to three seams the subclass fills in:</p>
+ * <ol>
+ *   <li>{@link #prepare()} — runs <strong>before</strong> the destination is opened, so a failure here leaves
+ *       no file behind</li>
+ *   <li>{@link #writeTo(OutputStream)} — writes the result to the destination</li>
+ *   <li>{@link #cleanup()} — releases whatever {@code prepare()} acquired, exactly once, on success and failure alike</li>
+ * </ol>
  *
- * <p>The terminal methods are the <strong>normalization boundary</strong>: they declare {@code throws PxlException},
- * but since that type is abstract what actually surfaces is always a concrete subtype — the matching one for a
- * classified failure ({@link io.github.hclimkr.pxl.exception.PxlArgumentException},
+ * <p>The order matters: preparing after the destination was opened would leave an empty file whenever the
+ * preparation fails, and releasing outside the {@code finally} would leak whatever was prepared whenever
+ * opening the destination fails.</p>
+ *
+ * <p>The terminal methods are the <strong>normalization boundary</strong>: they declare
+ * {@code throws PxlException}, but since that type is abstract what actually surfaces is always a concrete
+ * subtype — the matching one for a classified failure ({@link io.github.hclimkr.pxl.exception.PxlArgumentException},
  * {@link io.github.hclimkr.pxl.exception.PxlCellCodecException},
  * {@link io.github.hclimkr.pxl.exception.PxlValidationException}, ...), and
  * {@link PxlSystemException} (carrying the original as its cause) for anything else, including checked I/O failures
- * and unexpected runtime failures from POI.</p>
+ * and unexpected runtime failures from the writer.</p>
  *
  * <p>Package-private: not part of the public API. Consumers reach the shared {@code public} terminals
- * ({@code toWorkbook()}/{@code toFile(...)}/{@code toStream(...)}) through the public concrete subclasses.</p>
+ * ({@code toFile(...)}/{@code toStream(...)}) through the public concrete subclasses.</p>
  */
 abstract class PxlAbstractExportBuilder {
 
@@ -39,110 +47,96 @@ abstract class PxlAbstractExportBuilder {
     protected PxlExportWorkbookOption option;
 
     /**
-     * Creates and returns a POI workbook. The returned workbook must be closed by the caller.
-     *
-     * <p>The resolved {@code exportPassword} is <strong>not</strong> applied to the returned workbook: POI cannot carry
-     * a document-open password on the workbook object itself (encryption happens at the file-container layer), so PXL
-     * encrypts only while writing. Writing the returned workbook with {@code Workbook.write(...)} therefore produces an
-     * unencrypted file — write it with {@link PxlWorkbookUtils#writeToStream(Workbook, OutputStream, String)} to have
-     * the password applied, or use {@link #toFile(File)} / {@link #toStream(OutputStream)} instead.</p>
-     *
-     * @return the created workbook (the caller is responsible for closing it)
-     * @throws PxlException if workbook creation fails
-     */
-    public final Workbook toWorkbook()
-            throws PxlException {
-
-        return build().workbook;
-    }
-
-    /**
-     * Exports to an Excel file. (Encrypts if the option specifies a password)
+     * Exports to a file. (Encrypts if the option specifies a password and the format supports it)
      *
      * <p>The output stream to the file is opened and closed internally, so the caller has nothing to close.</p>
      *
-     * @param excelFile the destination Excel file
-     * @throws PxlNullPointerException if {@code excelFile} is {@code null}
-     * @throws PxlException            if workbook creation or writing fails
+     * @param outputFile the destination file
+     * @throws PxlNullPointerException if {@code outputFile} is {@code null}
+     * @throws PxlException            if preparing the result or writing fails
      */
-    public final void toFile(final File excelFile)
+    public final void toFile(final File outputFile)
             throws PxlException {
 
-        PxlAssertSupport.notNull(excelFile, "excelFile");
+        PxlAssertSupport.notNull(outputFile, "outputFile");
 
-        final Built built = build();
+        // Prepare before the destination is opened: a failure here must not leave an empty file behind.
+        prepare();
+
         OutputStream outputStream = null;
 
         try {
-            outputStream = new BufferedOutputStream(new FileOutputStream(excelFile));
-            PxlWorkbookUtils.writeToStream(built.workbook, outputStream, built.password);
+            outputStream = new BufferedOutputStream(new FileOutputStream(outputFile));
+            writeTo(outputStream);
         } catch (PxlException e) {
             throw e;
         } catch (Exception e) {
             throw new PxlSystemException(e);
         } finally {
             IOUtils.closeQuietly(outputStream);
-            PxlWorkbookUtils.closeWorkbook(built.workbook);
+            // Opening the destination may have failed, so releasing has to happen here rather than in writeTo.
+            cleanup();
         }
     }
 
     /**
-     * Exports to an Excel output stream. (Encrypts if the option specifies a password)
+     * Exports to an output stream. (Encrypts if the option specifies a password and the format supports it)
      *
      * <p>The given stream is flushed but <strong>not closed</strong>; the caller retains ownership and is responsible
      * for closing it.</p>
      *
      * @param outputStream the destination output stream (not closed by this method)
      * @throws PxlNullPointerException if {@code outputStream} is {@code null}
-     * @throws PxlException            if workbook creation or writing fails
+     * @throws PxlException            if preparing the result or writing fails
      */
     public final void toStream(final OutputStream outputStream)
             throws PxlException {
 
         PxlAssertSupport.notNull(outputStream, "outputStream");
 
-        final Built built = build();
+        prepare();
 
         try {
-            PxlWorkbookUtils.writeToStream(built.workbook, outputStream, built.password);
+            writeTo(outputStream);
         } catch (PxlException e) {
             throw e;
         } catch (Exception e) {
             throw new PxlSystemException(e);
         } finally {
-            PxlWorkbookUtils.closeWorkbook(built.workbook);
+            cleanup();
         }
     }
 
     /**
-     * Creates the workbook and (optional) password. Implemented by the subclass builder for data/sample.
+     * Prepares the result to be written, before the destination is opened.
      *
-     * @return the creation result
-     * @throws PxlException if creation fails
+     * <p>Implementations must prepare afresh on every call — a terminal method run twice repeats the work
+     * rather than handing out a cached result. A format with nothing to prepare implements this as an empty
+     * body; it is left abstract so that every format has to state its preparation explicitly rather than
+     * inherit silence (a skipped validation would otherwise pass unnoticed).</p>
+     *
+     * @throws PxlException if the result cannot be prepared
      */
-    protected abstract Built build()
+    protected abstract void prepare()
             throws PxlException;
 
     /**
-     * The {@link #build()} result — the created workbook and (optional) password.
+     * Writes the prepared result to the given destination. The stream is owned by the caller of this method
+     * (the terminal), so implementations must not close it.
+     *
+     * @param outputStream the destination output stream
+     * @throws PxlException if writing fails
      */
-    protected static final class Built {
+    protected abstract void writeTo(OutputStream outputStream)
+            throws PxlException;
 
-        protected final Workbook workbook;
-        protected final String password;
-
-        /**
-         * Holds the created workbook and (optional) password.
-         *
-         * @param workbook the created workbook
-         * @param password the encryption password, or {@code null}/empty for no encryption
-         */
-        protected Built(final Workbook workbook, final String password) {
-
-            this.workbook = workbook;
-            this.password = password;
-        }
-
-    }
+    /**
+     * Releases whatever {@link #prepare()} acquired. Called exactly once from the terminal's {@code finally},
+     * so it runs on success and failure alike, and must not throw.
+     *
+     * <p>A format that acquires nothing implements this as an empty body; it is left abstract because it pairs
+     * with {@link #prepare()} — whoever acquires a resource there has to say here how it is released.</p>
+     */
+    protected abstract void cleanup();
 
 }

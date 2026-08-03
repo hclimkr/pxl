@@ -3,6 +3,7 @@ package io.github.hclimkr.pxl;
 import io.github.hclimkr.pxl.builder.PxlExcelExportBuilder;
 import io.github.hclimkr.pxl.exception.PxlCellCodecException;
 import io.github.hclimkr.pxl.exception.PxlDataException;
+import io.github.hclimkr.pxl.exception.PxlSystemException;
 import io.github.hclimkr.pxl.option.*;
 import io.github.hclimkr.pxl.tcdata.*;
 import org.apache.poi.ss.usermodel.*;
@@ -106,6 +107,64 @@ public class PxlExcelExportTests {
         // Both runs carry exactly the same rows.
         assertThat(fromFile).extracting(Employee::getName).containsExactly("Alice", "Bob");
         assertThat(fromStream).extracting(Employee::getName).containsExactly("Alice", "Bob");
+    }
+
+    // ------------------------------------------------------------------
+    // Terminal failure — the workbook is built before the destination is opened,
+    // so a destination that cannot be opened must not leave a file behind or a workbook unreleased
+    // ------------------------------------------------------------------
+
+    // A destination whose parent directory does not exist: the failure lands between building the workbook and
+    // writing it, which is exactly the window in which the built workbook has to be released anyway.
+    private File unopenableFile() {
+        return new File(TestPaths.exportFile(testInfo).getPath() + ".no-such-dir", "out.xlsx");
+    }
+
+    @Test
+    public void exportExcel_toFileDestinationUnopenable_throwsAndBuilderStaysUsable() throws Exception {
+        final PxlExcelExportBuilder builder = pxl.exportExcel()
+                .sheet(Employee.class, twoEmployees(), "People")
+                .override(noValidationOption());
+
+        final File unopenable = unopenableFile();
+        // Opening the file fails with an IOException, which the terminal normalizes.
+        assertThrows(PxlSystemException.class, () -> builder.toFile(unopenable));
+        // Nothing may be left at the destination — the write never started.
+        assertThat(unopenable).doesNotExist();
+
+        // The workbook built for the failed run was released and the configuration is untouched,
+        // so the next terminal call builds a fresh workbook out of the same builder.
+        final File excelFile = TestPaths.exportFile(testInfo);
+        builder.toFile(excelFile);
+        assertThat(pxl.importExcel()
+                .sheet(Employee.class, Arrays.asList("People"))
+                .fromFile(excelFile))
+                .extracting(Employee::getName)
+                .containsExactly("Alice", "Bob");
+    }
+
+    // Same failure on the streaming format, where a workbook left unreleased would also leave POI temp files
+    // on disk (closeWorkbook disposes of them).
+    @Test
+    public void exportSxssf_toFileDestinationUnopenable_throwsAndBuilderStaysUsable() throws Exception {
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportFileFormat(PxlFileFormat.SXSSF)
+                .exportDataValidation(false)
+                .build();
+
+        final PxlExcelExportBuilder builder = pxl.exportExcel()
+                .sheet(Employee.class, twoEmployees(), "People")
+                .override(option);
+
+        assertThrows(PxlSystemException.class, () -> builder.toFile(unopenableFile()));
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        builder.toFile(excelFile);
+        assertThat(pxl.importExcel()
+                .sheet(Employee.class, Arrays.asList("People"))
+                .fromFile(excelFile))
+                .extracting(Employee::getName)
+                .containsExactly("Alice", "Bob");
     }
 
     // ------------------------------------------------------------------
