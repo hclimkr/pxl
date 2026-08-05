@@ -276,7 +276,7 @@ public class PxlRegressionTests {
     @Test
     public void staticHelpers_nullArgs_handled() {
         assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(null)).isNull();
-        assertThat(PxlFileFormat.fromWorkbookObject(null))
-                .isEqualTo(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
+        assertThat(PxlExcelEngine.fromWorkbookObject(null))
+                .isEqualTo(PxlConstants.DEFAULT_EXPORT_EXCEL_ENGINE);
     }
 }

@@ -60,7 +60,7 @@ public class PxlLargeDataTests {
     public void importLargeXlsx_streaming_readsAllRows() throws Exception {
         // Streaming write with SXSSF (minimizes write memory)
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.SXSSF)
+                .exportExcelEngine(PxlExcelEngine.SXSSF)
                 .exportDataValidation(false)
                 .build();
 
@@ -103,7 +103,7 @@ public class PxlLargeDataTests {
     @Test
     public void importLargeXlsx_nonStreaming_readsAllRows() throws Exception {
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.SXSSF)
+                .exportExcelEngine(PxlExcelEngine.SXSSF)
                 .exportDataValidation(false)
                 .build();
 

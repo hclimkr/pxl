@@ -4,6 +4,7 @@ import com.github.pjfanning.xlsx.StreamingReader;
 import com.github.pjfanning.xlsx.exceptions.OpenException;
 import com.github.pjfanning.xlsx.exceptions.ReadException;
 import io.github.hclimkr.pxl.PxlConstants;
+import io.github.hclimkr.pxl.PxlExcelEngine;
 import io.github.hclimkr.pxl.PxlFileFormat;
 import io.github.hclimkr.pxl.annotation.PxlWorkbookName;
 import io.github.hclimkr.pxl.exception.PxlDataException;
@@ -37,10 +38,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Workbook lifecycle and naming for the binder: creating an empty workbook for an export format, opening a source
+ * Workbook lifecycle and naming for the binder: creating an empty workbook for an export engine, opening a source
  * workbook for import, resolving the {@code @PxlWorkbookName} field, and making sheet/defined names unique.
  * <p>
- * {@code createWorkbook} maps {@link PxlFileFormat} to the POI implementation — {@code HSSF} to an
+ * {@code createWorkbook} maps {@link PxlExcelEngine} to the POI implementation — {@code HSSF} to an
  * {@link HSSFWorkbook} (XLS), {@code XSSF} to an {@link XSSFWorkbook} (XLSX), {@code SXSSF} to an auto-flushing
  * {@link SXSSFWorkbook} (streaming XLSX) — and stamps the creator/application document properties.
  * <p>
@@ -107,23 +108,25 @@ public final class PxlWorkbookSupport {
     }
 
     /**
-     * Creates an empty workbook for the requested export format and stamps its creator/application document properties.
+     * Creates an empty workbook for the requested export engine and stamps its creator/application document properties.
      * <p>
      * {@code HSSF} produces an {@link HSSFWorkbook} (XLS), {@code XSSF} an {@link XSSFWorkbook} (XLSX), and {@code SXSSF} an
      * auto-flushing {@link SXSSFWorkbook} (streaming XLSX) with the given row-access window size and temp-file compression off.
+     * <p>
+     * Every {@link PxlExcelEngine} constant is an Excel writer, so no argument can name an output this is unable
+     * to create — CSV, which has no POI workbook, is not an engine. There is consequently no unsupported-format
+     * failure to report.
      *
-     * @param exportFileFormat               the target workbook format (HSSF, XSSF, or SXSSF)
-     * @param exportSXSSFRowAccessWindowSize the in-memory row window size, used only for the SXSSF (streaming) format
+     * @param exportExcelEngine              the target POI engine (HSSF, XSSF, or SXSSF)
+     * @param exportSXSSFRowAccessWindowSize the in-memory row window size, used only for the SXSSF (streaming) engine
      * @return the created workbook
-     * @throws InvalidFormatException when the format is not one of HSSF/XSSF/SXSSF
      */
-    public static Workbook createWorkbook(final PxlFileFormat exportFileFormat,
-                                          final int exportSXSSFRowAccessWindowSize)
-            throws InvalidFormatException {
+    public static Workbook createWorkbook(final PxlExcelEngine exportExcelEngine,
+                                          final int exportSXSSFRowAccessWindowSize) {
 
         Workbook workbook;
 
-        switch (exportFileFormat) {
+        switch (exportExcelEngine) {
             case HSSF: {
                 workbook = new HSSFWorkbook();
 
@@ -157,7 +160,9 @@ public final class PxlWorkbookSupport {
             }
 
             default:
-                throw new InvalidFormatException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.SUPPORT_WORKBOOK_UNSUPPORTED_FORMAT));
+                // Unreachable: every PxlExcelEngine constant is handled above. Kept so that adding an engine
+                // without extending this switch fails loudly instead of returning null.
+                throw new AssertionError(exportExcelEngine);
         }
         //WorkbookFactory.create(xssf);
 
@@ -222,9 +227,9 @@ public final class PxlWorkbookSupport {
                 }
 
                 if (workbook instanceof HSSFWorkbook) {
-                    workbookMeta.setImportFileFormat(PxlFileFormat.HSSF);
+                    workbookMeta.setImportFileFormat(PxlFileFormat.XLS);
                 } else {
-                    workbookMeta.setImportFileFormat(PxlFileFormat.XSSF);
+                    workbookMeta.setImportFileFormat(PxlFileFormat.XLSX);
                 }
             }
 
@@ -315,9 +320,9 @@ public final class PxlWorkbookSupport {
                 }
 
                 if (workbook instanceof HSSFWorkbook) {
-                    workbookMeta.setImportFileFormat(PxlFileFormat.HSSF);
+                    workbookMeta.setImportFileFormat(PxlFileFormat.XLS);
                 } else {
-                    workbookMeta.setImportFileFormat(PxlFileFormat.XSSF);
+                    workbookMeta.setImportFileFormat(PxlFileFormat.XLSX);
                 }
             }
 

@@ -10,7 +10,7 @@ Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지
 
 - 내부적으로 Apache POI로 엑셀(XLS/XLSX)을, Apache Commons CSV로 CSV를 처리한다.
 - Import: XLS, XLSX, CSV → 자바 객체
-- Export: 자바 객체 → 엑셀 (기본 XLSX, `@PxlWorkbook(exportFileFormat = ...)`로 XLS·스트리밍 XLSX 선택 가능)
+- Export: 자바 객체 → 엑셀 (기본 XLSX, `@PxlWorkbook(exportExcelEngine = ...)`로 XLS·스트리밍 XLSX 선택 가능)
 - 애노테이션이 붙은 필드/클래스만 바인딩 대상이 된다.
 
 > 🚀 **처음이라면 → [README_ko.md](../README_ko.md)** — 예제 위주로 가장 빠르게 적용하는 실전 가이드.
@@ -261,6 +261,37 @@ List<Department> departments = builder.sheet(Department.class, "Departments")
 
 ---
 
+### Export 엔진과 파일 형식
+
+두 enum은 서로 다른 축에 있으며 어느 쪽도 다른 쪽을 대신하지 못한다.
+
+| 타입               | 답하는 질문                | 상수                        |
+|------------------|-----------------------|---------------------------|
+| `PxlExcelEngine` | 어떤 POI 구현이 워크북을 쓰는가   | `HSSF` · `XSSF` · `SXSSF` |
+| `PxlFileFormat`  | 나온 바이트가 무엇인가          | `XLS` · `XLSX` · `CSV`    |
+
+`@PxlWorkbook(exportExcelEngine = ...)`와 `PxlExportWorkbookOption.exportExcelEngine`은 엔진을 받으므로, 어떤 엔진도 쓰지 않는 형식인 CSV는 애초에 선언할 자리가 없다. 각 엔진은 자기가 만드는 형식을 알고 있고, 시트/행/열 한도는 엔진이 아니라 그 형식에 속한다 — `XSSF`와 `SXSSF`가 한도를 공유하는 이유다.
+
+`PxlFileFormat`은 다운로드 응답을 조립할 때 쓰는 타입이다. 파일 확장자와 MIME content type을 갖고 있다.
+
+```java
+PxlFileFormat format = PxlExcelEngine.SXSSF.getFileFormat();                 // XLSX
+
+response.setContentType(format.getContentType());                            // application/vnd.openxmlformats-...
+response.setHeader("Content-Disposition",
+        "attachment; filename=report." + format.getFilenameExtension());     // report.xlsx
+```
+
+이미 갖고 있는 것으로부터 두 값을 되찾을 수도 있다. 아래 조회는 전부 순수 조회로, **예외를 던지지 않고 `null`도 반환하지 않는다.**
+
+| 조회                                         | 반환                                                                                        |
+|--------------------------------------------|-------------------------------------------------------------------------------------------|
+| `PxlFileFormat.fromPoiWorkbook(workbook)`  | 그 워크북이 담고 있는 형식. 스트리밍 리더의 워크북도 다른 OOXML과 똑같이 `XLSX`를 답한다. `CSV`는 대응하는 POI 워크북이 없어 반환되지 않는다 |
+| `PxlExcelEngine.fromPoiWorkbook(workbook)` | 그 워크북 뒤의 writer. `XSSF`와 `SXSSF`를 구분한다                                                    |
+| `PxlExcelEngine.fromWorkbookObject(Class)` | 클래스가 `@PxlWorkbook`으로 선언한 엔진                                                              |
+
+---
+
 ## 지원 변수 타입
 
 | 분류     | 타입                                                                                           |
@@ -319,7 +350,7 @@ List<Department> departments = builder.sheet(Department.class, "Departments")
 - `null` 값 및 빈/공백 `String` 값은 컬럼의 `exportNullString`으로 기록되며, 그 기본값은 빈 문자열 `""`이다.  
   즉 타입과 무관하게 `null` 필드는 기본적으로 빈 문자열이 든 문자열 셀로 export된다.  
   `exportNullString`으로 다른 문자열을 지정할 수 있다.
-- Export는 기본 XLSX로 생성되며, `exportFileFormat`로 XLS(`HSSF`)·스트리밍 XLSX(`SXSSF`)도 선택할 수 있다 (CSV export는 미지원).
+- Export는 기본 XLSX로 생성되며, `exportExcelEngine`로 `HSSF` 엔진(XLS)·`SXSSF` 엔진(스트리밍 XLSX)도 선택할 수 있다. CSV export는 미지원이며, 엔진은 엑셀 writer이므로 CSV를 지정할 자리 자체가 없다.
 - 시트/컬럼 순서는 필드 선언 순서를 보장하지 않으므로, 순서가 중요하면 `exportOrder`를 지정한다.
 
 ---
@@ -335,13 +366,13 @@ List<Department> departments = builder.sheet(Department.class, "Departments")
 |-------------------------------------------------------------------|------------|--------------------------------------------------------------------------------------------------------------------------------------|
 | `importPassword`                                                  | `""`       | Import 시 문서보호를 해제할 비밀번호                                                                                                 |
 | `importDataValidation`                                            | `true`     | Import된 데이터에 대해 유효성 검사 수행 여부                                                                                         |
-| `importUsingStreamReader`                                         | `false`    | Import 시 Streaming Reader 사용 여부 (XSSF/XLSX 전용)                                                                                |
+| `importUsingStreamReader`                                         | `false`    | Import 시 Streaming Reader 사용 여부 (XLSX 전용)                                                                                     |
 | `importStreamReaderRowCacheSize`                                  | `100`      | Streaming Reader의 row cache size                                                                                                    |
 | `importStreamReaderBufferSize`                                    | `4096`     | Streaming Reader의 buffer size                                                                                                       |
 | `importCsvCharset`                                                | `"UTF-8"`  | Import할 CSV의 문자 인코딩.<br/>선두 BOM 자동 처리(UTF-8/UTF-16LE/BE의 BOM 제거, `UTF-16`(auto)의 BOM은 엔디안 판별에 사용)          |
 | `importCsvDelimiter`                                              | `','`      | Import할 CSV의 구분자 (`char`)                                                                                                       |
 | `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Import 시 다국어 ResourceBundle의 base name / language / country                                                                     |
-| `exportFileFormat`                                                | `XSSF`     | Export 형식(`PxlFileFormat`): `XSSF`=XLSX(기본), `HSSF`=XLS, `SXSSF`=스트리밍 XLSX.<br/>`CSV`는 지원하지 않으므로 지정 시 `PxlDataException` 발생. |
+| `exportExcelEngine`                                               | `XSSF`     | 워크북을 쓰는 POI 엔진(`PxlExcelEngine`): `XSSF`=XLSX(기본), `HSSF`=XLS, `SXSSF`=스트리밍 XLSX.<br/>형식이 아니라 writer를 고르는 속성이라 `XSSF`와 `SXSSF`는 똑같이 `.xlsx`를 만든다. CSV는 엔진이 아니므로 여기에 지정할 수 없다. |
 | `exportPassword`                                                  | `""`       | Export 시 설정할 문서보호 비밀번호.<br/>`toFile(...)`·`toStream(...)`에만 적용되고 `toWorkbook()`에는 적용되지 않는다.               |
 | `exportDataValidation`                                            | `true`     | Export할 데이터에 대해 유효성 검사 수행 여부                                                                                         |
 | `exportSXSSFRowAccessWindowSize`                                  | `100`      | SXSSF Export 시 rowAccessWindowSize                                                                                                  |
@@ -1057,6 +1088,8 @@ List<Employee> rows = pxl.importExcel()
 | XLSX | 1,048,576 | 16,384 | Streaming Reader로 메모리 문제(GC overhead) 없이 읽기 가능 |
 | XLS  | 65,536    | 256    | Streaming Reader 미지원이나, 비스트리밍으로도 메모리 문제 없음     |
 
+> 이 한도는 `PxlFileFormat`이 갖고 있는 값(`getMaxExportRows()` 등)이다. 따라서 엔진은 자기가 쓰는 형식의 한도를 그대로 따르며, `XSSF`와 `SXSSF`도 마찬가지다.
+
 - 자동 열 너비(`autoSizeColumn`)와 대량 데이터  
   `exportColumnWidth`를 지정하지 않으면 기본값(auto)이 적용되어, export 시 POI `autoSizeColumn`이 해당 열의 모든 행 셀을 폰트 메트릭으로 실측한다(열당 O(행 수)).  
   컬럼 N·행 M이면 O(N×M)의 측정 비용이 추가되어 대량 데이터 export에서 성능 저하의 지배적 요인이 될 수 있다.  
@@ -1065,7 +1098,7 @@ List<Employee> rows = pxl.importExcel()
 - export Heap 사용량과 `SXSSF`  
   `XSSF`(기본값)는 한 바이트를 쓰기 전에 워크북 전체를 객체 그래프로 구성하므로, 최종 생성되는 파일보다 훨씬 큰 Heap을 점유한다.  
   `SXSSF`는 같은 `.xlsx`를 만들면서 행을 슬라이딩 윈도우(`exportSXSSFRowAccessWindowSize`, 기본 100)만큼만 메모리에 두고 나머지는 임시 파일로 내보내므로, 힙 사용량이 행 수와 거의 무관해진다.  
-  XLSX 전용이라 `HSSF`(`.xls`)에는 효과가 없다.  
+  XLSX 전용이라 `HSSF` 엔진(`.xls`)에는 효과가 없다.  
   단, 자동 너비로 둔 열은 실측을 위해 추적 대상이 되고 추적된 열은 메모리에 남으므로 절감 효과를 깎아먹는다. `SXSSF`를 쓸 때는 `exportColumnWidth`를 고정하는 편이 좋다.
 
 ---

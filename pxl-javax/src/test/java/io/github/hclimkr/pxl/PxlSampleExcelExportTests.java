@@ -392,12 +392,12 @@ public class PxlSampleExcelExportTests {
     // ------------------------------------------------------------------
 
     @Test
-    public void exportSample_workbookClassWithHssfFormat_producesXlsWorkbook() throws Exception {
+    public void exportSample_workbookClassWithHssfEngine_producesXlsWorkbook() throws Exception {
         final Workbook workbook = pxl.exportSampleExcel()
                 .workbook(XlsFormatWorkbook.class)
                 .toWorkbook();
         try {
-            assertThat(workbook).as("class-level exportFileFormat=HSSF -> XLS workbook").isInstanceOf(HSSFWorkbook.class);
+            assertThat(workbook).as("class-level exportExcelEngine=HSSF -> XLS workbook").isInstanceOf(HSSFWorkbook.class);
             assertThat(headerValuesOf(workbook, "Employees")).contains(EMPLOYEE_HEADERS);
             assertEmployeeSampleValues(workbook, "Employees");
         } finally {
@@ -406,13 +406,13 @@ public class PxlSampleExcelExportTests {
     }
 
     @Test
-    public void exportSample_optionOverridesFormatToHssf_producesXlsWorkbook() throws Exception {
+    public void exportSample_optionOverridesEngineToHssf_producesXlsWorkbook() throws Exception {
         final Workbook workbook = pxl.exportSampleExcel()
                 .sheet(Employee.class, "Sample")
-                .override(PxlExportWorkbookOption.builder().exportFileFormat(PxlFileFormat.HSSF).build())
+                .override(PxlExportWorkbookOption.builder().exportExcelEngine(PxlExcelEngine.HSSF).build())
                 .toWorkbook();
         try {
-            assertThat(workbook).as("option exportFileFormat=HSSF applies to the sample").isInstanceOf(HSSFWorkbook.class);
+            assertThat(workbook).as("option exportExcelEngine=HSSF applies to the sample").isInstanceOf(HSSFWorkbook.class);
             assertThat(headerValuesOf(workbook, "Sample")).contains(EMPLOYEE_HEADERS);
         } finally {
             workbook.close();

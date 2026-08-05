@@ -10,7 +10,7 @@ It is built on top of Apache POI and Apache Commons CSV, and supports Java 8 and
 
 - Internally, it handles Excel (XLS/XLSX) with Apache POI and CSV with Apache Commons CSV.
 - Import: XLS, XLSX, CSV → Java objects
-- Export: Java objects → Excel (XLSX by default; XLS and streaming XLSX can be selected via `@PxlWorkbook(exportFileFormat = ...)`)
+- Export: Java objects → Excel (XLSX by default; XLS and streaming XLSX can be selected via `@PxlWorkbook(exportExcelEngine = ...)`)
 - Only annotated fields/classes become binding targets.
 
 > 🚀 **New here → [README.md](../README.md)** — a hands-on guide that applies PXL the fastest, example-first.
@@ -261,6 +261,41 @@ Each call reads its own sheet, and the return type may differ per sheet. `workbo
 
 ---
 
+### Export Engine and File Format
+
+Two enums sit on separate axes, and neither stands in for the other.
+
+| Type              | Answers                                       | Constants                 |
+|-------------------|-----------------------------------------------|---------------------------|
+| `PxlExcelEngine`  | Which POI implementation writes the workbook   | `HSSF` · `XSSF` · `SXSSF` |
+| `PxlFileFormat`   | What the resulting bytes are                   | `XLS` · `XLSX` · `CSV`    |
+
+`@PxlWorkbook(exportExcelEngine = ...)` and `PxlExportWorkbookOption.exportExcelEngine` take the engine, so a format
+no engine writes — CSV — cannot be declared there at all. Each engine knows the format it produces, and the
+sheet/row/column limits belong to that format rather than to the engine, which is why `XSSF` and `SXSSF` share them.
+
+`PxlFileFormat` is the type to reach for when serving a download, as it carries the filename extension and the MIME
+content type.
+
+```java
+PxlFileFormat format = PxlExcelEngine.SXSSF.getFileFormat();                 // XLSX
+
+response.setContentType(format.getContentType());                            // application/vnd.openxmlformats-...
+response.setHeader("Content-Disposition",
+        "attachment; filename=report." + format.getFilenameExtension());     // report.xlsx
+```
+
+Both types can also be recovered from what you already hold, and every one of these lookups is plain: nothing is
+thrown and `null` is never returned.
+
+| Lookup                                       | Returns                                                                     |
+|----------------------------------------------|-----------------------------------------------------------------------------|
+| `PxlFileFormat.fromPoiWorkbook(workbook)`    | The format the workbook holds. A streaming-reader workbook answers `XLSX` like the other OOXML ones; `CSV` is never returned, as no POI workbook represents it |
+| `PxlExcelEngine.fromPoiWorkbook(workbook)`   | The writer behind the workbook, telling `XSSF` and `SXSSF` apart            |
+| `PxlExcelEngine.fromWorkbookObject(Class)`   | The engine a class declares through `@PxlWorkbook`                          |
+
+---
+
 ## Supported Variable Types
 
 | Category         | Types                                                                                        |
@@ -319,7 +354,7 @@ Fields of an unsupported variable type fail with `PxlArgumentException` while th
 - `null` values and empty/blank `String` values are written with the column's `exportNullString`, whose default is the empty string `""`.  
   That is, regardless of type, a `null` field is by default exported as a string cell containing an empty string.  
   You can specify a different string with `exportNullString`.
-- Export generates XLSX by default; `exportFileFormat` can also select XLS (`HSSF`) or streaming XLSX (`SXSSF`) (CSV export is not supported).
+- Export generates XLSX by default; `exportExcelEngine` can also select the `HSSF` engine (XLS) or the `SXSSF` engine (streaming XLSX). CSV export is not supported — an engine is an Excel writer, so CSV cannot be named there.
 - Sheet/column order is not guaranteed to follow the field declaration order, so if order matters, specify `exportOrder`.
 
 ---
@@ -335,13 +370,13 @@ When you pass an option object to the `.override()` step to provide runtime valu
 |-------------------------------------------------------------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `importPassword`                                                  | `""`       | Password to remove document protection on import                                                                                                                                  |
 | `importDataValidation`                                            | `true`     | Whether to perform validation on imported data                                                                                                                                    |
-| `importUsingStreamReader`                                         | `false`    | Whether to use the Streaming Reader on import (XSSF/XLSX only)                                                                                                                    |
+| `importUsingStreamReader`                                         | `false`    | Whether to use the Streaming Reader on import (XLSX only)                                                                                                                         |
 | `importStreamReaderRowCacheSize`                                  | `100`      | Row cache size of the Streaming Reader                                                                                                                                            |
 | `importStreamReaderBufferSize`                                    | `4096`     | Buffer size of the Streaming Reader                                                                                                                                               |
 | `importCsvCharset`                                                | `"UTF-8"`  | Character encoding of the CSV to import.<br/>Handles a leading BOM automatically (strips the UTF-8/UTF-16LE/BE BOM; for `UTF-16` (auto), the BOM is used to determine endianness) |
 | `importCsvDelimiter`                                              | `','`      | Delimiter of the CSV to import (`char`)                                                                                                                                           |
 | `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on import                                                                                                       |
-| `exportFileFormat`                                                | `XSSF`     | Export format (`PxlFileFormat`): `XSSF`=XLSX (default), `HSSF`=XLS, `SXSSF`=streaming XLSX.<br/>`CSV` is not supported, so specifying it raises `PxlDataException`.                |
+| `exportExcelEngine`                                               | `XSSF`     | POI engine that writes the workbook (`PxlExcelEngine`): `XSSF`=XLSX (default), `HSSF`=XLS, `SXSSF`=streaming XLSX.<br/>It selects the writer, not the format — `XSSF` and `SXSSF` both produce `.xlsx`. CSV is not an engine and cannot be named here. |
 | `exportPassword`                                                  | `""`       | Document protection password to set on export.<br/>Applies to `toFile(...)`/`toStream(...)` only, not to `toWorkbook()`.                                                          |
 | `exportDataValidation`                                            | `true`     | Whether to perform validation on data to export                                                                                                                                   |
 | `exportSXSSFRowAccessWindowSize`                                  | `100`      | rowAccessWindowSize on SXSSF export                                                                                                                                               |
@@ -1058,6 +1093,9 @@ List<Employee> rows = pxl.importExcel()
 | XLSX   | 1,048,576  | 16,384      | Can be read with the Streaming Reader without memory issues (GC overhead) |
 | XLS    | 65,536     | 256         | The Streaming Reader is not supported, but non-streaming also has no memory issues |
 
+> These are the limits `PxlFileFormat` carries (`getMaxExportRows()` and its siblings), so an engine is bound by the
+> limits of the format it writes — `XSSF` and `SXSSF` alike.
+
 - Automatic column width (`autoSizeColumn`) and large data  
   If you do not specify `exportColumnWidth`, the default (auto) applies, so on export POI `autoSizeColumn` measures every row cell of that column with font metrics (O(row count) per column).  
   With N columns and M rows, an O(N×M) measurement cost is added, which can become the dominant factor of performance degradation on large-data export.  
@@ -1066,7 +1104,7 @@ List<Employee> rows = pxl.importExcel()
 - Export heap and `SXSSF`  
   `XSSF` (the default) builds the whole workbook as an object graph before a single byte is written, so the heap it holds is far larger than the file it finally produces.  
   `SXSSF` writes the same `.xlsx` while keeping only a sliding window of rows in memory (`exportSXSSFRowAccessWindowSize`, default 100) and spilling the rest to temp files, which makes the heap roughly independent of the row count.  
-  It applies to XLSX only — it has no effect on `HSSF` (`.xls`).  
+  It applies to XLSX only — it has no effect on the `HSSF` engine (`.xls`).  
   Note that a column left at automatic width must be tracked in order to be measured, and a tracked column stays in memory, which eats into the saving. Pair `SXSSF` with a fixed `exportColumnWidth`.
 
 ---

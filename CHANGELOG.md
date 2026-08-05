@@ -7,7 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `PxlExcelEngine` (`HSSF` / `XSSF` / `SXSSF`) names the POI implementation that writes a workbook, and
+  each constant knows the `PxlFileFormat` it produces through `getFileFormat()`. It also carries the two
+  lookups that belong on that axis: `fromWorkbookObject(Class)`, moved here from `PxlFileFormat`, and
+  `fromPoiWorkbook(Workbook)`, which tells `XSSF` and `SXSSF` apart.
+
 ### Changed
+
+- **Breaking.** `@PxlWorkbook(exportFileFormat)` is now `@PxlWorkbook(exportExcelEngine)` and takes a
+  `PxlExcelEngine` instead of a `PxlFileFormat`; `PxlExportWorkbookOption.exportFileFormat` is renamed the
+  same way, and `PxlConstants.DEFAULT_EXPORT_FILE_FORMAT` (`XSSF`) is joined by `DEFAULT_EXPORT_EXCEL_ENGINE`
+  (`XSSF`) while itself becoming the physical default (`XLSX`). One enum used to carry two unrelated
+  questions — which writer runs, and what the bytes are — which is what let a workbook declare
+  `exportFileFormat = CSV`, a format no writer can produce, and fail at runtime with an unsupported-format
+  `PxlDataException`. Naming a writer that cannot exist is now a compile error, so the check, its message and
+  the `throws` on workbook creation are gone rather than reworded. Migration is mechanical:
+
+  | Before                                       | After                                          |
+  |----------------------------------------------|------------------------------------------------|
+  | `@PxlWorkbook(exportFileFormat = ...)`       | `@PxlWorkbook(exportExcelEngine = ...)`        |
+  | `PxlExportWorkbookOption.builder().exportFileFormat(...)` | `....exportExcelEngine(...)`       |
+  | `PxlFileFormat.HSSF`                         | `PxlExcelEngine.HSSF`                          |
+  | `PxlFileFormat.XSSF`                         | `PxlExcelEngine.XSSF`                          |
+  | `PxlFileFormat.SXSSF`                        | `PxlExcelEngine.SXSSF`                         |
+  | `PxlFileFormat.CSV` as an export target      | not expressible — CSV export is unsupported    |
+  | `PxlConstants.DEFAULT_EXPORT_FILE_FORMAT` as the annotation default | `PxlConstants.DEFAULT_EXPORT_EXCEL_ENGINE` |
+  | `PxlFileFormat.fromWorkbookObject(Class)`    | `PxlExcelEngine.fromWorkbookObject(Class)`     |
+
+- **Breaking.** `PxlFileFormat` now names physical formats only — `XLS`, `XLSX` and `CSV` in place of `HSSF`,
+  `XSSF`, `SXSSF` and `CSV`. `XSSF` and `SXSSF` had held byte-identical extension, content type and limits all
+  along, because they are one format written two ways; they are now the single `XLSX`. What the enum keeps is
+  what a caller reads rather than declares: the filename extension and MIME content type for a download
+  response, and the sheet/row/column limits an export is bound by. `fromPoiWorkbook(Workbook)` stays but
+  answers on this axis, so a streaming-reader workbook now reports `XLSX` rather than `XSSF`; ask
+  `PxlExcelEngine.fromPoiWorkbook(...)` when the writer is what you need.
 
 - Sheet names are now matched **ignoring case** on import, in both the Excel and the CSV
   reader: `Employees.csv` binds a sheet declared as `@PxlSheet(name = "employees")`, and an

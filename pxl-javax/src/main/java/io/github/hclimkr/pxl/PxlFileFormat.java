@@ -1,7 +1,6 @@
 package io.github.hclimkr.pxl;
 
 import com.github.pjfanning.xlsx.impl.StreamingWorkbook;
-import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,17 +10,18 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import java.util.Objects;
-import java.util.Optional;
-
 /**
- * Excel/CSV file format, each carrying its filename extension, MIME content type, and the maximum
- * sheet/row/column counts applied on import and export.
+ * Physical spreadsheet file format — what the bytes are — each carrying its filename extension, MIME content
+ * type, and the maximum sheet/row/column counts applied on import and export.
  * <p>
- * Besides the constants, two lookups recover the format from what you already have: an open POI workbook
- * ({@link #fromPoiWorkbook(Workbook)}) or a workbook class declaring {@code @PxlWorkbook(exportFileFormat = ...)}
- * ({@link #fromWorkbookObject(Class)}). Both are plain lookups — they throw nothing and never return {@code null},
- * falling back to {@link PxlConstants#DEFAULT_EXPORT_FILE_FORMAT}.
+ * This is the format axis, not the writer axis. Which POI implementation writes an Excel file is
+ * {@link PxlExcelEngine}, and two engines write the same format: both {@code XSSF} and {@code SXSSF} produce
+ * {@link #XLSX}. A workbook class declares the engine through {@code @PxlWorkbook(exportExcelEngine = ...)},
+ * which {@link PxlExcelEngine#fromWorkbookObject(Class)} reads back.
+ * <p>
+ * {@link #fromPoiWorkbook(Workbook)} recovers the format an open POI workbook holds. It is a plain lookup — it
+ * throws nothing and never returns {@code null}, falling back to
+ * {@link PxlConstants#DEFAULT_EXPORT_FILE_FORMAT}.
  */
 @Getter
 @AllArgsConstructor
@@ -29,9 +29,10 @@ public enum PxlFileFormat {
 
     // Horrible SpreadSheet Format (Excel '97)
     /**
-     * Legacy binary {@code .xls} format (Excel '97; POI HSSF), bounded by the Excel 97 sheet limits.
+     * Legacy binary {@code .xls} format (Excel '97), written by {@link PxlExcelEngine#HSSF} and bounded by the
+     * Excel 97 sheet limits.
      */
-    HSSF(
+    XLS(
             PxlConstants.FILENAME_EXTENSION_XLS,
             PxlConstants.CONTENT_TYPE_MICROSOFT_XLS,
 
@@ -46,10 +47,11 @@ public enum PxlFileFormat {
 
     // XML SpreadSheet Format (Excel 2007)
     /**
-     * OOXML {@code .xlsx} format (Excel 2007; POI XSSF), the default export format, bounded by the
-     * Excel 2007 sheet limits.
+     * OOXML {@code .xlsx} format (Excel 2007), the default export format, bounded by the Excel 2007 sheet
+     * limits. Both {@link PxlExcelEngine#XSSF} and {@link PxlExcelEngine#SXSSF} write it — they differ in how
+     * much of the workbook they hold in memory, not in what they produce.
      */
-    XSSF(
+    XLSX(
             PxlConstants.FILENAME_EXTENSION_XLSX,
             PxlConstants.CONTENT_TYPE_MICROSOFT_XLSX,
 
@@ -62,28 +64,10 @@ public enum PxlFileFormat {
             SpreadsheetVersion.EXCEL2007.getMaxColumns()
     ),
 
-    // Streaming XML SpreadSheet Format
-    /**
-     * Streaming OOXML {@code .xlsx} format (POI SXSSF) for low-memory export; shares the Excel 2007
-     * sheet limits and the {@code .xlsx} extension/content type.
-     */
-    SXSSF(
-            PxlConstants.FILENAME_EXTENSION_XLSX,
-            PxlConstants.CONTENT_TYPE_MICROSOFT_XLSX,
-
-            PxlConstants.IMPORT_MAX_NUMBER_OF_EXCEL_SHEETS,
-            SpreadsheetVersion.EXCEL2007.getMaxRows(),
-            SpreadsheetVersion.EXCEL2007.getMaxColumns(),
-
-            PxlConstants.EXPORT_MAX_NUMBER_OF_EXCEL_SHEETS,
-            SpreadsheetVersion.EXCEL2007.getMaxRows(),
-            SpreadsheetVersion.EXCEL2007.getMaxColumns()
-    ),
-
-    // not supported yet
     // Comma Separated Values
     /**
      * Comma-separated values ({@code .csv}) format, bounded by the dedicated CSV sheet/row/column limits.
+     * No {@link PxlExcelEngine} produces it — it is plain text rather than a POI workbook.
      */
     CSV(
             PxlConstants.FILENAME_EXTENSION_CSV,
@@ -135,12 +119,13 @@ public enum PxlFileFormat {
     private final int maxExportColumns;
 
     /**
-     * Resolves the file format of an open POI workbook from its implementation type.
+     * Resolves the file format an open POI workbook holds, from its implementation type.
      * <p>
-     * {@link HSSFWorkbook} maps to {@link #HSSF} and {@link SXSSFWorkbook} to {@link #SXSSF}, while both
-     * {@link XSSFWorkbook} and the streaming reader's {@code StreamingWorkbook} map to {@link #XSSF} — a
-     * streamed workbook is read from the same OOXML ({@code .xlsx}) container, and {@link #SXSSF} denotes the
-     * streaming <em>export</em> workbook only. {@link #CSV} is never returned, as no POI workbook represents it.
+     * {@link HSSFWorkbook} maps to {@link #XLS}; {@link XSSFWorkbook}, {@link SXSSFWorkbook} and the streaming
+     * reader's {@code StreamingWorkbook} all map to {@link #XLSX}, because all three sit on the same OOXML
+     * container and differ only in how they read or write it. Which of them it is, is the engine question that
+     * {@link PxlExcelEngine#fromPoiWorkbook(Workbook)} answers. {@link #CSV} is never returned, as no POI
+     * workbook represents it.
      * <p>
      * This is a plain lookup: it throws nothing and never returns {@code null} — a {@code null} argument or an
      * unrecognized workbook type falls back to {@link PxlConstants#DEFAULT_EXPORT_FILE_FORMAT}.
@@ -153,44 +138,18 @@ public enum PxlFileFormat {
     public static PxlFileFormat fromPoiWorkbook(@Nullable final Workbook poiWorkbook) {
 
         if (poiWorkbook instanceof HSSFWorkbook) {
-            return HSSF;
+            return XLS;
         }
 
         // SXSSFWorkbook wraps an XSSFWorkbook instead of extending it, so the order of these checks is not load-bearing.
-        if (poiWorkbook instanceof SXSSFWorkbook) {
-            return SXSSF;
-        }
-
-        // The streaming reader opens the same OOXML container as XSSF, so it reports the XSSF format.
-        if (poiWorkbook instanceof XSSFWorkbook || poiWorkbook instanceof StreamingWorkbook) {
-            return XSSF;
+        // The streaming reader opens the same OOXML container as well, so all three report XLSX.
+        if (poiWorkbook instanceof XSSFWorkbook
+                || poiWorkbook instanceof SXSSFWorkbook
+                || poiWorkbook instanceof StreamingWorkbook) {
+            return XLSX;
         }
 
         return PxlConstants.DEFAULT_EXPORT_FILE_FORMAT;
-    }
-
-    /**
-     * Finds and returns the export file format declared by a workbook class through
-     * {@link PxlWorkbook#exportFileFormat()}.
-     * <p>
-     * Like {@link #fromPoiWorkbook(Workbook)}, this is a plain lookup: it throws nothing and never returns
-     * {@code null} — a {@code null} class, a class without {@code @PxlWorkbook}, or an annotation left at its
-     * default all yield {@link PxlConstants#DEFAULT_EXPORT_FILE_FORMAT}.
-     *
-     * @param workbookClass the workbook class to inspect (may be {@code null})
-     * @return the declared export file format, or {@link PxlConstants#DEFAULT_EXPORT_FILE_FORMAT} if absent
-     */
-    public static PxlFileFormat fromWorkbookObject(@Nullable final Class<?> workbookClass) {
-
-        if (Objects.isNull(workbookClass)) {
-            return PxlConstants.DEFAULT_EXPORT_FILE_FORMAT;
-        }
-
-        final PxlWorkbook workbookAnnotation = workbookClass.getAnnotation(PxlWorkbook.class);
-
-        return Optional.ofNullable(workbookAnnotation)
-                .map(PxlWorkbook::exportFileFormat)
-                .orElse(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
     }
 
 }

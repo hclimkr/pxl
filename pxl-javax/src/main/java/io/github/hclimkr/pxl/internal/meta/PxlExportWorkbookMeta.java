@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl.internal.meta;
 
 import io.github.hclimkr.pxl.PxlConstants;
+import io.github.hclimkr.pxl.PxlExcelEngine;
 import io.github.hclimkr.pxl.PxlFileFormat;
 import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.exception.PxlDataException;
@@ -19,7 +20,6 @@ import io.github.hclimkr.pxl.util.PxlMiscUtils;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
@@ -48,7 +48,7 @@ public final class PxlExportWorkbookMeta {
     private final Set<Class<? extends PxlStyler>> failedCellStyleSet;
 
     // Cache of quote-prefix data cell styles (baseStyleIndex -> quotePrefixedStyle).
-    // Creating a new CellStyle for each cell could exceed the workbook style count limit (HSSF ~4000 / XSSF ~64000),
+    // Creating a new CellStyle for each cell could exceed the workbook style count limit (XLS ~4000 / XLSX ~64000),
     // so create and reuse only one per base style.
     private final Map<Integer, CellStyle> quotePrefixedStyleCache = new HashMap<>();
 
@@ -56,6 +56,10 @@ public final class PxlExportWorkbookMeta {
     // The key is "baseStyleIndex|excelFormatCode", and for the same reason as the quote-prefix cache, only one is created and reused per combination.
     private final Map<String, CellStyle> dateFormattedStyleCache = new HashMap<>();
 
+    // The POI engine that writes this workbook. The physical format below is derived from it, so the two never disagree.
+    private final PxlExcelEngine exportExcelEngine;
+
+    // Physical format of the output; the source of the sheet/row/column limits the binder enforces.
     private final PxlFileFormat exportFileFormat;
 
     private final String exportPassword;
@@ -82,7 +86,8 @@ public final class PxlExportWorkbookMeta {
      *
      * @param workbook                               the newly created POI workbook
      * @param formulaEvaluator                       the formula evaluator for the workbook
-     * @param exportFileFormat                       the resolved output file format
+     * @param exportExcelEngine                      the resolved POI engine writing the workbook
+     * @param exportFileFormat                       the physical output file format the engine produces
      * @param exportPassword                         the password for encrypted output; may be {@code null}
      * @param exportDataValidation                   whether bean validation is applied
      * @param exportSXSSFRowAccessWindowSize         the SXSSF streaming row access window size
@@ -95,6 +100,7 @@ public final class PxlExportWorkbookMeta {
      */
     private PxlExportWorkbookMeta(final Workbook workbook,
                                   final FormulaEvaluator formulaEvaluator,
+                                  final PxlExcelEngine exportExcelEngine,
                                   final PxlFileFormat exportFileFormat,
                                   final String exportPassword,
                                   final boolean exportDataValidation,
@@ -110,6 +116,7 @@ public final class PxlExportWorkbookMeta {
         this.formulaEvaluator = formulaEvaluator;
         this.cellStyleMap = new HashMap<>();
         this.failedCellStyleSet = new HashSet<>();
+        this.exportExcelEngine = exportExcelEngine;
         this.exportFileFormat = exportFileFormat;
         this.exportPassword = exportPassword;
         this.exportDataValidation = exportDataValidation;
@@ -125,12 +132,12 @@ public final class PxlExportWorkbookMeta {
     /**
      * On export, collects the workbook metadata from the workbook option and the workbook class.
      * The workbook option takes precedence over the workbook class.
-     * A new empty POI workbook (matching the resolved file format) and its formula evaluator are created here.
+     * A new empty POI workbook (created by the resolved engine) and its formula evaluator are created here.
      *
      * @param workbookClass  the {@link PxlWorkbook}-annotated workbook class supplying annotation defaults; may be {@code null}
      * @param workbookOption runtime overrides taking precedence over the class annotation; may be {@code null}
-     * @return the assembled export workbook metadata, holding the newly created workbook, formula evaluator, resolved format/password/validation settings, cascaded stylers, i18n bundle and sheet options
-     * @throws PxlDataException if the workbook name field type is invalid, or the workbook cannot be created for the resolved file format
+     * @return the assembled export workbook metadata, holding the newly created workbook, formula evaluator, resolved engine/format/password/validation settings, cascaded stylers, i18n bundle and sheet options
+     * @throws PxlDataException if the workbook name field type is invalid
      * @throws PxlI18nException if the export content i18n bundle cannot be found for the configured base name and locale
      */
     public static PxlExportWorkbookMeta makeExportWorkbookMeta(@Nullable final Class<?> workbookClass,
@@ -143,11 +150,14 @@ public final class PxlExportWorkbookMeta {
                 .map(c -> c.getAnnotation(PxlWorkbook.class))
                 .orElse(null);
 
-        final PxlFileFormat exportFileFormat = Optional.ofNullable(workbookOption)
-                .flatMap(option -> Optional.ofNullable(option.getExportFileFormat()))
+        final PxlExcelEngine exportExcelEngine = Optional.ofNullable(workbookOption)
+                .flatMap(option -> Optional.ofNullable(option.getExportExcelEngine()))
                 .orElseGet(() -> Optional.ofNullable(workbookAnnotation)
-                        .map(PxlWorkbook::exportFileFormat)
-                        .orElse(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT));
+                        .map(PxlWorkbook::exportExcelEngine)
+                        .orElse(PxlConstants.DEFAULT_EXPORT_EXCEL_ENGINE));
+
+        // The physical format is not declared separately: it is whatever the chosen engine writes.
+        final PxlFileFormat exportFileFormat = exportExcelEngine.getFileFormat();
 
         final String exportPassword = Optional.ofNullable(workbookOption)
                 .flatMap(option -> Optional.ofNullable(option.getExportPassword()))
@@ -211,18 +221,14 @@ public final class PxlExportWorkbookMeta {
 
         final List<PxlExportSheetMeta> exportSheetMetas = new ArrayList<>();
 
-        final Workbook workbook;
-        try {
-            workbook = PxlWorkbookSupport.createWorkbook(exportFileFormat, exportSXSSFRowAccessWindowSize);
-        } catch (InvalidFormatException invalidFormatException) {
-            throw new PxlDataException(invalidFormatException);
-        }
+        final Workbook workbook = PxlWorkbookSupport.createWorkbook(exportExcelEngine, exportSXSSFRowAccessWindowSize);
 
         final FormulaEvaluator formulaEvaluator = PxlWorkbookUtils.createFormulaEvaluator(workbook);
 
         return new PxlExportWorkbookMeta(
                 workbook,
                 formulaEvaluator,
+                exportExcelEngine,
                 exportFileFormat,
                 exportPassword,
                 exportDataValidation,

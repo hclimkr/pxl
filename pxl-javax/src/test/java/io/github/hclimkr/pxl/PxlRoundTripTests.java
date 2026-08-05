@@ -352,7 +352,7 @@ public class PxlRoundTripTests {
         final File file = TestPaths.exportFile(testInfo, ".xls");
 
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.HSSF)
+                .exportExcelEngine(PxlExcelEngine.HSSF)
                 .exportDataValidation(false)
                 .build();
         pxl.exportExcel()
@@ -371,7 +371,7 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Static helpers (PxlWorkbookUtils workbook name / PxlFileFormat file format extraction)
+    // Static helpers (PxlWorkbookUtils workbook name / PxlExcelEngine export engine extraction)
     // ------------------------------------------------------------------
 
     @Test
@@ -380,13 +380,13 @@ public class PxlRoundTripTests {
     }
 
     @Test
-    public void fileFormat_fromWorkbookObject_annotatedAndDefault_resolves() {
-        assertThat(PxlFileFormat.fromWorkbookObject(CompanyWorkbook.class)).isEqualTo(PxlFileFormat.XSSF);
-        assertThat(PxlFileFormat.fromWorkbookObject(XlsFormatWorkbook.class)).isEqualTo(PxlFileFormat.HSSF);
+    public void excelEngine_fromWorkbookObject_annotatedAndDefault_resolves() {
+        assertThat(PxlExcelEngine.fromWorkbookObject(CompanyWorkbook.class)).isEqualTo(PxlExcelEngine.XSSF);
+        assertThat(PxlExcelEngine.fromWorkbookObject(XlsFormatWorkbook.class)).isEqualTo(PxlExcelEngine.HSSF);
     }
 
     @Test
-    public void fileFormat_fromWorkbookObject_nullClass_returnsDefault() {
-        assertThat(PxlFileFormat.fromWorkbookObject(null)).isEqualTo(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
+    public void excelEngine_fromWorkbookObject_nullClass_returnsDefault() {
+        assertThat(PxlExcelEngine.fromWorkbookObject(null)).isEqualTo(PxlConstants.DEFAULT_EXPORT_EXCEL_ENGINE);
     }
 }

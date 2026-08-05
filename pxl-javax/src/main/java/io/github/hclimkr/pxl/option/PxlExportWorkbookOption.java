@@ -1,6 +1,6 @@
 package io.github.hclimkr.pxl.option;
 
-import io.github.hclimkr.pxl.PxlFileFormat;
+import io.github.hclimkr.pxl.PxlExcelEngine;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
@@ -24,10 +24,10 @@ import java.util.ResourceBundle;
 public final class PxlExportWorkbookOption {
 
     /**
-     * Specifies the format of the Excel workbook to be exported.
+     * Specifies the POI engine used to write the Excel workbook on export.
      */
     @Builder.Default
-    private final PxlFileFormat exportFileFormat = null;
+    private final PxlExcelEngine exportExcelEngine = null;
 
     /**
      * Specifies the password used to protect the document on export.

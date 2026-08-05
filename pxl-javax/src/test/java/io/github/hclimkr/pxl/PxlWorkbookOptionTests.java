@@ -437,7 +437,7 @@ public class PxlWorkbookOptionTests {
     @Test
     public void sxssfRowAccessWindow_variants_work() throws Exception {
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.SXSSF)
+                .exportExcelEngine(PxlExcelEngine.SXSSF)
                 .exportSXSSFRowAccessWindowSize(100)
                 .exportDataValidation(false)
                 .build();

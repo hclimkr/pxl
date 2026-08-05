@@ -34,7 +34,7 @@ public final class PxlImportWorkbookOption {
     private final Boolean importDataValidation = null;
 
     /**
-     * Specifies whether to use the stream reader on import. (Works only with XSSF-format Excel files.)
+     * Specifies whether to use the stream reader on import. (Works only with XLSX files.)
      * https://github.com/pjfanning/excel-streaming-reader
      */
     @Builder.Default

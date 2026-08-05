@@ -9,6 +9,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 
 /**
@@ -135,9 +136,16 @@ public interface PxlConstants {
     int DEFAULT_IMPORT_STREAM_READER_BUFFER_SIZE = 4096;
 
     /**
-     * Default file format produced by export.
+     * Default POI engine used to write an Excel workbook on export.
      */
-    PxlFileFormat DEFAULT_EXPORT_FILE_FORMAT = PxlFileFormat.XSSF;
+    PxlExcelEngine DEFAULT_EXPORT_EXCEL_ENGINE = PxlExcelEngine.XSSF;
+
+    /**
+     * Default physical file format produced by export — the format
+     * {@link #DEFAULT_EXPORT_EXCEL_ENGINE} writes, and the fallback of the
+     * {@link PxlFileFormat#fromPoiWorkbook(Workbook)} lookup.
+     */
+    PxlFileFormat DEFAULT_EXPORT_FILE_FORMAT = PxlFileFormat.XLSX;
 
     /**
      * Default password used to encrypt exported files ({@code ""} means no encryption).

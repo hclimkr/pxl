@@ -883,10 +883,10 @@ public class PxlUtilityTests {
     }
 
     @Test
-    public void workbookSupport_createWorkbook_perFormat() throws Exception {
-        assertThat(PxlWorkbookSupport.createWorkbook(PxlFileFormat.XSSF, 100)).isInstanceOf(XSSFWorkbook.class);
-        assertThat(PxlWorkbookSupport.createWorkbook(PxlFileFormat.HSSF, 100)).isInstanceOf(HSSFWorkbook.class);
-        assertThat(PxlWorkbookSupport.createWorkbook(PxlFileFormat.SXSSF, 100)).isInstanceOf(SXSSFWorkbook.class);
+    public void workbookSupport_createWorkbook_perEngine() throws Exception {
+        assertThat(PxlWorkbookSupport.createWorkbook(PxlExcelEngine.XSSF, 100)).isInstanceOf(XSSFWorkbook.class);
+        assertThat(PxlWorkbookSupport.createWorkbook(PxlExcelEngine.HSSF, 100)).isInstanceOf(HSSFWorkbook.class);
+        assertThat(PxlWorkbookSupport.createWorkbook(PxlExcelEngine.SXSSF, 100)).isInstanceOf(SXSSFWorkbook.class);
     }
 
     @Test
@@ -1297,30 +1297,31 @@ public class PxlUtilityTests {
     }
 
     // ==================================================================
-    // PxlFileFormat (root public type)
+    // PxlFileFormat (root public type) - the physical format axis
     // ==================================================================
 
     @Test
-    public void fileFormat_fromPoiWorkbook_poiWorkbookTypes_resolveMatchingFormat() throws Exception {
+    public void fileFormat_fromPoiWorkbook_poiWorkbookTypes_resolveWrittenFormat() throws Exception {
         try (HSSFWorkbook workbook = new HSSFWorkbook()) {
-            assertThat(PxlFileFormat.fromPoiWorkbook(workbook)).isEqualTo(PxlFileFormat.HSSF);
+            assertThat(PxlFileFormat.fromPoiWorkbook(workbook)).isEqualTo(PxlFileFormat.XLS);
         }
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-            assertThat(PxlFileFormat.fromPoiWorkbook(workbook)).isEqualTo(PxlFileFormat.XSSF);
+            assertThat(PxlFileFormat.fromPoiWorkbook(workbook)).isEqualTo(PxlFileFormat.XLSX);
         }
 
+        // SXSSF is a different writer, not a different format - it produces the same XLSX container as XSSF.
         final SXSSFWorkbook sxssfWorkbook = new SXSSFWorkbook();
         try {
-            assertThat(PxlFileFormat.fromPoiWorkbook(sxssfWorkbook)).isEqualTo(PxlFileFormat.SXSSF);
+            assertThat(PxlFileFormat.fromPoiWorkbook(sxssfWorkbook)).isEqualTo(PxlFileFormat.XLSX);
         } finally {
             PxlWorkbookUtils.closeWorkbook(sxssfWorkbook);   // disposes the temp files backing the workbook
         }
     }
 
     @Test
-    public void fileFormat_fromPoiWorkbook_streamingWorkbook_resolvesToXssf() throws Exception {
-        // The streaming reader opens the same OOXML container, so it reports XSSF - SXSSF is the streaming export format.
+    public void fileFormat_fromPoiWorkbook_streamingWorkbook_resolvesToXlsx() throws Exception {
+        // The streaming reader opens the same OOXML container, so it holds the XLSX format like the other two.
         final byte[] xlsx;
         try (XSSFWorkbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -1330,7 +1331,7 @@ public class PxlUtilityTests {
         }
 
         try (Workbook streaming = StreamingReader.builder().open(new ByteArrayInputStream(xlsx))) {
-            assertThat(PxlFileFormat.fromPoiWorkbook(streaming)).isEqualTo(PxlFileFormat.XSSF);
+            assertThat(PxlFileFormat.fromPoiWorkbook(streaming)).isEqualTo(PxlFileFormat.XLSX);
         }
     }
 
@@ -1346,9 +1347,44 @@ public class PxlUtilityTests {
         assertThat(PxlFileFormat.fromPoiWorkbook(unknown)).isEqualTo(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
     }
 
+    // ==================================================================
+    // PxlExcelEngine (root public type) - the writer axis
+    // ==================================================================
+
     @Test
-    public void fileFormat_fromWorkbookObject_annotationAbsent_returnsDefaultFormat() throws Exception {
-        // A class without @PxlWorkbook carries no declared format, so the default export format stands in.
-        assertThat(PxlFileFormat.fromWorkbookObject(Employee.class)).isEqualTo(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
+    public void excelEngine_fromPoiWorkbook_poiWriterTypes_resolveMatchingEngine() throws Exception {
+        try (HSSFWorkbook workbook = new HSSFWorkbook()) {
+            assertThat(PxlExcelEngine.fromPoiWorkbook(workbook)).isEqualTo(PxlExcelEngine.HSSF);
+        }
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            assertThat(PxlExcelEngine.fromPoiWorkbook(workbook)).isEqualTo(PxlExcelEngine.XSSF);
+        }
+
+        // Here the two XLSX writers are told apart - that is what this axis is for.
+        final SXSSFWorkbook sxssfWorkbook = new SXSSFWorkbook();
+        try {
+            assertThat(PxlExcelEngine.fromPoiWorkbook(sxssfWorkbook)).isEqualTo(PxlExcelEngine.SXSSF);
+        } finally {
+            PxlWorkbookUtils.closeWorkbook(sxssfWorkbook);   // disposes the temp files backing the workbook
+        }
+    }
+
+    @Test
+    public void excelEngine_fromPoiWorkbook_nullOrNonWriter_returnsDefaultEngine() throws Exception {
+        // A plain lookup: nothing is thrown, an unmatched argument falls back to the default export engine.
+        assertThat(PxlExcelEngine.fromPoiWorkbook(null)).isEqualTo(PxlConstants.DEFAULT_EXPORT_EXCEL_ENGINE);
+
+        // A Workbook implementation PXL does not know falls back the same way.
+        final Workbook unknown = (Workbook) Proxy.newProxyInstance(
+                Workbook.class.getClassLoader(), new Class<?>[]{Workbook.class}, (proxy, method, args) -> null);
+
+        assertThat(PxlExcelEngine.fromPoiWorkbook(unknown)).isEqualTo(PxlConstants.DEFAULT_EXPORT_EXCEL_ENGINE);
+    }
+
+    @Test
+    public void excelEngine_fromWorkbookObject_annotationAbsent_returnsDefaultEngine() throws Exception {
+        // A class without @PxlWorkbook declares no engine, so the default export engine stands in.
+        assertThat(PxlExcelEngine.fromWorkbookObject(Employee.class)).isEqualTo(PxlConstants.DEFAULT_EXPORT_EXCEL_ENGINE);
     }
 }

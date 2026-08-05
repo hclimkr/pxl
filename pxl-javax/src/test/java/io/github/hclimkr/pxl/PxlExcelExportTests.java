@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Excel export path tests — masking/trimming/grouping/password/file format (SXSSF, HSSF), literal formulas, column inheritance, sheet name normalization, lastColumnIndex boundary.
+ * Excel export path tests — masking/trimming/grouping/password/export engine (SXSSF, HSSF), literal formulas, column inheritance, sheet name normalization, lastColumnIndex boundary.
  */
 public class PxlExcelExportTests {
 
@@ -148,7 +148,7 @@ public class PxlExcelExportTests {
     @Test
     public void exportSxssf_toFileDestinationUnopenable_throwsAndBuilderStaysUsable() throws Exception {
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.SXSSF)
+                .exportExcelEngine(PxlExcelEngine.SXSSF)
                 .exportDataValidation(false)
                 .build();
 
@@ -355,7 +355,7 @@ public class PxlExcelExportTests {
     }
 
     // ------------------------------------------------------------------
-    // File format: SXSSF (streaming write, result is xlsx)
+    // Engine: SXSSF (streaming write, result is xlsx)
     // ------------------------------------------------------------------
 
     @Test
@@ -363,7 +363,7 @@ public class PxlExcelExportTests {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.SXSSF)
+                .exportExcelEngine(PxlExcelEngine.SXSSF)
                 .exportDataValidation(false)
                 .build();
 
@@ -382,7 +382,7 @@ public class PxlExcelExportTests {
     }
 
     // ------------------------------------------------------------------
-    // File format: HSSF (xls) round trip
+    // Engine: HSSF (xls) round trip
     // ------------------------------------------------------------------
 
     @Test
@@ -390,7 +390,7 @@ public class PxlExcelExportTests {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.HSSF)
+                .exportExcelEngine(PxlExcelEngine.HSSF)
                 .exportDataValidation(false)
                 .build();
 
@@ -410,7 +410,7 @@ public class PxlExcelExportTests {
     }
 
     // ------------------------------------------------------------------
-    // File format x password: SXSSF/HSSF encrypted round trip (writeToStream uses agile encryption for both XSSF and SXSSF, Biff8 for HSSF)
+    // Engine x password: SXSSF/HSSF encrypted round trip (writeToStream uses agile encryption for both XSSF and SXSSF, Biff8 for HSSF)
     // ------------------------------------------------------------------
 
     @Test
@@ -418,7 +418,7 @@ public class PxlExcelExportTests {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.SXSSF)
+                .exportExcelEngine(PxlExcelEngine.SXSSF)
                 .exportDataValidation(false)
                 .exportPassword("secret")
                 .build();
@@ -446,7 +446,7 @@ public class PxlExcelExportTests {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.HSSF)
+                .exportExcelEngine(PxlExcelEngine.HSSF)
                 .exportDataValidation(false)
                 .exportPassword("secret")
                 .build();
@@ -469,7 +469,7 @@ public class PxlExcelExportTests {
 
         // The Biff8 thread-local key is cleaned up in finally, so a subsequent unencrypted HSSF export is not contaminated.
         final PxlExportWorkbookOption plainOption = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.HSSF)
+                .exportExcelEngine(PxlExcelEngine.HSSF)
                 .exportDataValidation(false)
                 .build();
         final File plainXls = TestPaths.exportFile("hssf-plain-after-encrypted.xls");
@@ -912,7 +912,7 @@ public class PxlExcelExportTests {
         row.setFormula("=2+3");
 
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
-                .exportFileFormat(PxlFileFormat.SXSSF)
+                .exportExcelEngine(PxlExcelEngine.SXSSF)
                 .exportDataValidation(false)
                 .build();
 
@@ -992,32 +992,33 @@ public class PxlExcelExportTests {
     }
 
     // ==================================================================
-    // Non-XSSF format (HSSF .xls / SXSSF streaming xlsx) feature coverage
-    // (extends the type-fidelity/feature verification previously only on the default XSSF to both formats)
+    // Non-XSSF engine (HSSF .xls / SXSSF streaming xlsx) feature coverage
+    // (extends the type-fidelity/feature verification previously only on the default XSSF to both engines)
     // ==================================================================
 
-    private static PxlExportWorkbookOption formatOption(final PxlFileFormat format, final boolean dataValidation) {
+    private static PxlExportWorkbookOption engineOption(final PxlExcelEngine engine, final boolean dataValidation) {
         return PxlExportWorkbookOption.builder()
-                .exportFileFormat(format)
+                .exportExcelEngine(engine)
                 .exportDataValidation(dataValidation)
                 .build();
     }
 
-    // Per-format file extension (HSSF=.xls, XSSF/SXSSF=.xlsx). Also prevents file name collisions in parameterized tests.
-    private static String ext(final PxlFileFormat format) {
-        return "_" + format.name() + (format == PxlFileFormat.HSSF ? ".xls" : ".xlsx");
+    // Per-engine file extension (HSSF=.xls, XSSF/SXSSF=.xlsx), taken from the format the engine writes.
+    // Also prevents file name collisions in parameterized tests.
+    private static String ext(final PxlExcelEngine engine) {
+        return "_" + engine.name() + "." + engine.getFileFormat().getFilenameExtension();
     }
 
     // Whether rich-type (all types) round trips are preserved on HSSF and SXSSF too. On SXSSF the auto-size tracking path is also exercised.
     @ParameterizedTest
-    @EnumSource(value = PxlFileFormat.class, names = {"HSSF", "SXSSF"})
-    public void richTypes_roundTrip_perFormat(final PxlFileFormat format) throws Exception {
+    @EnumSource(value = PxlExcelEngine.class, names = {"HSSF", "SXSSF"})
+    public void richTypes_roundTrip_perEngine(final PxlExcelEngine engine) throws Exception {
         final AllTypesRow row = Fixtures.sampleAllTypesRow();
 
-        final File file = TestPaths.exportFile(testInfo, ext(format));
+        final File file = TestPaths.exportFile(testInfo, ext(engine));
         pxl.exportExcel()
                 .sheet(AllTypesRow.class, Arrays.asList(row), "Types")
-                .override(formatOption(format, false))
+                .override(engineOption(engine, false))
                 .toFile(file);
 
         final AllTypesRow out = pxl.importExcel()
@@ -1026,31 +1027,41 @@ public class PxlExcelExportTests {
         Fixtures.assertSampleAllTypesRow(out);
     }
 
-    // Per-format sheet limits match POI SpreadsheetVersion (HSSF=EXCEL97, XSSF/SXSSF=EXCEL2007). Only HSSF differs in value.
+    // Per-format sheet limits match POI SpreadsheetVersion (XLS=EXCEL97, XLSX=EXCEL2007). Only XLS differs in value.
     @Test
     public void fileFormat_exportLimits_matchSpreadsheetVersion() {
-        assertThat(PxlFileFormat.HSSF.getMaxExportRows()).isEqualTo(65536);
-        assertThat(PxlFileFormat.HSSF.getMaxExportColumns()).isEqualTo(256);
+        assertThat(PxlFileFormat.XLS.getMaxExportRows()).isEqualTo(65536);
+        assertThat(PxlFileFormat.XLS.getMaxExportColumns()).isEqualTo(256);
 
-        assertThat(PxlFileFormat.XSSF.getMaxExportRows()).isEqualTo(1_048_576);
-        assertThat(PxlFileFormat.XSSF.getMaxExportColumns()).isEqualTo(16_384);
+        assertThat(PxlFileFormat.XLSX.getMaxExportRows()).isEqualTo(1_048_576);
+        assertThat(PxlFileFormat.XLSX.getMaxExportColumns()).isEqualTo(16_384);
+    }
 
-        // SXSSF shares the same EXCEL2007 limits as XSSF.
-        assertThat(PxlFileFormat.SXSSF.getMaxExportRows()).isEqualTo(PxlFileFormat.XSSF.getMaxExportRows());
-        assertThat(PxlFileFormat.SXSSF.getMaxExportColumns()).isEqualTo(PxlFileFormat.XSSF.getMaxExportColumns());
+    // Each engine writes exactly one physical format, and the limits it is bound by are that format's.
+    // XSSF and SXSSF differ in memory behaviour only, so they share both the format and the limits.
+    @Test
+    public void excelEngine_fileFormat_mapsToWrittenFormatAndItsLimits() {
+        assertThat(PxlExcelEngine.HSSF.getFileFormat()).isEqualTo(PxlFileFormat.XLS);
+        assertThat(PxlExcelEngine.XSSF.getFileFormat()).isEqualTo(PxlFileFormat.XLSX);
+        assertThat(PxlExcelEngine.SXSSF.getFileFormat()).isEqualTo(PxlFileFormat.XLSX);
+
+        assertThat(PxlExcelEngine.SXSSF.getFileFormat().getMaxExportRows())
+                .isEqualTo(PxlExcelEngine.XSSF.getFileFormat().getMaxExportRows());
+        assertThat(PxlExcelEngine.SXSSF.getFileFormat().getMaxExportColumns())
+                .isEqualTo(PxlExcelEngine.XSSF.getFileFormat().getMaxExportColumns());
     }
 
     // A dropdown (exportOptionItems) exports without exception on HSSF/SXSSF too and the value round trips (data validation kept enabled).
     @ParameterizedTest
-    @EnumSource(value = PxlFileFormat.class, names = {"HSSF", "SXSSF"})
-    public void dropdown_roundTrip_perFormat(final PxlFileFormat format) throws Exception {
+    @EnumSource(value = PxlExcelEngine.class, names = {"HSSF", "SXSSF"})
+    public void dropdown_roundTrip_perEngine(final PxlExcelEngine engine) throws Exception {
         final OptionItemsRow row = new OptionItemsRow();
         row.setChoice("Red");
 
-        final File file = TestPaths.exportFile(testInfo, ext(format));
+        final File file = TestPaths.exportFile(testInfo, ext(engine));
         pxl.exportExcel()
                 .sheet(OptionItemsRow.class, Arrays.asList(row), "Opt")
-                .override(formatOption(format, true))
+                .override(engineOption(engine, true))
                 .toFile(file);
 
         final OptionItemsRow out = pxl.importExcel()
@@ -1059,20 +1070,20 @@ public class PxlExcelExportTests {
         assertThat(out.getChoice()).isEqualTo("Red");
     }
 
-    // Grouping (splitting sheets by field value) works on HSSF/SXSSF too (the workbook option takes precedence over the class and overrides the format).
+    // Grouping (splitting sheets by field value) works on HSSF/SXSSF too (the workbook option takes precedence over the class and overrides the engine).
     @ParameterizedTest
-    @EnumSource(value = PxlFileFormat.class, names = {"HSSF", "SXSSF"})
-    public void grouping_splitsIntoSheets_perFormat(final PxlFileFormat format) throws Exception {
+    @EnumSource(value = PxlExcelEngine.class, names = {"HSSF", "SXSSF"})
+    public void grouping_splitsIntoSheets_perEngine(final PxlExcelEngine engine) throws Exception {
         final GroupedWorkbook workbook = new GroupedWorkbook();
         workbook.setWorkbookName("Grouped");
         workbook.setEmployees(Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"),
                 Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales")));
 
-        final File file = TestPaths.exportFile(testInfo, ext(format));
+        final File file = TestPaths.exportFile(testInfo, ext(engine));
         pxl.exportExcel()
                 .workbook(workbook)
-                .override(formatOption(format, false))
+                .override(engineOption(engine, false))
                 .toFile(file);
 
         try (Workbook poi = WorkbookFactory.create(file)) {
@@ -1092,7 +1103,7 @@ public class PxlExcelExportTests {
         final File file = TestPaths.exportFile(testInfo, ".xls");
         pxl.exportSampleExcel()
                 .workbook(AllTypesWorkbook.class)
-                .override(formatOption(PxlFileFormat.HSSF, false))
+                .override(engineOption(PxlExcelEngine.HSSF, false))
                 .toFile(file);
 
         try (Workbook poi = WorkbookFactory.create(file)) {
@@ -1109,7 +1120,7 @@ public class PxlExcelExportTests {
         final File file = TestPaths.exportFile(testInfo, ".xlsx");
         pxl.exportExcel()
                 .sheet(AllTypesRow.class, Arrays.asList(Fixtures.sampleAllTypesRow()), "Types")
-                .override(formatOption(PxlFileFormat.SXSSF, false))
+                .override(engineOption(PxlExcelEngine.SXSSF, false))
                 .toFile(file);
 
         try (Workbook poi = WorkbookFactory.create(file)) {

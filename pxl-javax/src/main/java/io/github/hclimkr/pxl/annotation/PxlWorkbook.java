@@ -1,7 +1,7 @@
 package io.github.hclimkr.pxl.annotation;
 
 import io.github.hclimkr.pxl.PxlConstants;
-import io.github.hclimkr.pxl.PxlFileFormat;
+import io.github.hclimkr.pxl.PxlExcelEngine;
 import io.github.hclimkr.pxl.styler.PxlStyler;
 
 import java.lang.annotation.*;
@@ -29,10 +29,10 @@ public @interface PxlWorkbook {
     boolean importDataValidation() default PxlConstants.DEFAULT_IMPORT_DATA_VALIDATION;
 
     /**
-     * Specifies whether to use the Stream Reader on import. (Works only with XSSF-format Excel files.)
+     * Specifies whether to use the Stream Reader on import. (Works only with XLSX files.)
      * https://github.com/pjfanning/excel-streaming-reader
      *
-     * @return {@code true} to read XSSF files with the streaming reader; defaults to {@link PxlConstants#DEFAULT_IMPORT_USING_STREAM_READER} ({@code false})
+     * @return {@code true} to read XLSX files with the streaming reader; defaults to {@link PxlConstants#DEFAULT_IMPORT_USING_STREAM_READER} ({@code false})
      */
     boolean importUsingStreamReader() default PxlConstants.DEFAULT_IMPORT_USING_STREAM_READER;
 
@@ -92,11 +92,15 @@ public @interface PxlWorkbook {
     String importI18nCountry() default PxlConstants.DEFAULT_IMPORT_I18N_COUNTRY;
 
     /**
-     * Specifies the format of the Excel workbook to be exported.
+     * Specifies the POI engine used to write the Excel workbook on export.
+     * <p>
+     * This selects the writer, not the file format: {@code HSSF} writes {@code .xls}, while {@code XSSF} and
+     * {@code SXSSF} both write {@code .xlsx} and differ only in memory behaviour. CSV is not an engine and is
+     * therefore not selectable here.
      *
-     * @return the workbook file format produced on export; defaults to {@link PxlFileFormat#XSSF}
+     * @return the POI engine used on export; defaults to {@link PxlExcelEngine#XSSF}
      */
-    PxlFileFormat exportFileFormat() default PxlFileFormat.XSSF;
+    PxlExcelEngine exportExcelEngine() default PxlExcelEngine.XSSF;
 
     /**
      * Specifies the Password used to protect the document on export.
