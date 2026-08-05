@@ -19,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.math.BigDecimal;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -99,7 +100,7 @@ public class PxlColumnOptionTests {
 
     // The list of headers in the given sheet's header row
     private static List<String> headersOf(final byte[] bytes, final String sheetName) throws Exception {
-        try (Workbook workbook = org.apache.poi.ss.usermodel.WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             final Row header = workbook.getSheet(sheetName).getRow(0);
             final List<String> headers = new ArrayList<>();
             for (final Cell cell : header) {
@@ -111,7 +112,7 @@ public class PxlColumnOptionTests {
 
     // The rendered value of a data cell in the given sheet by (row, header)
     private static String renderedCell(final byte[] bytes, final String sheetName, final int dataRowIndex, final String header) throws Exception {
-        try (Workbook workbook = org.apache.poi.ss.usermodel.WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             final Sheet sheet = workbook.getSheet(sheetName);
             final Row headerRow = sheet.getRow(0);
             int col = -1;
@@ -425,7 +426,7 @@ public class PxlColumnOptionTests {
                 .toFile(excelFile);
 
         // an exportEnabled=false column is not exported.
-        final List<String> headers = headersOf(java.nio.file.Files.readAllBytes(excelFile.toPath()), "Toggle");
+        final List<String> headers = headersOf(Files.readAllBytes(excelFile.toPath()), "Toggle");
         assertThat(headers).contains("Always", "ImportOff");
         assertThat(headers).doesNotContain("ExportOff");
 

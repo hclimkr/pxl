@@ -19,12 +19,12 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link java.time.Duration} column values — parses cells/strings into {@code Duration} on
- * import and writes {@code Duration} into cells on export.
+ * Codec for {@link Duration} column values — parses cells/strings into {@link Duration} on
+ * import and writes {@link Duration} into cells on export.
  *
  * <p>NUMERIC and BOOLEAN cells are interpreted as a number of seconds. Strings are parsed by the column's
  * import pattern (via {@link DurationFormatUtils}) when set, otherwise by ISO-8601
- * {@link java.time.Duration#parse}. Export uses the column's export pattern when set, otherwise the
+ * {@link Duration#parse}. Export uses the column's export pattern when set, otherwise the
  * ISO-8601 form.
  */
 final class PxlDurationCodec {
@@ -38,13 +38,13 @@ final class PxlDurationCodec {
     }
 
     /**
-     * Parses the given cell into a {@link java.time.Duration}. NUMERIC cells are treated as a number of
+     * Parses the given cell into a {@link Duration}. NUMERIC cells are treated as a number of
      * seconds (range-checked to {@code long}); BOOLEAN cells map to 1 or 0 seconds; STRING cells are
      * delegated to the string parser; BLANK cells yield {@code null}.
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code Duration}, or {@code null} when blank
+     * @return the parsed {@link Duration}, or {@code null} when blank
      * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is out of range
      */
     static Duration parseDurationValue(final Cell cell,
@@ -85,13 +85,13 @@ final class PxlDurationCodec {
     }
 
     /**
-     * Parses a string token into a {@link java.time.Duration}. When the column's import pattern is set it
-     * is tried first, falling back to ISO-8601 {@link java.time.Duration#parse} on mismatch. The value is
+     * Parses a string token into a {@link Duration}. When the column's import pattern is set it
+     * is tried first, falling back to ISO-8601 {@link Duration#parse} on mismatch. The value is
      * trimmed when {@code importTrim} is set; a blank value yields {@code null}.
      *
      * @param s          the raw string token
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code Duration}, or {@code null} when blank
+     * @return the parsed {@link Duration}, or {@code null} when blank
      * @throws PxlCellCodecException if the value is not a valid duration
      */
     static Duration parseDurationValue(final String s,
@@ -120,13 +120,13 @@ final class PxlDurationCodec {
     }
 
     /**
-     * Writes the given value as a {@code Duration} cell and returns the exported string. A {@code String}
-     * source is parsed with ISO-8601 {@link java.time.Duration#parse}; a {@link java.time.Duration} source
+     * Writes the given value as a {@link Duration} cell and returns the exported string. A {@link String}
+     * source is parsed with ISO-8601 {@link Duration#parse}; a {@link Duration} source
      * is used directly. A {@code null} result blanks the cell; otherwise the value is formatted with the
      * column's export pattern when set, else its ISO-8601 form.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code Duration})
+     * @param object     the source value (a {@link String} or {@link Duration})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when blank
      * @throws PxlCellCodecException if the source is unsupported, the string is invalid, or the value is too large
@@ -167,8 +167,8 @@ final class PxlDurationCodec {
     }
 
     /**
-     * Renders the export string for a {@code Duration}: when an export pattern is set the value's milliseconds are formatted
-     * with {@code DurationFormatUtils}, otherwise its {@link Duration#toString()} ISO-8601 form is used; then applies
+     * Renders the export string for a {@link Duration}: when an export pattern is set the value's milliseconds are formatted
+     * with {@link DurationFormatUtils}, otherwise its {@link Duration#toString()} ISO-8601 form is used; then applies
      * string-level export processing via {@link PxlStringCodec#makeExportString}.
      *
      * @param durationValue the value to render

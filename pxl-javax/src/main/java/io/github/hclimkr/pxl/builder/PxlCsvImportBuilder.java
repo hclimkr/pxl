@@ -1,9 +1,7 @@
 package io.github.hclimkr.pxl.builder;
 
-import io.github.hclimkr.pxl.exception.PxlArgumentException;
-import io.github.hclimkr.pxl.exception.PxlException;
-import io.github.hclimkr.pxl.exception.PxlNullPointerException;
-import io.github.hclimkr.pxl.exception.PxlSystemException;
+import io.github.hclimkr.pxl.Pxl;
+import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.core.PxlCoreCsvImporter;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
@@ -20,7 +18,7 @@ import java.io.InputStream;
 import java.util.*;
 
 /**
- * CSV import builder. Created via {@link io.github.hclimkr.pxl.Pxl#importCsv()}.
+ * CSV import builder. Created via {@link Pxl#importCsv()}.
  *
  * <p>The parse target is configured with {@link #workbook(Class)} (workbook form) or {@link #sheet(Class)}
  * (sheet form), each returning a {@link Source} whose source-terminal methods ({@code fromFile(...)} /
@@ -90,7 +88,7 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
     }
 
     /**
-     * Configures parsing a single CSV into a list ({@code List}) of row objects. Specify the source and run the parse
+     * Configures parsing a single CSV into a list ({@link List}) of row objects. Specify the source and run the parse
      * with the returned {@link Source}. (There must be exactly one file/stream)
      *
      * @param rowClass the row class
@@ -138,8 +136,8 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
      * <p>The source-terminal methods are the <strong>normalization boundary</strong>: they declare
      * {@code throws PxlException}, but since that type is abstract what actually surfaces is always a concrete
      * subtype — the matching one for a classified failure ({@link PxlArgumentException},
-     * {@link io.github.hclimkr.pxl.exception.PxlCellCodecException},
-     * {@link io.github.hclimkr.pxl.exception.PxlValidationException}, ...), and {@link PxlSystemException}
+     * {@link PxlCellCodecException},
+     * {@link PxlValidationException}, ...), and {@link PxlSystemException}
      * (carrying the original as its cause) for anything else, such as a CSV file that cannot be opened or read.</p>
      *
      * @param <R> the parsed result type (a workbook object, a {@code List<row>}, or a {@code Collection<row>})

@@ -570,7 +570,7 @@ public final class PxlExportColumnMeta {
      * Resolves the type a column actually writes: the element type of a Collection column, the field type otherwise.
      * (export)
      * <p>
-     * A {@code List<String>} field is a {@code List} by declaration but writes strings, so the element type is what
+     * A {@code List<String>} field is a {@link List} by declaration but writes strings, so the element type is what
      * decides whether a value of this column can be translated. Mirrors how the codecs pick a Collection column's
      * element type.
      *

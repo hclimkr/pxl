@@ -6,7 +6,7 @@ import lombok.*;
 import java.util.Date;
 
 /**
- * (Regression for the Date seconds-loss fix) Verifies that a java.util.Date with no pattern specified round-trips down to the second under default settings.
+ * (Regression for the Date seconds-loss fix) Verifies that a {@link Date} with no pattern specified round-trips down to the second under default settings.
  */
 @Getter
 @Setter

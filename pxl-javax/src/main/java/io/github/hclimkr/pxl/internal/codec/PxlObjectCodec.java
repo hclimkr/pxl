@@ -20,7 +20,7 @@ import java.util.Optional;
 /**
  * Codec for custom object column values — parses strings into objects on import and writes objects into
  * cells on export, using the column's {@code @PxlImportConverter}/{@code @PxlExportConverter} method, a
- * {@code String} constructor, or a {@code toString} method. Blank values map to {@code null}.
+ * {@link String} constructor, or a {@code toString} method. Blank values map to {@code null}.
  */
 final class PxlObjectCodec {
 
@@ -33,7 +33,7 @@ final class PxlObjectCodec {
     }
 
     /**
-     * Parses the given cell into a custom object by first reading it as a {@code String} via
+     * Parses the given cell into a custom object by first reading it as a {@link String} via
      * {@link PxlStringCodec} and delegating to {@link #parseObjectValue(String, PxlImportColumnMeta)}.
      *
      * @param cell       the cell to read
@@ -52,7 +52,7 @@ final class PxlObjectCodec {
 
     /**
      * Parses a string token into a custom object using the column's import converter metadata (converter
-     * method or {@code String} constructor). The value is trimmed when {@code importTrim} is set; a blank
+     * method or {@link String} constructor). The value is trimmed when {@code importTrim} is set; a blank
      * value yields {@code null}.
      *
      * @param s          the raw string token
@@ -73,12 +73,12 @@ final class PxlObjectCodec {
     }
 
     /**
-     * Writes the given value as an object cell and returns the exported string. A {@code String} source is
+     * Writes the given value as an object cell and returns the exported string. A {@link String} source is
      * imported and re-exported (sample flow); an instance of the converter's value class is used directly.
      * A {@code null} result blanks the cell.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or an instance of the converter's value class)
+     * @param object     the source value (a {@link String} or an instance of the converter's value class)
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when blank
      * @throws PxlCellCodecException if the source type is unsupported or conversion fails
@@ -165,12 +165,12 @@ final class PxlObjectCodec {
 
     /**
      * Parses a string into an object using the given import converter metadata: a {@code @PxlImportConverter} method takes
-     * precedence, otherwise a {@code String} constructor.
+     * precedence, otherwise a {@link String} constructor.
      *
      * @param stringValue   the source string
      * @param converterMeta the resolved import converter metadata
      * @return the parsed object, or {@code null} when the input is blank or the metadata is {@code null}
-     * @throws PxlCellCodecException if neither a converter method nor a {@code String} constructor is available, or the conversion throws
+     * @throws PxlCellCodecException if neither a converter method nor a {@link String} constructor is available, or the conversion throws
      */
     private static Object importStringToObject(final String stringValue,
                                                final PxlImportColumnMeta.PxlImportConverterMeta converterMeta)

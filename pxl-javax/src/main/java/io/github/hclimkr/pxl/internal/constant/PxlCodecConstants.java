@@ -4,8 +4,12 @@ import io.github.hclimkr.pxl.internal.support.PxlDateTimeSupport;
 import org.apache.poi.ss.usermodel.BuiltinFormats;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -38,13 +42,13 @@ public final class PxlCodecConstants {
 
     // SimpleDateFormat is not thread-safe, so a per-thread instance is provided.
     /**
-     * Per-thread {@code java.util.Date} write formatter (fixed ISO pattern, {@link Locale#ROOT}).
+     * Per-thread {@link Date} write formatter (fixed ISO pattern, {@link Locale#ROOT}).
      */
     public static final ThreadLocal<SimpleDateFormat> javaDateWriteFormatter =
             ThreadLocal.withInitial(() -> PxlDateTimeSupport.getCellSimpleDateFormatter(javaDateWritePattern, Locale.ROOT));
 
     /**
-     * Per-thread {@code java.util.Date} read formatters (fixed ISO patterns, {@link Locale#ROOT}).
+     * Per-thread {@link Date} read formatters (fixed ISO patterns, {@link Locale#ROOT}).
      */
     public static final ThreadLocal<List<SimpleDateFormat>> javaDateReadFormatters =
             ThreadLocal.withInitial(() -> Arrays.stream(javaDateReadPatterns)
@@ -52,13 +56,13 @@ public final class PxlCodecConstants {
                     .collect(Collectors.toList()));
 
     /**
-     * {@code LocalDate} write formatter (fixed ISO pattern).
+     * {@link LocalDate} write formatter (fixed ISO pattern).
      */
     public static final DateTimeFormatter localDateWriteFormatter =
             PxlDateTimeSupport.getCellDateTimeFormatter(localDateWritePattern, Locale.ROOT);
 
     /**
-     * {@code LocalDate} read formatters (fixed ISO patterns).
+     * {@link LocalDate} read formatters (fixed ISO patterns).
      */
     public static final List<DateTimeFormatter> localDateReadFormatters =
             Arrays.stream(localDateReadPatterns)
@@ -66,13 +70,13 @@ public final class PxlCodecConstants {
                     .collect(Collectors.toList());
 
     /**
-     * {@code LocalTime} write formatter (fixed ISO pattern).
+     * {@link LocalTime} write formatter (fixed ISO pattern).
      */
     public static final DateTimeFormatter localTimeWriteFormatter =
             PxlDateTimeSupport.getCellDateTimeFormatter(localTimeWritePattern, Locale.ROOT);
 
     /**
-     * {@code LocalTime} read formatters (fixed ISO patterns).
+     * {@link LocalTime} read formatters (fixed ISO patterns).
      */
     public static final List<DateTimeFormatter> localTimeReadFormatters =
             Arrays.stream(localTimeReadPatterns)
@@ -80,13 +84,13 @@ public final class PxlCodecConstants {
                     .collect(Collectors.toList());
 
     /**
-     * {@code LocalDateTime} write formatter (fixed ISO pattern).
+     * {@link LocalDateTime} write formatter (fixed ISO pattern).
      */
     public static final DateTimeFormatter localDateTimeWriteFormatter =
             PxlDateTimeSupport.getCellDateTimeFormatter(localDateTimeWritePattern, Locale.ROOT);
 
     /**
-     * {@code LocalDateTime} read formatters (fixed ISO patterns).
+     * {@link LocalDateTime} read formatters (fixed ISO patterns).
      */
     public static final List<DateTimeFormatter> localDateTimeReadFormatters =
             Arrays.stream(localDateTimeReadPatterns)
@@ -95,22 +99,22 @@ public final class PxlCodecConstants {
 
     // Excel display format codes applied when a date/time value is exported as a Numeric (Excel date serial) cell (POI built-in, locale-independent).
     /**
-     * Excel display format code for {@code java.util.Date} numeric-serial cells.
+     * Excel display format code for {{@link Date} numeric-serial cells.
      */
     public static final String javaDateExcelFormat = BuiltinFormats.getBuiltinFormat(14);
 
     /**
-     * Excel display format code for {@code LocalDate} numeric-serial cells.
+     * Excel display format code for {@link LocalDate} numeric-serial cells.
      */
     public static final String localDateExcelFormat = BuiltinFormats.getBuiltinFormat(14);
 
     /**
-     * Excel display format code for {@code LocalTime} numeric-serial cells.
+     * Excel display format code for {@link LocalTime} numeric-serial cells.
      */
     public static final String localTimeExcelFormat = BuiltinFormats.getBuiltinFormat(21);
 
     /**
-     * Excel display format code for {@code LocalDateTime} numeric-serial cells.
+     * Excel display format code for {@link LocalDateTime} numeric-serial cells.
      */
     public static final String localDateTimeExcelFormat = BuiltinFormats.getBuiltinFormat(22);
 

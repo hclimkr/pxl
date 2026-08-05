@@ -21,8 +21,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link java.time.OffsetTime} column values — parses cells/strings into {@code OffsetTime} on
- * import and writes {@code OffsetTime} into cells on export.
+ * Codec for {@link OffsetTime} column values — parses cells/strings into {@link OffsetTime} on
+ * import and writes {@link OffsetTime} into cells on export.
  *
  * <p>NUMERIC cells are read as Excel time fractions and given the current system offset; a BOOLEAN cell is
  * rejected as an unsupported cell type. Strings are parsed with the column's cached formatter, then ISO-8601
@@ -40,13 +40,13 @@ final class PxlOffsetTimeCodec {
     }
 
     /**
-     * Parses the given cell into an {@link java.time.OffsetTime} using the current system offset. NUMERIC
+     * Parses the given cell into an {@link OffsetTime} using the current system offset. NUMERIC
      * cells are read as Excel time fractions; STRING cells are delegated to the string parser; BOOLEAN
      * cells are rejected as an unsupported cell type; BLANK cells yield {@code null}.
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code OffsetTime}, or {@code null} when blank
+     * @return the parsed {@link OffsetTime}, or {@code null} when blank
      * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is invalid
      */
     static OffsetTime parseOffsetTimeValue(final Cell cell,
@@ -89,13 +89,13 @@ final class PxlOffsetTimeCodec {
     }
 
     /**
-     * Parses a string token into an {@link java.time.OffsetTime}. The column's cached formatter is tried
+     * Parses a string token into an {@link OffsetTime}. The column's cached formatter is tried
      * first, then ISO-8601 parsing with an explicit offset. The value is trimmed when {@code importTrim} is
      * set; a blank value yields {@code null}.
      *
      * @param s          the raw string token
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code OffsetTime}, or {@code null} when blank
+     * @return the parsed {@link OffsetTime}, or {@code null} when blank
      * @throws PxlCellCodecException if the value matches no known format
      */
     static OffsetTime parseOffsetTimeValue(final String s,
@@ -130,14 +130,14 @@ final class PxlOffsetTimeCodec {
     }
 
     /**
-     * Writes the given value as an {@code OffsetTime} cell and returns the exported string. A {@code String}
-     * source is parsed with the export formatter, falling back to ISO-8601; a {@link java.time.OffsetTime}
+     * Writes the given value as an {@link OffsetTime} cell and returns the exported string. A {@link String}
+     * source is parsed with the export formatter, falling back to ISO-8601; a {@link OffsetTime}
      * source is used directly. A {@code null} result blanks the cell; otherwise the cell is written as a
      * formatted string when exported to string, or as a numeric Excel-time cell (local part only) when no
      * pattern/masking applies.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code OffsetTime})
+     * @param object     the source value (a {@link String} or {@link OffsetTime})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when blank
      * @throws PxlCellCodecException if the source is unsupported or the string is not a valid offset time
@@ -198,7 +198,7 @@ final class PxlOffsetTimeCodec {
     }
 
     /**
-     * Renders the export string for an {@code OffsetTime}: formats it with the configured export {@link DateTimeFormatter}
+     * Renders the export string for an {@link OffsetTime}: formats it with the configured export {@link DateTimeFormatter}
      * (or {@link DateTimeFormatter#ISO_OFFSET_TIME} when none is set), then applies string-level export processing via
      * {@link PxlStringCodec#makeExportString}.
      *

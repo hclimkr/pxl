@@ -17,10 +17,9 @@ import org.junit.jupiter.params.provider.EnumSource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.nio.file.Files;
 import java.time.*;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -557,11 +556,11 @@ public class PxlExcelExportTests {
                 .override(noValidationOption())
                 .toStream(outputStream);
 
-        try (org.apache.poi.ss.usermodel.Workbook workbook =
-                     org.apache.poi.ss.usermodel.WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
-            final org.apache.poi.ss.usermodel.Row header = workbook.getSheet("Derived").getRow(0);
-            final java.util.Set<String> headers = new java.util.HashSet<>();
-            for (final org.apache.poi.ss.usermodel.Cell cell : header) {
+        try (Workbook workbook =
+                     WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+            final Row header = workbook.getSheet("Derived").getRow(0);
+            final Set<String> headers = new HashSet<>();
+            for (final Cell cell : header) {
                 headers.add(cell.getStringCellValue());
             }
             assertThat(headers).contains("Id", "BaseName", "Extra");
@@ -660,7 +659,7 @@ public class PxlExcelExportTests {
                 .sheet(Employee.class, twoEmployees(), longName)
                 .override(noValidationOption())
                 .toFile(excelFile);
-        final byte[] bytes = java.nio.file.Files.readAllBytes(excelFile.toPath());
+        final byte[] bytes = Files.readAllBytes(excelFile.toPath());
 
         // The actual sheet name is truncated to 31 chars
         final String actualName = firstSheetName(bytes);
@@ -688,7 +687,7 @@ public class PxlExcelExportTests {
                 .sheet(Employee.class, twoEmployees(), badName)
                 .override(noValidationOption())
                 .toFile(excelFile);
-        final byte[] bytes = java.nio.file.Files.readAllBytes(excelFile.toPath());
+        final byte[] bytes = Files.readAllBytes(excelFile.toPath());
 
         final String actualName = firstSheetName(bytes);
         // No invalid characters must remain

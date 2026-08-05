@@ -134,11 +134,11 @@ public final class PxlDateCellSupport {
      * A date-formatted cell is read through POI's own date conversion, any other numeric cell as a raw Excel date
      * serial. POI answers {@code null} for a serial outside the Excel date range — a negative one, for instance —
      * so the value is checked here instead of being dereferenced by each caller, which would surface the failure as
-     * a message-less {@code NullPointerException} that names neither the cell nor the value.
+     * a message-less {@link NullPointerException} that names neither the cell nor the value.
      *
      * @param cell     the numeric cell to read
      * @param typeName the name of the target type, used in the diagnostic message
-     * @return the cell value as a {@code LocalDateTime}
+     * @return the cell value as a {@link LocalDateTime}
      * @throws PxlCellCodecException if the cell holds a serial number that is not a valid Excel date
      */
     public static LocalDateTime readNumericCellAsLocalDateTime(final Cell cell,
@@ -159,13 +159,13 @@ public final class PxlDateCellSupport {
     /**
      * Reads a numeric cell as a {@link Date}, rejecting a serial number that is no Excel date. (import)
      * <p>
-     * The {@code java.util.Date} counterpart of {@link #readNumericCellAsLocalDateTime}: POI answers {@code null} for
+     * The {@link Date} counterpart of {@link #readNumericCellAsLocalDateTime}: POI answers {@code null} for
      * the same out-of-range serials, and the Date codec assigned that {@code null} straight to the field, leaving an
      * invalid cell to bind as no value at all instead of being reported.
      *
      * @param cell     the numeric cell to read
      * @param typeName the name of the target type, used in the diagnostic message
-     * @return the cell value as a {@code Date}
+     * @return the cell value as a {@link Date}
      * @throws PxlCellCodecException if the cell holds a serial number that is not a valid Excel date
      */
     public static Date readNumericCellAsJavaDate(final Cell cell,

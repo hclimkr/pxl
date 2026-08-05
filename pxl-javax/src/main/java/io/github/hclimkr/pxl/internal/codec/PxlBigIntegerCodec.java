@@ -20,8 +20,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@code BigInteger} column values — parses cells and strings into {@code BigInteger} on import and writes
- * {@code BigInteger} into cells on export. A numeric cell is converted via {@code BigDecimal.valueOf(double)} and truncated
+ * Codec for {@link BigInteger} column values — parses cells and strings into {@link BigInteger} on import and writes
+ * {@link BigInteger} into cells on export. A numeric cell is converted via {@code BigDecimal.valueOf(double)} and truncated
  * to its integer part (so its precision is limited by the underlying {@code double}); string input is parsed exactly via
  * {@code new BigInteger(String)}. Boolean cells map to 1/0. Export always writes the value as text
  * ({@link BigInteger#toString()}, quote-prefixed) to preserve full precision rather than as a lossy numeric cell.
@@ -37,13 +37,13 @@ final class PxlBigIntegerCodec {
     }
 
     /**
-     * Parses an Excel cell into a {@code BigInteger}. NUMERIC cells are converted via {@code BigDecimal.valueOf(double)} and
+     * Parses an Excel cell into a {@link BigInteger}. NUMERIC cells are converted via {@code BigDecimal.valueOf(double)} and
      * truncated to their integer part; STRING cells are delegated to the string overload; BOOLEAN cells map to 1 (true) or
      * 0 (false); BLANK cells yield {@code null}.
      *
      * @param cell       the source cell
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code BigInteger}, or {@code null} for a blank cell
+     * @return the parsed {@link BigInteger}, or {@code null} for a blank cell
      * @throws PxlCellCodecException if the cell type is unsupported
      */
     static BigInteger parseBigIntegerValue(final Cell cell,
@@ -81,14 +81,14 @@ final class PxlBigIntegerCodec {
     }
 
     /**
-     * Parses a string into a {@code BigInteger}. Trims first when {@code importTrim} is enabled and returns {@code null} for
-     * blank input. When an import {@link DecimalFormat} is configured (parsing to {@code BigDecimal}) its result is truncated
-     * to a {@code BigInteger}; otherwise {@code new BigInteger(String)} parses the value exactly.
+     * Parses a string into a {@link BigInteger}. Trims first when {@code importTrim} is enabled and returns {@code null} for
+     * blank input. When an import {@link DecimalFormat} is configured (parsing to {@link BigDecimal}) its result is truncated
+     * to a {@link BigInteger}; otherwise {@code new BigInteger(String)} parses the value exactly.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code BigInteger}, or {@code null} for blank input
-     * @throws PxlCellCodecException if the string is not a valid {@code BigInteger}
+     * @return the parsed {@link BigInteger}, or {@code null} for blank input
+     * @throws PxlCellCodecException if the string is not a valid {@link BigInteger}
      */
     static BigInteger parseBigIntegerValue(final String s,
                                            final PxlImportColumnMeta columnMeta)
@@ -120,16 +120,16 @@ final class PxlBigIntegerCodec {
     }
 
     /**
-     * Writes a {@code BigInteger} value into a cell. Accepts a {@code BigInteger} directly or a {@code String} (parsed via
+     * Writes a {@link BigInteger} value into a cell. Accepts a {@link BigInteger} directly or a {@link String} (parsed via
      * {@code new BigInteger(String)}; blank becomes {@code null}). A {@code null} value blanks the cell. When the column is
      * exported as text the value is formatted via {@link #makeBigIntegerExportString}; otherwise its
      * {@link BigInteger#toString()} form is written quote-prefixed (as text, to preserve precision).
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code BigInteger} or {@code String})
+     * @param object     the source value ({@link BigInteger} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@code BigInteger}
+     * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@link BigInteger}
      */
     static String buildBigIntegerCell(final Cell cell,
                                       final Object object,
@@ -174,7 +174,7 @@ final class PxlBigIntegerCodec {
     }
 
     /**
-     * Renders the export string for a {@code BigInteger}: applies the export {@link DecimalFormat} when configured, otherwise
+     * Renders the export string for a {@link BigInteger}: applies the export {@link DecimalFormat} when configured, otherwise
      * applies masking over the {@link BigInteger#toString()} form when an export masking pattern is set, otherwise returns
      * that string form.
      *

@@ -1,5 +1,7 @@
 package io.github.hclimkr.pxl.annotation;
 
+import io.github.hclimkr.pxl.exception.PxlDataException;
+
 import java.lang.annotation.*;
 
 /**
@@ -9,7 +11,7 @@ import java.lang.annotation.*;
  * an Excel import from a file names the workbook after the source file, with the extension removed; a stream source
  * carries no file name, so the field is left untouched there.
  * <p>
- * The annotated field must be of type {@link String}; otherwise a {@code PxlDataException} is raised — the type is
+ * The annotated field must be of type {@link String}; otherwise a {@link PxlDataException} is raised — the type is
  * checked while collecting metadata, on the export path as well, even though export never reads the field. Only the
  * first such field is used, scanning the class and then its superclasses.
  */

@@ -21,8 +21,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link java.util.Date} column values — parses cells/strings into {@code Date} on import and
- * writes {@code Date} into cells on export.
+ * Codec for {@link Date} column values — parses cells/strings into {@link Date} on import and
+ * writes {@link Date} into cells on export.
  *
  * <p>Import reads date-formatted NUMERIC cells via POI, other numerics as Excel date
  * serials, and strings via the column's cached {@link SimpleDateFormat} (falling back to the built-in read
@@ -41,14 +41,14 @@ final class PxlJavaDateCodec {
     }
 
     /**
-     * Parses the given cell into a {@link java.util.Date}. Date-formatted NUMERIC cells use POI's date
+     * Parses the given cell into a {@link Date}. Date-formatted NUMERIC cells use POI's date
      * value; other numerics are treated as Excel date serials via
      * {@link DateUtil#getJavaDate}; STRING cells are delegated to the string parser; BOOLEAN cells are
      * rejected as an unsupported cell type; BLANK cells yield {@code null}.
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code Date}, or {@code null} when blank
+     * @return the parsed {@link Date}, or {@code null} when blank
      * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is invalid
      */
     static Date parseJavaDateValue(final Cell cell,
@@ -90,13 +90,13 @@ final class PxlJavaDateCodec {
     }
 
     /**
-     * Parses a string token into a {@link java.util.Date}. The column's cached {@link SimpleDateFormat} is
+     * Parses a string token into a {@link Date}. The column's cached {@link SimpleDateFormat} is
      * tried first, then the built-in read formatters, then an ISO-8601 instant. The value is trimmed when
      * {@code importTrim} is set; a blank value yields {@code null}.
      *
      * @param s          the raw string token
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code Date}, or {@code null} when blank
+     * @return the parsed {@link Date}, or {@code null} when blank
      * @throws PxlCellCodecException if the value matches no known date format
      */
     static Date parseJavaDateValue(final String s,
@@ -140,13 +140,13 @@ final class PxlJavaDateCodec {
     }
 
     /**
-     * Writes the given value as a {@code Date} cell and returns the exported string. A {@code String}
-     * source is parsed with the export formatter; a {@link java.util.Date} source is used directly. A
+     * Writes the given value as a {@link Date} cell and returns the exported string. A {@link String}
+     * source is parsed with the export formatter; a {@link Date} source is used directly. A
      * {@code null} result blanks the cell; otherwise the cell is written as a formatted string when
      * exported to string, or as a numeric Excel-date cell when no pattern/masking applies.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code Date})
+     * @param object     the source value (a {@link String} or {@link Date})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when blank
      * @throws PxlCellCodecException if the source is unsupported or the string is not a valid date
@@ -200,7 +200,7 @@ final class PxlJavaDateCodec {
     }
 
     /**
-     * Renders the export string for a {@code java.util.Date}: formats it with the configured export {@link SimpleDateFormat}
+     * Renders the export string for a {@link Date}: formats it with the configured export {@link SimpleDateFormat}
      * (or the built-in default write formatter when none is set), then applies string-level export processing via
      * {@link PxlStringCodec#makeExportString}.
      *

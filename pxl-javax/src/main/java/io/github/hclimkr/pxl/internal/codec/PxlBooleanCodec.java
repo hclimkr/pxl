@@ -14,8 +14,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Boolean} column values — parses cells/strings into {@code Boolean} on import and
- * writes {@code Boolean} into cells on export.
+ * Codec for {@link Boolean} column values — parses cells/strings into {@link Boolean} on import and
+ * writes {@link Boolean} into cells on export.
  *
  * <p>NUMERIC cells are {@code true} when non-zero; STRING cells honour the column's import true/false
  * strings (matched case-insensitively) before falling back to {@link BooleanUtils#toBooleanObject};
@@ -33,14 +33,14 @@ final class PxlBooleanCodec {
     }
 
     /**
-     * Parses the given cell into a {@code Boolean}. NUMERIC cells are {@code true} when their absolute
+     * Parses the given cell into a {@link Boolean}. NUMERIC cells are {@code true} when their absolute
      * value exceeds 1e-7; STRING cells are delegated to
      * {@link #parseBooleanValue(String, PxlImportColumnMeta)}; BOOLEAN cells are returned directly; BLANK
      * cells yield {@code null}.
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code Boolean}, or {@code null} when blank
+     * @return the parsed {@link Boolean}, or {@code null} when blank
      * @throws PxlCellCodecException if the cell type is not supported
      */
     static Boolean parseBooleanValue(final Cell cell,
@@ -77,13 +77,13 @@ final class PxlBooleanCodec {
     }
 
     /**
-     * Parses a string token into a {@code Boolean}. The value is trimmed when {@code importTrim} is set; a
+     * Parses a string token into a {@link Boolean}. The value is trimmed when {@code importTrim} is set; a
      * blank value yields {@code null}. It matches the column's import true/false strings case-insensitively,
      * then falls back to {@link BooleanUtils#toBooleanObject}.
      *
      * @param s          the raw string token
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code Boolean}, or {@code null} when blank
+     * @return the parsed {@link Boolean}, or {@code null} when blank
      * @throws PxlCellCodecException if the value is not a recognizable boolean
      */
     static Boolean parseBooleanValue(final String s,
@@ -114,16 +114,16 @@ final class PxlBooleanCodec {
     }
 
     /**
-     * Writes the given value as a {@code Boolean} cell and returns the exported string. A {@code String}
-     * source is parsed via {@link BooleanUtils#toBooleanObject}; a {@code Boolean} source is used directly.
+     * Writes the given value as a {@link Boolean} cell and returns the exported string. A {@link String}
+     * source is parsed via {@link BooleanUtils#toBooleanObject}; a {@link Boolean} source is used directly.
      * A {@code null} result blanks the cell; otherwise the column's export true/false/null strings are
      * written.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code Boolean})
+     * @param object     the source value (a {@link String} or {@link Boolean})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when the value is blank
-     * @throws PxlCellCodecException if the source is not a {@code String}/{@code Boolean}, or an invalid
+     * @throws PxlCellCodecException if the source is not a {@link String}/{@link Boolean}, or an invalid
      *                               boolean string
      */
     static String buildBooleanCell(final Cell cell,
@@ -161,7 +161,7 @@ final class PxlBooleanCodec {
     }
 
     /**
-     * Renders the export string for a {@code Boolean} using the configured true/false/null string representations.
+     * Renders the export string for a {@link Boolean} using the configured true/false/null string representations.
      *
      * @param booleanValue the value to render
      * @param columnMeta   resolved export metadata for the column

@@ -116,13 +116,13 @@ final class PxlPrimitiveIntCodec {
     }
 
     /**
-     * Writes an {@code int} value into a cell. Accepts an {@code Integer} directly or a {@code String} (parsed via
+     * Writes an {@code int} value into a cell. Accepts an {@link Integer} directly or a {@link String} (parsed via
      * {@link Integer#parseInt(String)}; blank becomes {@code null}). A {@code null} value blanks the cell. When the column
      * is exported as text the value is formatted via {@link #makePrimitiveIntExportString} and written quote-prefixed;
      * otherwise it is written as a numeric cell.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Integer} or {@code String})
+     * @param object     the source value ({@link Integer} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
      * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@code int}

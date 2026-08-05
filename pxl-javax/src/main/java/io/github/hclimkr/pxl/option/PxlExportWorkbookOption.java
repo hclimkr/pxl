@@ -8,10 +8,7 @@ import io.github.hclimkr.pxl.styler.PxlStyler;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import lombok.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.ResourceBundle;
+import java.util.*;
 
 /**
  * Excel workbook export option
@@ -120,7 +117,7 @@ public final class PxlExportWorkbookOption {
      * Appends a sheet export option to this workbook option.
      *
      * @param exportSheetOption the sheet option to append
-     * @return {@code true} (as specified by {@link java.util.Collection#add})
+     * @return {@code true} (as specified by {@link Collection#add})
      * @throws PxlNullPointerException if {@code exportSheetOption} is {@code null}
      */
     public boolean addExportSheetOption(final PxlExportSheetOption exportSheetOption)

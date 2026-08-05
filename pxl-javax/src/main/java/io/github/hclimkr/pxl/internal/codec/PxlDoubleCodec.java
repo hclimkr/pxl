@@ -19,7 +19,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@code Double} column values — parses cells and strings into {@code Double} on import and writes {@code Double}
+ * Codec for {@link Double} column values — parses cells and strings into {@link Double} on import and writes {@link Double}
  * into cells on export. Numeric cells are taken as-is (no range check); boolean cells map to 1.0/0.0. Both import and
  * export reject NaN and Infinity, keeping the two directions symmetric, and export renders plain numeric text via
  * {@link NumberToTextConverter} to avoid scientific-notation noise.
@@ -35,12 +35,12 @@ final class PxlDoubleCodec {
     }
 
     /**
-     * Parses an Excel cell into a {@code Double}. NUMERIC cells are taken directly; STRING cells are delegated to the
+     * Parses an Excel cell into a {@link Double}. NUMERIC cells are taken directly; STRING cells are delegated to the
      * string overload; BOOLEAN cells map to 1.0 (true) or 0.0 (false); BLANK cells yield {@code null}.
      *
      * @param cell       the source cell
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code Double}, or {@code null} for a blank cell
+     * @return the parsed {@link Double}, or {@code null} for a blank cell
      * @throws PxlCellCodecException if the cell type is unsupported
      */
     static Double parseDoubleValue(final Cell cell,
@@ -80,14 +80,14 @@ final class PxlDoubleCodec {
     }
 
     /**
-     * Parses a string into a {@code Double}. Trims first when {@code importTrim} is enabled and returns {@code null} for
+     * Parses a string into a {@link Double}. Trims first when {@code importTrim} is enabled and returns {@code null} for
      * blank input. When an import {@link DecimalFormat} is configured its parsed value is used; otherwise
      * {@link Double#parseDouble(String)} is used.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code Double}, or {@code null} for blank input
-     * @throws PxlCellCodecException if the string is not a valid {@code Double}
+     * @return the parsed {@link Double}, or {@code null} for blank input
+     * @throws PxlCellCodecException if the string is not a valid {@link Double}
      */
     static Double parseDoubleValue(final String s,
                                    final PxlImportColumnMeta columnMeta)
@@ -121,16 +121,16 @@ final class PxlDoubleCodec {
     }
 
     /**
-     * Writes a {@code Double} value into a cell. Accepts a {@code Double} directly or a {@code String} (parsed via
+     * Writes a {@link Double} value into a cell. Accepts a {@link Double} directly or a {@link String} (parsed via
      * {@link Double#parseDouble(String)}; blank becomes {@code null}). A {@code null} value blanks the cell; NaN or Infinity
      * is rejected. When the column is exported as text the value is formatted via {@link #makeDoubleExportString} and written
      * quote-prefixed; otherwise it is written as a numeric cell.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Double} or {@code String})
+     * @param object     the source value ({@link Double} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if a string value is malformed, the object type cannot be converted to {@code Double},
+     * @throws PxlCellCodecException if a string value is malformed, the object type cannot be converted to {@link Double},
      *                               or the value is NaN or Infinity
      */
     static String buildDoubleCell(final Cell cell,
@@ -176,7 +176,7 @@ final class PxlDoubleCodec {
     }
 
     /**
-     * Renders the export string for a {@code Double}: applies the export {@link DecimalFormat} when configured, otherwise
+     * Renders the export string for a {@link Double}: applies the export {@link DecimalFormat} when configured, otherwise
      * applies masking over the {@link NumberToTextConverter} text when an export masking pattern is set, otherwise returns
      * that plain numeric text.
      *

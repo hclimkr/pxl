@@ -1,8 +1,6 @@
 package io.github.hclimkr.pxl.builder;
 
-import io.github.hclimkr.pxl.exception.PxlException;
-import io.github.hclimkr.pxl.exception.PxlNullPointerException;
-import io.github.hclimkr.pxl.exception.PxlSystemException;
+import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 import org.apache.commons.io.IOUtils;
@@ -30,9 +28,9 @@ import java.io.OutputStream;
  *
  * <p>The terminal methods are the <strong>normalization boundary</strong>: they declare
  * {@code throws PxlException}, but since that type is abstract what actually surfaces is always a concrete
- * subtype — the matching one for a classified failure ({@link io.github.hclimkr.pxl.exception.PxlArgumentException},
- * {@link io.github.hclimkr.pxl.exception.PxlCellCodecException},
- * {@link io.github.hclimkr.pxl.exception.PxlValidationException}, ...), and
+ * subtype — the matching one for a classified failure ({@link PxlArgumentException},
+ * {@link PxlCellCodecException},
+ * {@link PxlValidationException}, ...), and
  * {@link PxlSystemException} (carrying the original as its cause) for anything else, including checked I/O failures
  * and unexpected runtime failures from the writer.</p>
  *

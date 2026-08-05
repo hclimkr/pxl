@@ -16,7 +16,7 @@ public class PxlDataTextStyler extends PxlDataStyler {
     /**
      * Applies the {@code "@"} (text) data format to the cell style.
      *
-     * @param workbook  the workbook, used to create the {@code DataFormat}
+     * @param workbook  the workbook, used to create the {@link DataFormat}
      * @param cellStyle the cell style to mutate in place
      * @return {@code null}, inherited from the base data styler (no font is set)
      */

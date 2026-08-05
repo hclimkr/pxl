@@ -98,7 +98,7 @@ public class PxlWorkbookOptionTests {
 
     // col0="Name", col1="Age", col2="Name" (duplicate). A duplicate header triggers an exception during matching.
     private static byte[] buildDuplicateHeaderFixture() throws Exception {
-        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             final Sheet sheet = workbook.createSheet("Dup");
 

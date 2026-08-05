@@ -18,8 +18,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@code Byte} column values — parses cells and strings into {@code Byte} on import and writes {@code Byte}
- * into cells on export. Numeric input is range-checked against the {@code Byte} range (throwing on overflow) and truncated
+ * Codec for {@link Byte} column values — parses cells and strings into {@link Byte} on import and writes {@link Byte}
+ * into cells on export. Numeric input is range-checked against the {@link Byte} range (throwing on overflow) and truncated
  * to its integer part; boolean cells map to 1/0.
  */
 final class PxlByteCodec {
@@ -33,14 +33,14 @@ final class PxlByteCodec {
     }
 
     /**
-     * Parses an Excel cell into a {@code Byte}. NUMERIC cells are range-checked against the {@code Byte} range and truncated
+     * Parses an Excel cell into a {@link Byte}. NUMERIC cells are range-checked against the {@link Byte} range and truncated
      * to their integer part; STRING cells are delegated to the string overload; BOOLEAN cells map to 1 (true) or 0 (false);
      * BLANK cells yield {@code null}.
      *
      * @param cell       the source cell
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code Byte}, or {@code null} for a blank cell
-     * @throws PxlCellCodecException if the numeric value is outside the {@code Byte} range or the cell type is unsupported
+     * @return the parsed {@link Byte}, or {@code null} for a blank cell
+     * @throws PxlCellCodecException if the numeric value is outside the {@link Byte} range or the cell type is unsupported
      */
     static Byte parseByteValue(final Cell cell,
                                final PxlImportColumnMeta columnMeta)
@@ -77,14 +77,14 @@ final class PxlByteCodec {
     }
 
     /**
-     * Parses a string into a {@code Byte}. Trims first when {@code importTrim} is enabled and returns {@code null} for blank
-     * input. When an import {@link DecimalFormat} is configured the parsed number is range-checked against the {@code Byte}
+     * Parses a string into a {@link Byte}. Trims first when {@code importTrim} is enabled and returns {@code null} for blank
+     * input. When an import {@link DecimalFormat} is configured the parsed number is range-checked against the {@link Byte}
      * range and truncated; otherwise {@link Byte#parseByte(String)} is used.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code Byte}, or {@code null} for blank input
-     * @throws PxlCellCodecException if the string is not a valid {@code Byte} or is outside the {@code Byte} range
+     * @return the parsed {@link Byte}, or {@code null} for blank input
+     * @throws PxlCellCodecException if the string is not a valid {@link Byte} or is outside the {@link Byte} range
      */
     static Byte parseByteValue(final String s,
                                final PxlImportColumnMeta columnMeta)
@@ -116,16 +116,16 @@ final class PxlByteCodec {
     }
 
     /**
-     * Writes a {@code Byte} value into a cell. Accepts a {@code Byte} directly or a {@code String} (parsed via
+     * Writes a {@link Byte} value into a cell. Accepts a {@link Byte} directly or a {@link String} (parsed via
      * {@link Byte#parseByte(String)}; blank becomes {@code null}). A {@code null} value blanks the cell. When the column
      * is exported as text the value is formatted via {@link #makeByteExportString} and written quote-prefixed; otherwise
      * it is written as a numeric cell.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Byte} or {@code String})
+     * @param object     the source value ({@link Byte} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@code Byte}
+     * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@link Byte}
      */
     static String buildByteCell(final Cell cell,
                                 final Object object,
@@ -166,7 +166,7 @@ final class PxlByteCodec {
     }
 
     /**
-     * Renders the export string for a {@code Byte}: applies the export {@link DecimalFormat} when configured, otherwise
+     * Renders the export string for a {@link Byte}: applies the export {@link DecimalFormat} when configured, otherwise
      * applies masking when an export masking pattern is set, otherwise returns the plain {@link String#valueOf(int)} form.
      *
      * @param byteValue  the value to render

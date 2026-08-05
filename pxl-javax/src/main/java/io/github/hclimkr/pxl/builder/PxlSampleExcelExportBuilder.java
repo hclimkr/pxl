@@ -1,5 +1,6 @@
 package io.github.hclimkr.pxl.builder;
 
+import io.github.hclimkr.pxl.Pxl;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
@@ -21,7 +22,7 @@ import java.util.Objects;
 
 /**
  * Builder that creates an Excel sample workbook/file/stream from a class: a header row plus a single sample data
- * row filled from each column's {@code exportSample} value (not an empty form). Created via {@link io.github.hclimkr.pxl.Pxl#exportSampleExcel()}.
+ * row filled from each column's {@code exportSample} value (not an empty form). Created via {@link Pxl#exportSampleExcel()}.
  *
  * <p>There are two usage forms.</p>
  * <ul>

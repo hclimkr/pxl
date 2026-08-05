@@ -1,5 +1,6 @@
 package io.github.hclimkr.pxl.internal.i18n;
 
+import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.ResourceBundle;
@@ -77,7 +78,7 @@ public final class PxlI18nDiagnostic {
      * unchanged so that message resolution cannot mask the error it was describing.
      *
      * @param key    the message key from {@link PxlI18nDiagnosticKeys}
-     * @param params optional {@link java.text.MessageFormat} arguments
+     * @param params optional {@link MessageFormat} arguments
      * @return the resolved (and possibly formatted) message, or {@code key} when unresolved
      */
     public static String get(final String key, final Object... params) {

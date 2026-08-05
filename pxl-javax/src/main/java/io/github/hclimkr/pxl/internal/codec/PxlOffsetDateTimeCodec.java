@@ -20,8 +20,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link java.time.OffsetDateTime} column values — parses cells/strings into {@code OffsetDateTime}
- * on import and writes {@code OffsetDateTime} into cells on export.
+ * Codec for {@link OffsetDateTime} column values — parses cells/strings into {@link OffsetDateTime}
+ * on import and writes {@link OffsetDateTime} into cells on export.
  *
  * <p>NUMERIC cells are read as Excel serials and given the system zone's offset for that date; a BOOLEAN
  * cell is rejected as an unsupported cell type. Strings are parsed with the column's cached formatter, then
@@ -39,14 +39,14 @@ final class PxlOffsetDateTimeCodec {
     }
 
     /**
-     * Parses the given cell into an {@link java.time.OffsetDateTime} using the system default zone's offset.
+     * Parses the given cell into an {@link OffsetDateTime} using the system default zone's offset.
      * Date-formatted NUMERIC cells use POI's local date-time; other numerics are
      * Excel serials; STRING cells are delegated to the string parser; BOOLEAN cells are rejected as an
      * unsupported cell type; BLANK cells yield {@code null}.
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code OffsetDateTime}, or {@code null} when blank
+     * @return the parsed {@link OffsetDateTime}, or {@code null} when blank
      * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is invalid
      */
     static OffsetDateTime parseOffsetDateTimeValue(final Cell cell,
@@ -88,13 +88,13 @@ final class PxlOffsetDateTimeCodec {
     }
 
     /**
-     * Parses a string token into an {@link java.time.OffsetDateTime}. The column's cached formatter is
+     * Parses a string token into an {@link OffsetDateTime}. The column's cached formatter is
      * tried first, then ISO-8601 parsing with an explicit offset. The value is trimmed when {@code importTrim}
      * is set; a blank value yields {@code null}.
      *
      * @param s          the raw string token
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code OffsetDateTime}, or {@code null} when blank
+     * @return the parsed {@link OffsetDateTime}, or {@code null} when blank
      * @throws PxlCellCodecException if the value matches no known format
      */
     static OffsetDateTime parseOffsetDateTimeValue(final String s,
@@ -129,14 +129,14 @@ final class PxlOffsetDateTimeCodec {
     }
 
     /**
-     * Writes the given value as an {@code OffsetDateTime} cell and returns the exported string. A
-     * {@code String} source is parsed with the export formatter, falling back to ISO-8601; a
-     * {@link java.time.OffsetDateTime} source is used directly. A {@code null} result blanks the cell;
+     * Writes the given value as an {@link OffsetDateTime} cell and returns the exported string. A
+     * {@link String} source is parsed with the export formatter, falling back to ISO-8601; a
+     * {@link OffsetDateTime} source is used directly. A {@code null} result blanks the cell;
      * otherwise the cell is written as a formatted string when exported to string, or as a numeric
      * Excel-date cell (local part only) when no pattern/masking applies.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code OffsetDateTime})
+     * @param object     the source value (a {@link String} or {@link OffsetDateTime})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when blank
      * @throws PxlCellCodecException if the source is unsupported or the string is not a valid offset date-time
@@ -197,7 +197,7 @@ final class PxlOffsetDateTimeCodec {
     }
 
     /**
-     * Renders the export string for an {@code OffsetDateTime}: formats it with the configured export {@link DateTimeFormatter}
+     * Renders the export string for an {@link OffsetDateTime}: formats it with the configured export {@link DateTimeFormatter}
      * (or {@link DateTimeFormatter#ISO_OFFSET_DATE_TIME} when none is set), then applies string-level export processing via
      * {@link PxlStringCodec#makeExportString}.
      *

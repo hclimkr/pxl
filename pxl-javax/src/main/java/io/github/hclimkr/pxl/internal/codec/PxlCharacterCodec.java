@@ -14,8 +14,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Character} column values — parses cells/strings into {@code Character} on import and
- * writes {@code Character} into cells on export. The first character of the cell/string is taken; NUMERIC
+ * Codec for {@link Character} column values — parses cells/strings into {@link Character} on import and
+ * writes {@link Character} into cells on export. The first character of the cell/string is taken; NUMERIC
  * cells are stringified via {@link NumberToTextConverter} and BOOLEAN cells map to {@code '1'}/{@code '0'}.
  */
 final class PxlCharacterCodec {
@@ -29,14 +29,14 @@ final class PxlCharacterCodec {
     }
 
     /**
-     * Parses the given cell into a {@code Character}. NUMERIC cells are converted to text with
+     * Parses the given cell into a {@link Character}. NUMERIC cells are converted to text with
      * {@link NumberToTextConverter} and their first character taken; STRING cells take their first
      * character; BOOLEAN cells map to {@code '1'} (true) or {@code '0'} (false); BLANK cells yield
      * {@code null}.
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code Character}, or {@code null} when blank
+     * @return the parsed {@link Character}, or {@code null} when blank
      * @throws PxlCellCodecException if the cell type is not supported
      */
     static Character parseCharacterValue(final Cell cell,
@@ -74,7 +74,7 @@ final class PxlCharacterCodec {
     }
 
     /**
-     * Parses a string token into a {@code Character} by taking its first character. The value is trimmed
+     * Parses a string token into a {@link Character} by taking its first character. The value is trimmed
      * when {@code importTrim} is set; an empty value yields {@code null}.
      *
      * @param s          the raw string token
@@ -103,15 +103,15 @@ final class PxlCharacterCodec {
     }
 
     /**
-     * Writes the given value as a single-character string cell and returns it. A {@code String} source
-     * contributes its first character; a {@code Character} source is used directly. A {@code null} result
+     * Writes the given value as a single-character string cell and returns it. A {@link String} source
+     * contributes its first character; a {@link Character} source is used directly. A {@code null} result
      * blanks the cell.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code Character})
+     * @param object     the source value (a {@link String} or {@link Character})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported one-character string, or {@code null} when empty
-     * @throws PxlCellCodecException if the source is not a {@code String}/{@code Character}
+     * @throws PxlCellCodecException if the source is not a {@link String}/{@link Character}
      */
     static String buildCharacterCell(final Cell cell,
                                      final Object object,
@@ -149,7 +149,7 @@ final class PxlCharacterCodec {
     }
 
     /**
-     * Renders the export string for a {@code Character}: its {@link Character#toString()} form.
+     * Renders the export string for a {@link Character}: its {@link Character#toString()} form.
      *
      * @param charValue the value to render
      * @return the single-character string, or {@code null} when the value is {@code null}

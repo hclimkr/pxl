@@ -117,13 +117,13 @@ final class PxlPrimitiveLongCodec {
     }
 
     /**
-     * Writes a {@code long} value into a cell. Accepts a {@code Long} directly or a {@code String} (parsed via
+     * Writes a {@code long} value into a cell. Accepts a {@link Long} directly or a {@link String} (parsed via
      * {@link Long#parseLong(String)}; blank becomes {@code null}). A {@code null} value blanks the cell. When the column is
      * exported as text the value is formatted via {@link #makePrimitiveLongExportString} and written quote-prefixed; otherwise
      * it is written as a numeric cell (subject to the 2^53 {@code double} precision limit).
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Long} or {@code String})
+     * @param object     the source value ({@link Long} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
      * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@code long}

@@ -4,6 +4,7 @@ import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
+import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeAll;
@@ -58,12 +59,12 @@ public class PxlNameMatchingTests {
 
     private static byte[] stringSheet(final String sheetName, final String[] headers, final String[][] dataRows) throws Exception {
         return sheet(sheetName, s -> {
-            final org.apache.poi.ss.usermodel.Row header = s.createRow(0);
+            final Row header = s.createRow(0);
             for (int i = 0; i < headers.length; i++) {
                 header.createCell(i).setCellValue(headers[i]);
             }
             for (int r = 0; r < dataRows.length; r++) {
-                final org.apache.poi.ss.usermodel.Row row = s.createRow(r + 1);
+                final Row row = s.createRow(r + 1);
                 for (int c = 0; c < dataRows[r].length; c++) {
                     row.createCell(c).setCellValue(dataRows[r][c]);
                 }

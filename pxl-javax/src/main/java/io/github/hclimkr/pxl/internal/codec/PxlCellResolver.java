@@ -25,9 +25,9 @@ import java.util.Objects;
 /**
  * Central type dispatcher for cell value conversion. Routes each column, based on its resolved
  * {@code columnClass}, to the matching per-type codec for both import (cell/string to value) and export
- * (value to cell). Covers {@code String}, the primitive and boxed numeric types, {@code char}/{@code Character},
- * {@code boolean}/{@code Boolean}, {@code BigInteger}/{@code BigDecimal}, the {@code java.time} types plus
- * {@link java.util.Date}, enums, collections, and objects handled by a custom converter.
+ * (value to cell). Covers {@link String}, the primitive and boxed numeric types, {@code char}/{@link Character},
+ * {@code boolean}/{@link Boolean}, {@link BigInteger}/{@link BigDecimal}, the {@code java.time} types plus
+ * {@link Date}, enums, collections, and objects handled by a custom converter.
  */
 public final class PxlCellResolver {
 
@@ -249,7 +249,7 @@ public final class PxlCellResolver {
 
     /**
      * Writes a value into a cell according to the column's declared type. Does nothing when the cell, {@code columnMeta},
-     * or resolved column class is {@code null}. A {@code null} value (or a blank {@code String}) writes the column's
+     * or resolved column class is {@code null}. A {@code null} value (or a blank {@link String}) writes the column's
      * configured export-null string. Otherwise dispatches on {@code columnMeta.getColumnClass()} to the matching per-type codec.
      *
      * @param cell       the target cell (may be {@code null})

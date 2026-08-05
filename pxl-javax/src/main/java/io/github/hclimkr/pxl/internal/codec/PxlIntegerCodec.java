@@ -18,8 +18,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@code Integer} column values — parses cells and strings into {@code Integer} on import and writes
- * {@code Integer} into cells on export. Numeric input is range-checked against the {@code Integer} range (throwing
+ * Codec for {@link Integer} column values — parses cells and strings into {@link Integer} on import and writes
+ * {@link Integer} into cells on export. Numeric input is range-checked against the {@link Integer} range (throwing
  * on overflow) and truncated to its integer part; boolean cells map to 1/0.
  */
 final class PxlIntegerCodec {
@@ -33,14 +33,14 @@ final class PxlIntegerCodec {
     }
 
     /**
-     * Parses an Excel cell into an {@code Integer}. NUMERIC cells are range-checked against the {@code Integer} range
+     * Parses an Excel cell into an {@link Integer}. NUMERIC cells are range-checked against the {@link Integer} range
      * and truncated to their integer part; STRING cells are delegated to the string overload; BOOLEAN cells map to
      * 1 (true) or 0 (false); BLANK cells yield {@code null}.
      *
      * @param cell       the source cell
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code Integer}, or {@code null} for a blank cell
-     * @throws PxlCellCodecException if the numeric value is outside the {@code Integer} range or the cell type is unsupported
+     * @return the parsed {@link Integer}, or {@code null} for a blank cell
+     * @throws PxlCellCodecException if the numeric value is outside the {@link Integer} range or the cell type is unsupported
      */
     static Integer parseIntegerValue(final Cell cell,
                                      final PxlImportColumnMeta columnMeta)
@@ -77,14 +77,14 @@ final class PxlIntegerCodec {
     }
 
     /**
-     * Parses a string into an {@code Integer}. Trims first when {@code importTrim} is enabled and returns {@code null}
+     * Parses a string into an {@link Integer}. Trims first when {@code importTrim} is enabled and returns {@code null}
      * for blank input. When an import {@link DecimalFormat} is configured the parsed number is range-checked against the
-     * {@code Integer} range and truncated; otherwise {@link Integer#parseInt(String)} is used.
+     * {@link Integer} range and truncated; otherwise {@link Integer#parseInt(String)} is used.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code Integer}, or {@code null} for blank input
-     * @throws PxlCellCodecException if the string is not a valid {@code Integer} or is outside the {@code Integer} range
+     * @return the parsed {@link Integer}, or {@code null} for blank input
+     * @throws PxlCellCodecException if the string is not a valid {@link Integer} or is outside the {@link Integer} range
      */
     static Integer parseIntegerValue(final String s,
                                      final PxlImportColumnMeta columnMeta)
@@ -116,16 +116,16 @@ final class PxlIntegerCodec {
     }
 
     /**
-     * Writes an {@code Integer} value into a cell. Accepts an {@code Integer} directly or a {@code String} (parsed via
+     * Writes an {@link Integer} value into a cell. Accepts an {@link Integer} directly or a {@link String} (parsed via
      * {@link Integer#parseInt(String)}; blank becomes {@code null}). A {@code null} value blanks the cell. When the column
      * is exported as text the value is formatted via {@link #makeIntegerExportString} and written quote-prefixed; otherwise
      * it is written as a numeric cell.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Integer} or {@code String})
+     * @param object     the source value ({@link Integer} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@code Integer}
+     * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@link Integer}
      */
     static String buildIntegerCell(final Cell cell,
                                    final Object object,
@@ -166,7 +166,7 @@ final class PxlIntegerCodec {
     }
 
     /**
-     * Renders the export string for an {@code Integer}: applies the export {@link DecimalFormat} when configured, otherwise
+     * Renders the export string for an {@link Integer}: applies the export {@link DecimalFormat} when configured, otherwise
      * applies masking when an export masking pattern is set, otherwise returns the plain {@link String#valueOf(int)} form.
      *
      * @param intValue   the value to render

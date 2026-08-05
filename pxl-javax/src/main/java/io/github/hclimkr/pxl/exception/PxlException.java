@@ -1,5 +1,6 @@
 package io.github.hclimkr.pxl.exception;
 
+import io.github.hclimkr.pxl.Pxl;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.util.PxlMiscUtils;
@@ -7,13 +8,14 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
  * Base checked exception for the Pxl library and the common supertype of every checked {@code Pxl*Exception}.
  *
  * <p>The class is {@code abstract}: it is never thrown itself, only its concrete subtypes are. Every
- * import/export failure crossing the {@code Pxl} boundary is normalized into one of them — a classified
+ * import/export failure crossing the {@link Pxl} boundary is normalized into one of them — a classified
  * failure into the matching subtype ({@link PxlIOException}, {@link PxlCellCodecException},
  * {@link PxlValidationException}, {@link PxlArgumentException}, ...), anything else into
  * {@link PxlSystemException}. Declaring {@code throws PxlException} therefore stays a valid contract for a
@@ -131,7 +133,7 @@ public abstract class PxlException extends Exception {
      *
      * <p>The tag words and the join format are localized through the diagnostic message bundle
      * ({@code pxl-messages}): English by default, overridable process-wide via
-     * {@link io.github.hclimkr.pxl.Pxl#setMessageLocale(java.util.Locale)}.</p>
+     * {@link Pxl#setMessageLocale(Locale)}.</p>
      *
      * @param sheetName   sheet name (may be {@code null})
      * @param rowIndex    zero-based row index (may be {@code null})

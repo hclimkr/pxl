@@ -1,12 +1,16 @@
 package io.github.hclimkr.pxl.exception;
 
+import io.github.hclimkr.pxl.Pxl;
+
+import javax.validation.ValidationException;
+
 /**
  * Unchecked counterpart to {@link PxlException} (it extends {@link RuntimeException}, so it is <em>not</em> caught by
  * {@code catch (PxlException ...)}), intended for unrecoverable initialization/configuration failures at a public
  * boundary where a checked exception cannot be declared, keeping such failures within a Pxl-namespaced type instead of
- * leaking a raw third-party exception (e.g. {@code javax.validation.ValidationException}).
+ * leaking a raw third-party exception (e.g. {@link ValidationException}).
  *
- * <p><strong>Currently unused.</strong> Its only former use was the {@link io.github.hclimkr.pxl.Pxl} constructor when
+ * <p><strong>Currently unused.</strong> Its only former use was the {@link Pxl} constructor when
  * bean-validation bootstrap failed; that path now graceful-degrades instead (disables validation and logs a warning via
  * SLF4J), so this type is retained but thrown nowhere in the current source.</p>
  */

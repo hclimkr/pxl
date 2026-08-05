@@ -16,7 +16,7 @@ public class PxlDataCommaSeparatedNumericStyler extends PxlDataStyler {
     /**
      * Applies the {@code "#,##0"} (thousands-grouped) data format to the cell style.
      *
-     * @param workbook  the workbook, used to create the {@code DataFormat}
+     * @param workbook  the workbook, used to create the {@link DataFormat}
      * @param cellStyle the cell style to mutate in place
      * @return {@code null}, inherited from the base data styler (no font is set)
      */

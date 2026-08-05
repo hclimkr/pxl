@@ -21,11 +21,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link java.time.Period} column values — parses cells/strings into {@code Period} on import
- * and writes {@code Period} into cells on export.
+ * Codec for {@link Period} column values — parses cells/strings into {@link Period} on import
+ * and writes {@link Period} into cells on export.
  *
  * <p>NUMERIC and BOOLEAN cells are interpreted as a number of days. Strings are parsed by the column's
- * import pattern when set, otherwise by ISO-8601 {@link java.time.Period#parse}. Export uses the column's
+ * import pattern when set, otherwise by ISO-8601 {@link Period#parse}. Export uses the column's
  * export pattern (computed over {@code now .. now+period}) when set, otherwise the ISO-8601 form.
  */
 final class PxlPeriodCodec {
@@ -39,13 +39,13 @@ final class PxlPeriodCodec {
     }
 
     /**
-     * Parses the given cell into a {@link java.time.Period}. NUMERIC cells are treated as a number of days
+     * Parses the given cell into a {@link Period}. NUMERIC cells are treated as a number of days
      * (range-checked to {@code int}); BOOLEAN cells map to 1 or 0 days; STRING cells are delegated to the
      * string parser; BLANK cells yield {@code null}.
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code Period}, or {@code null} when blank
+     * @return the parsed {@link Period}, or {@code null} when blank
      * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is out of range
      */
     static Period parsePeriodValue(final Cell cell,
@@ -86,13 +86,13 @@ final class PxlPeriodCodec {
     }
 
     /**
-     * Parses a string token into a {@link java.time.Period}. When the column's import pattern is set it is
-     * tried first, falling back to ISO-8601 {@link java.time.Period#parse} on mismatch. The value is
+     * Parses a string token into a {@link Period}. When the column's import pattern is set it is
+     * tried first, falling back to ISO-8601 {@link Period#parse} on mismatch. The value is
      * trimmed when {@code importTrim} is set; a blank value yields {@code null}.
      *
      * @param s          the raw string token
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code Period}, or {@code null} when blank
+     * @return the parsed {@link Period}, or {@code null} when blank
      * @throws PxlCellCodecException if the value is not a valid period
      */
     static Period parsePeriodValue(final String s,
@@ -121,13 +121,13 @@ final class PxlPeriodCodec {
     }
 
     /**
-     * Writes the given value as a {@code Period} cell and returns the exported string. A {@code String}
-     * source is parsed with ISO-8601 {@link java.time.Period#parse}; a {@link java.time.Period} source is
+     * Writes the given value as a {@link Period} cell and returns the exported string. A {@link String}
+     * source is parsed with ISO-8601 {@link Period#parse}; a {@link Period} source is
      * used directly. A {@code null} result blanks the cell; otherwise the value is formatted with the
      * column's export pattern when set, else its ISO-8601 form.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code Period})
+     * @param object     the source value (a {@link String} or {@link Period})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when blank
      * @throws PxlCellCodecException if the source is unsupported, the string is invalid, or the value is too large
@@ -168,8 +168,8 @@ final class PxlPeriodCodec {
     }
 
     /**
-     * Renders the export string for a {@code Period}: when an export pattern is set the period is applied to the current
-     * date-time and the resulting span is formatted with {@code DurationFormatUtils}, otherwise its {@link Period#toString()}
+     * Renders the export string for a {@link Period}: when an export pattern is set the period is applied to the current
+     * date-time and the resulting span is formatted with {@link DurationFormatUtils}, otherwise its {@link Period#toString()}
      * ISO-8601 form is used; then applies string-level export processing via {@link PxlStringCodec#makeExportString}.
      *
      * @param periodValue the value to render

@@ -5,6 +5,7 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -143,7 +144,7 @@ public final class PxlNumberSupport {
 
     /**
      * Rejects non-finite values (NaN/Infinity) of a numeric-cell {@code double} and returns it as a {@link BigDecimal}.
-     * For unbounded target types ({@code BigInteger}/{@code BigDecimal}) that have no fixed range: it applies the same
+     * For unbounded target types ({@link BigInteger}/{@link BigDecimal}) that have no fixed range: it applies the same
      * finiteness guard as {@link #requireWithinRange(double, long, long, String)} but skips the range check, again keeping
      * {@link BigDecimal#valueOf(double)} off the call sites.
      *
@@ -164,7 +165,7 @@ public final class PxlNumberSupport {
      * stays symmetric with export, which also refuses them. A {@code null} value is allowed (a blank cell). A finite
      * {@code double} that overflows the {@code float} range narrows to Infinity and is therefore also rejected here.
      * <p>
-     * A primitive {@code float} argument is autoboxed to this overload, so both {@code Float} and {@code float} codecs use it.
+     * A primitive {@code float} argument is autoboxed to this overload, so both {@link Float} and {@code float} codecs use it.
      *
      * @param value    the parsed value, or {@code null}
      * @param typeName the target type name, used in the error message
@@ -182,7 +183,7 @@ public final class PxlNumberSupport {
      * Rejects non-finite floating-point values (NaN, positive/negative Infinity) on import so that the import direction
      * stays symmetric with export, which also refuses them. A {@code null} value is allowed (a blank cell).
      * <p>
-     * A primitive {@code double} argument is autoboxed to this overload, so both {@code Double} and {@code double} codecs use it.
+     * A primitive {@code double} argument is autoboxed to this overload, so both {@link Double} and {@code double} codecs use it.
      *
      * @param value    the parsed value, or {@code null}
      * @param typeName the target type name, used in the error message
@@ -200,7 +201,7 @@ public final class PxlNumberSupport {
      * Rejects non-finite floating-point values (NaN, positive/negative Infinity) on export, since they cannot be written as
      * a numeric cell (POI's {@code setCellValue(double)} would otherwise produce an error cell). A {@code null} value is allowed.
      * <p>
-     * A primitive {@code float} argument is autoboxed to this overload, so both {@code Float} and {@code float} codecs use it.
+     * A primitive {@code float} argument is autoboxed to this overload, so both {@link Float} and {@code float} codecs use it.
      *
      * @param value the value about to be written, or {@code null}
      * @throws PxlCellCodecException if the value is NaN or Infinity
@@ -217,7 +218,7 @@ public final class PxlNumberSupport {
      * Rejects non-finite floating-point values (NaN, positive/negative Infinity) on export, since they cannot be written as
      * a numeric cell (POI's {@code setCellValue(double)} would otherwise produce an error cell). A {@code null} value is allowed.
      * <p>
-     * A primitive {@code double} argument is autoboxed to this overload, so both {@code Double} and {@code double} codecs use it.
+     * A primitive {@code double} argument is autoboxed to this overload, so both {@link Double} and {@code double} codecs use it.
      *
      * @param value the value about to be written, or {@code null}
      * @throws PxlCellCodecException if the value is NaN or Infinity

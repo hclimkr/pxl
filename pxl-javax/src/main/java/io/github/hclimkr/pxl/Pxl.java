@@ -37,7 +37,7 @@ public final class Pxl {
     private final Validator validator;
 
     /**
-     * Creates a {@code Pxl} instance, initializing the default bean-validation {@link Validator} shared
+     * Creates a {@link Pxl} instance, initializing the default bean-validation {@link Validator} shared
      * by the import/export builders it creates.
      *
      * <p>Bean validation is <strong>optional</strong>: if no provider (e.g. hibernate-validator) or no EL

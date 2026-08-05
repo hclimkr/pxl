@@ -1,10 +1,12 @@
 package io.github.hclimkr.pxl.internal.support;
 
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
+import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 
 import java.util.Collection;
 import java.util.Map;
@@ -12,20 +14,20 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
- * Argument-precondition utilities modeled after Apache Commons Lang3 {@code Validate}, but throwing
- * Pxl exceptions so that every failure stays within the {@link io.github.hclimkr.pxl.exception.PxlException}
+ * Argument-precondition utilities modeled after Apache Commons Lang3 {@link Validate}, but throwing
+ * Pxl exceptions so that every failure stays within the {@link PxlException}
  * hierarchy.
  *
  * <p>A {@code null} required argument fails with {@link PxlNullPointerException}; an argument that is
  * present but otherwise invalid (empty, blank, or a false condition) fails with {@link PxlArgumentException}.
  * Both are checked exceptions, so callers declare {@code throws PxlNullPointerException} /
- * {@code throws PxlArgumentException} (or their common supertype {@code PxlException}).</p>
+ * {@code throws PxlArgumentException} (or their common supertype {@link PxlException}).</p>
  *
  * <p>Each {@code notNull}/{@code notEmpty}/{@code notBlank} method comes in three forms: a no-argument form that
  * uses a generic default message; a form that takes the checked argument's <em>parameter name</em> (Java cannot
  * capture the caller's variable name automatically) and assembles a standard message from it — e.g.
  * {@code notNull(rowClass, "rowClass")} fails with {@code "argument 'rowClass' is null."} (the message is
- * localized; English is the default and Korean is available — see {@link io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic}); and a form that takes a
+ * localized; English is the default and Korean is available — see {@link PxlI18nDiagnostic}); and a form that takes a
  * {@link Supplier} of the exception to throw as-is on failure — e.g.
  * {@code notEmpty(tags, () -> new IllegalArgumentException("at least one tag is required"))} — letting the caller
  * raise a non-Pxl exception of their own choosing. {@code isTrue} validates a condition rather than a named argument,

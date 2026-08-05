@@ -4,6 +4,7 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.apache.commons.lang3.time.DurationFormatUtils;
 
 import java.time.Duration;
 import java.time.Period;
@@ -12,9 +13,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Token-based parser that reads {@link Duration}/{@link Period} strings back from a {@code DurationFormatUtils}-style pattern.
+ * Token-based parser that reads {@link Duration}/{@link Period} strings back from a {@link DurationFormatUtils}-style pattern.
  * <p>
- * On export, PXL formats {@code Duration}/{@code Period} values with a custom pattern via Apache Commons Lang's
+ * On export, PXL formats {@link Duration}/{@link Period} values with a custom pattern via Apache Commons Lang's
  * {@code DurationFormatUtils.formatDuration}/{@code formatPeriod}. Commons Lang provides no reverse parser for that format
  * (it is format-only), so this class supplies the matching parser used on import: it compiles the pattern to a regex once
  * (via {@link #compileTemporalPattern(String)}) and extracts each time field from every value.
@@ -33,9 +34,9 @@ public final class PxlTemporalAmountSupport {
     private static final String TEMPORAL_AMOUNT_PATTERN_TOKENS = "yMdHmsS";
 
     /**
-     * Parses a string into a {@link Duration} using a pre-compiled {@code DurationFormatUtils}-style pattern (e.g. {@code "HH:mm:ss"}, {@code "d'd'H'h'm'm'"}).
+     * Parses a string into a {@link Duration} using a pre-compiled {@link DurationFormatUtils}-style pattern (e.g. {@code "HH:mm:ss"}, {@code "d'd'H'h'm'm'"}).
      * <p>
-     * Apache Commons Lang's {@code DurationFormatUtils} is format-only (no parser), so this provides a token-based parser to read back
+     * Apache Commons Lang's {@link DurationFormatUtils} is format-only (no parser), so this provides a token-based parser to read back
      * strings that were emitted with the same pattern during export. Only the {@code d/H/m/s/S} tokens are meaningful for {@link Duration}; {@code y/M} tokens, if present, are ignored.
      * The pattern is a column-level constant, so it is compiled once (via {@link #compileTemporalPattern(String)}) and passed in here rather than recompiled per value.
      *
@@ -62,7 +63,7 @@ public final class PxlTemporalAmountSupport {
     }
 
     /**
-     * Parses a string into a {@link Period} using a pre-compiled {@code DurationFormatUtils}-style pattern.
+     * Parses a string into a {@link Period} using a pre-compiled {@link DurationFormatUtils}-style pattern.
      * <p>
      * Only the {@code y/M/d} tokens are meaningful for {@link Period}; {@code H/m/s/S} (time-component) tokens, if present, are ignored.
      * The pattern is a column-level constant, so it is compiled once (via {@link #compileTemporalPattern(String)}) and passed in here rather than recompiled per value.
@@ -88,7 +89,7 @@ public final class PxlTemporalAmountSupport {
     }
 
     /**
-     * Compiles a {@code DurationFormatUtils}-style pattern into a reusable regular expression plus the capture-group field order.
+     * Compiles a {@link DurationFormatUtils}-style pattern into a reusable regular expression plus the capture-group field order.
      * <p>
      * A run of N identical tokens matches a digit group of N digits (N&gt;1) or one or more digits (N==1). Portions enclosed
      * in single quotes and all other characters are treated as literals. The produced regex is always well-formed (digit groups

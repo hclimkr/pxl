@@ -18,8 +18,8 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@link String} column values — reads a cell (or CSV token) into a {@code String} on import
- * and writes a {@code String} into a cell on export.
+ * Codec for {@link String} column values — reads a cell (or CSV token) into a {@link String} on import
+ * and writes a {@link String} into a cell on export.
  *
  * <p>On import, NUMERIC cells are rendered via the workbook's cached {@link DataFormatter} (built with
  * {@code Locale.ROOT} so decimal/grouping symbols are locale-independent; streaming cells included — the
@@ -39,7 +39,7 @@ final class PxlStringCodec {
     }
 
     /**
-     * Parses the given cell into a {@code String}. NUMERIC cells are formatted with the workbook's cached
+     * Parses the given cell into a {@link String}. NUMERIC cells are formatted with the workbook's cached
      * {@link DataFormatter} (streaming cells included — the streaming reader reads styles by default, so the
      * cell carries its number format); STRING cells are normalized per the column's {@code importTrim}
      * option; BOOLEAN cells are rendered with the column's import true/false strings; BLANK cells yield
@@ -47,7 +47,7 @@ final class PxlStringCodec {
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code String}, or {@code null} when the cell is blank
+     * @return the parsed {@link String}, or {@code null} when the cell is blank
      * @throws PxlCellCodecException if the cell type is not supported
      */
     static String parseStringValue(final Cell cell,
@@ -113,7 +113,7 @@ final class PxlStringCodec {
     }
 
     /**
-     * Writes the given value's {@code String} form into the cell (when non-{@code null}) and returns it.
+     * Writes the given value's {@link String} form into the cell (when non-{@code null}) and returns it.
      *
      * <p>A value starting with {@code '='} is treated as a formula: it is set as a cell formula when
      * {@code exportStringAsFormula} is enabled (falling back to a quote-prefixed literal on failure),
@@ -121,7 +121,7 @@ final class PxlStringCodec {
      * string is rendered as an embedded picture; otherwise it is written as a plain string value.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String})
+     * @param object     the source value (a {@link String})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string
      */
@@ -162,7 +162,7 @@ final class PxlStringCodec {
      * Applies the column's export trim and masking options to a raw string value. Shared by the other
      * codecs to post-process their string representation.
      *
-     * @param object     the source value (a {@code String})
+     * @param object     the source value (a {@link String})
      * @param columnMeta the resolved export metadata for this column
      * @return the trimmed and/or masked string, or {@code null} when the input is {@code null}
      */

@@ -1,10 +1,12 @@
 package io.github.hclimkr.pxl.exception;
 
+import java.io.IOException;
+
 /**
  * Thrown when a failure that PXL does not classify reaches a builder's final (execute) step — the
  * normalization boundary at which anything that is not already a {@link PxlException} (a checked
- * {@code IOException}, an unexpected {@code RuntimeException} from POI/Commons CSV, ...) is wrapped so that
- * callers only ever face the {@code PxlException} family.
+ * {@link IOException}, an unexpected {@link RuntimeException} from POI/Commons CSV, ...) is wrapped so that
+ * callers only ever face the {@link PxlException} family.
  *
  * <p>Since {@link PxlException} itself is abstract, this is the concrete fallback used when no more specific
  * {@code Pxl*Exception} applies; a failure PXL can classify is reported with that specific subtype instead

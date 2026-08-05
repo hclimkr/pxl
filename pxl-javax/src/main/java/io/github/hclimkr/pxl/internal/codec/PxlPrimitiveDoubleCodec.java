@@ -122,13 +122,13 @@ final class PxlPrimitiveDoubleCodec {
     }
 
     /**
-     * Writes a {@code double} value into a cell. Accepts a {@code Double} directly or a {@code String} (parsed via
+     * Writes a {@code double} value into a cell. Accepts a {@link Double} directly or a {@link String} (parsed via
      * {@link Double#parseDouble(String)}; blank becomes {@code null}). A {@code null} value blanks the cell; NaN or Infinity
      * is rejected. When the column is exported as text the value is formatted via {@link #makePrimitiveDoubleExportString}
      * and written quote-prefixed; otherwise it is written as a numeric cell.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Double} or {@code String})
+     * @param object     the source value ({@link Double} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
      * @throws PxlCellCodecException if a string value is malformed, the object type cannot be converted to {@code double},

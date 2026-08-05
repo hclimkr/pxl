@@ -19,7 +19,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@code Float} column values — parses cells and strings into {@code Float} on import and writes {@code Float}
+ * Codec for {@link Float} column values — parses cells and strings into {@link Float} on import and writes {@link Float}
  * into cells on export. A numeric cell (a {@code double}) is narrowed to {@code float}; boolean cells map to 1.0/0.0.
  * Both import and export reject NaN and Infinity (import additionally rejects finite values that overflow the {@code float}
  * range and narrow to Infinity), keeping the two directions symmetric. To avoid float-to-double widening noise (e.g. 0.1f),
@@ -36,12 +36,12 @@ final class PxlFloatCodec {
     }
 
     /**
-     * Parses an Excel cell into a {@code Float}. NUMERIC cells are narrowed from {@code double} to {@code float}; STRING
+     * Parses an Excel cell into a {@link Float}. NUMERIC cells are narrowed from {@code double} to {@code float}; STRING
      * cells are delegated to the string overload; BOOLEAN cells map to 1.0f (true) or 0.0f (false); BLANK cells yield {@code null}.
      *
      * @param cell       the source cell
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code Float}, or {@code null} for a blank cell
+     * @return the parsed {@link Float}, or {@code null} for a blank cell
      * @throws PxlCellCodecException if the cell type is unsupported
      */
     static Float parseFloatValue(final Cell cell,
@@ -81,14 +81,14 @@ final class PxlFloatCodec {
     }
 
     /**
-     * Parses a string into a {@code Float}. Trims first when {@code importTrim} is enabled and returns {@code null} for
+     * Parses a string into a {@link Float}. Trims first when {@code importTrim} is enabled and returns {@code null} for
      * blank input. When an import {@link DecimalFormat} is configured its parsed value is narrowed to {@code float};
      * otherwise {@link Float#parseFloat(String)} is used.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code Float}, or {@code null} for blank input
-     * @throws PxlCellCodecException if the string is not a valid {@code Float}
+     * @return the parsed {@link Float}, or {@code null} for blank input
+     * @throws PxlCellCodecException if the string is not a valid {@link Float}
      */
     static Float parseFloatValue(final String s,
                                  final PxlImportColumnMeta columnMeta)
@@ -122,16 +122,16 @@ final class PxlFloatCodec {
     }
 
     /**
-     * Writes a {@code Float} value into a cell. Accepts a {@code Float} directly or a {@code String} (parsed via
+     * Writes a {@link Float} value into a cell. Accepts a {@link Float} directly or a {@link String} (parsed via
      * {@link Float#parseFloat(String)}; blank becomes {@code null}). A {@code null} value blanks the cell; NaN or Infinity
      * is rejected. When the column is exported as text the value is formatted via {@link #makeFloatExportString} and written
      * quote-prefixed; otherwise it is written as a numeric cell using {@link PxlNumberSupport#floatToPlainDouble(float)}.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Float} or {@code String})
+     * @param object     the source value ({@link Float} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if a string value is malformed, the object type cannot be converted to {@code Float},
+     * @throws PxlCellCodecException if a string value is malformed, the object type cannot be converted to {@link Float},
      *                               or the value is NaN or Infinity
      */
     static String buildFloatCell(final Cell cell,
@@ -177,7 +177,7 @@ final class PxlFloatCodec {
     }
 
     /**
-     * Renders the export string for a {@code Float}: applies the export {@link DecimalFormat} when configured, otherwise
+     * Renders the export string for a {@link Float}: applies the export {@link DecimalFormat} when configured, otherwise
      * applies masking when an export masking pattern is set, otherwise returns plain text; in all branches the value first
      * passes through {@link PxlNumberSupport#floatToPlainDouble(float)} to avoid widening noise.
      *

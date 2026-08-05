@@ -5,7 +5,7 @@ import io.github.hclimkr.pxl.annotation.PxlRowIndex;
 import lombok.*;
 
 /**
- * DTO with a {@code Long} @PxlRowIndex field, exercising the importer's Long branch of row-index injection.
+ * DTO with a {@link Long} @PxlRowIndex field, exercising the importer's Long branch of row-index injection.
  */
 @Getter
 @Setter

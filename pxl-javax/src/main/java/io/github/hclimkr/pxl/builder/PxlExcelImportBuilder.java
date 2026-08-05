@@ -1,5 +1,6 @@
 package io.github.hclimkr.pxl.builder;
 
+import io.github.hclimkr.pxl.Pxl;
 import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
@@ -21,7 +22,7 @@ import java.io.InputStream;
 import java.util.*;
 
 /**
- * Excel import builder. Created via {@link io.github.hclimkr.pxl.Pxl#importExcel()}.
+ * Excel import builder. Created via {@link Pxl#importExcel()}.
  *
  * <p>The parse target is configured with {@link #workbook(Class)} (workbook form) or {@link #sheet(Class, String...)}
  * (sheet form), each returning a {@link Source} whose source-terminal methods ({@code fromFile(...)} /
@@ -90,7 +91,7 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
     }
 
     /**
-     * Configures parsing a list ({@code List}) of row objects from one of the candidate sheet names. Specify the source
+     * Configures parsing a list ({@link List}) of row objects from one of the candidate sheet names. Specify the source
      * and run the parse with the returned {@link Source}.
      *
      * @param rowClass            the row class
@@ -110,7 +111,7 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
     }
 
     /**
-     * Configures parsing a list ({@code List}) of row objects from the candidate sheet name list. Specify the source
+     * Configures parsing a list ({@link List}) of row objects from the candidate sheet name list. Specify the source
      * and run the parse with the returned {@link Source}.
      *
      * @param rowClass            the row class

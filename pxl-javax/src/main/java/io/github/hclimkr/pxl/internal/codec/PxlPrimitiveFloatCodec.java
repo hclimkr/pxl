@@ -123,13 +123,13 @@ final class PxlPrimitiveFloatCodec {
     }
 
     /**
-     * Writes a {@code float} value into a cell. Accepts a {@code Float} directly or a {@code String} (parsed via
+     * Writes a {@code float} value into a cell. Accepts a {@link Float} directly or a {@link String} (parsed via
      * {@link Float#parseFloat(String)}; blank becomes {@code null}). A {@code null} value blanks the cell; NaN or Infinity
      * is rejected. When the column is exported as text the value is formatted via {@link #makePrimitiveFloatExportString}
      * and written quote-prefixed; otherwise it is written as a numeric cell using {@link PxlNumberSupport#floatToPlainDouble(float)}.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Float} or {@code String})
+     * @param object     the source value ({@link Float} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
      * @throws PxlCellCodecException if a string value is malformed, the object type cannot be converted to {@code float},

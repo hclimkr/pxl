@@ -6,7 +6,7 @@ import lombok.*;
 import java.util.Date;
 
 /**
- * DTO characterizing the behavior where java.util.Date + a custom importPattern is lenient (missing setLenient(false)),
+ * DTO characterizing the behavior where {@link Date} + a custom importPattern is lenient (missing setLenient(false)),
  * so invalid dates silently roll over. Unlike the built-in Date reader and java.time (strict), only Date + custom pattern is lenient.
  */
 @Getter

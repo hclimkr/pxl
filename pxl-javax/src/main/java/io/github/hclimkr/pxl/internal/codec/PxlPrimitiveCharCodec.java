@@ -103,12 +103,12 @@ final class PxlPrimitiveCharCodec {
     }
 
     /**
-     * Writes a {@code char} value into a cell. Accepts a {@code Character} directly or a {@code String} (its first character is
+     * Writes a {@code char} value into a cell. Accepts a {@link Character} directly or a {@link String} (its first character is
      * used; empty becomes {@code null}). A {@code null} value blanks the cell; otherwise the single-character string is written
      * as a text cell.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Character} or {@code String})
+     * @param object     the source value ({@link Character} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the single-character string written to the cell, or {@code null} when the value is {@code null}
      * @throws PxlCellCodecException if the first character cannot be read or the object type cannot be converted to {@code char}

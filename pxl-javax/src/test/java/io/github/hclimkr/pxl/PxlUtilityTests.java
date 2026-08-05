@@ -53,7 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Utility/library behavior tests.
  * <p>
  * The first part are reference tests that "do not call the PXL API", moved over from the removed deprecated suite.
- * (regex masking patterns, java.text.DecimalFormat, POI NumberToTextConverter, Unicode normalization, Apache Commons CSV parsing)
+ * (regex masking patterns, {@link DecimalFormat}, POI NumberToTextConverter, Unicode normalization, Apache Commons CSV parsing)
  * Ones that originally only printed output were turned into real tests with assertions, and the data is written mostly in English (ASCII).
  * <p>
  * The second part directly exercises the public {@code util/} helpers (PxlMiscUtils, PxlRegionUtils, PxlSheetUtils,

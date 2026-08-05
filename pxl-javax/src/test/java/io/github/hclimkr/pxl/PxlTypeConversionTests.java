@@ -5,6 +5,7 @@ import io.github.hclimkr.pxl.exception.PxlReflectionException;
 import io.github.hclimkr.pxl.exception.PxlValidationException;
 import io.github.hclimkr.pxl.tcdata.*;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -356,7 +357,7 @@ public class PxlTypeConversionTests {
 
         final LocalDateTime midnight = LocalDateTime.of(2000, 1, 1, 0, 0, 0);
         final AllTypesRow a = Fixtures.baseAllTypesRow();
-        a.setJavaDate(java.util.Date.from(midnight.atZone(zone).toInstant()));
+        a.setJavaDate(Date.from(midnight.atZone(zone).toInstant()));
         a.setLocalDate(LocalDate.of(2000, 1, 1));
         a.setLocalTime(LocalTime.of(0, 0, 0));
         a.setLocalDateTime(midnight);
@@ -367,7 +368,7 @@ public class PxlTypeConversionTests {
 
         final LocalDateTime endOfDay = LocalDateTime.of(2038, 12, 31, 23, 59, 59);
         final AllTypesRow b = Fixtures.baseAllTypesRow();
-        b.setJavaDate(java.util.Date.from(endOfDay.atZone(zone).toInstant()));
+        b.setJavaDate(Date.from(endOfDay.atZone(zone).toInstant()));
         b.setLocalDate(LocalDate.of(2038, 12, 31));
         b.setLocalTime(LocalTime.of(23, 59, 59));
         b.setLocalDateTime(endOfDay);
@@ -772,8 +773,8 @@ public class PxlTypeConversionTests {
     private static byte[] numericInfinitySheet(final String header) throws Exception {
         return sheet("Inf", s -> {
             s.createRow(0).createCell(0).setCellValue(header);
-            final org.apache.poi.xssf.usermodel.XSSFCell cell =
-                    (org.apache.poi.xssf.usermodel.XSSFCell) s.createRow(1).createCell(0);
+            final XSSFCell cell =
+                    (XSSFCell) s.createRow(1).createCell(0);
             cell.setCellValue(0.0);            // first make it a NUMERIC cell, then
             cell.getCTCell().setV("1E309");    // replace the raw value with a literal beyond the double range
         });
@@ -1091,8 +1092,8 @@ public class PxlTypeConversionTests {
     @Test
     public void collectionTypes_dateTimeElements_roundTrip() throws Exception {
         final ZoneId zone = ZoneId.systemDefault();
-        final java.util.Date date1 = java.util.Date.from(LocalDateTime.of(2023, 1, 2, 3, 4, 5).atZone(zone).toInstant());
-        final java.util.Date date2 = java.util.Date.from(LocalDateTime.of(2024, 6, 7, 8, 9, 10).atZone(zone).toInstant());
+        final Date date1 = Date.from(LocalDateTime.of(2023, 1, 2, 3, 4, 5).atZone(zone).toInstant());
+        final Date date2 = Date.from(LocalDateTime.of(2024, 6, 7, 8, 9, 10).atZone(zone).toInstant());
 
         final ZonedDateTime zdt1 = LocalDateTime.of(2023, 1, 2, 3, 4, 5).atZone(zone);
         final ZonedDateTime zdt2 = LocalDateTime.of(2024, 6, 7, 8, 9, 10).atZone(zone);

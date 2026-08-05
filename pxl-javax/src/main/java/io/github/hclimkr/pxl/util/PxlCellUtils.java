@@ -33,10 +33,10 @@ import java.util.*;
  * Cell-level POI helpers: locating or creating a cell, reading it as text, writing a value of any supported type,
  * and decorating it.
  * <p>
- * The {@code setCellValue} family spans the JDK types PXL binds (numbers, {@code String}, {@code boolean},
- * {@code Date} and {@code java.time}, ...), so a caller need not pick the right POI setter per type, and
+ * The {@code setCellValue} family spans the JDK types PXL binds (numbers, {@link String}, {@code boolean},
+ * {@link Date} and {@code java.time}, ...), so a caller need not pick the right POI setter per type, and
  * {@code getCellStringValue} renders a cell the way the spreadsheet displays it by honouring its number format
- * through a {@code DataFormatter} — pass the workbook's cached formatter on hot paths, as the no-argument overload
+ * through a {@link DataFormatter} — pass the workbook's cached formatter on hot paths, as the no-argument overload
  * allocates one per call. Also here: formula, error and blank cells; {@code getCellWithMerges}, which reads the
  * value a merged region carries from any of its cells; cell-style cloning; notes; and pictures anchored to a cell.
  * <p>
@@ -847,7 +847,7 @@ public final class PxlCellUtils {
      * @param sheet        the sheet to operate on
      * @param rowIndex     the zero-based row index
      * @param columnIndex  the zero-based column index
-     * @param value        the POI error code (see {@code FormulaError})
+     * @param value        the POI error code (see {@link FormulaError})
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
      */
@@ -870,7 +870,7 @@ public final class PxlCellUtils {
      *
      * @param sheet        the sheet to operate on
      * @param cellRefStr   the A1-style cell reference
-     * @param value        the POI error code (see {@code FormulaError})
+     * @param value        the POI error code (see {@link FormulaError})
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
      * @throws PxlArgumentException if the reference does not include both a row and a column

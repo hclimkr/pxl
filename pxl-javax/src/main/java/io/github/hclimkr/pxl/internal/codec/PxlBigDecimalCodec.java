@@ -19,8 +19,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@code BigDecimal} column values — parses cells and strings into {@code BigDecimal} on import and writes
- * {@code BigDecimal} into cells on export. A numeric cell is converted via {@code BigDecimal.valueOf(double)} (so its
+ * Codec for {@link BigDecimal} column values — parses cells and strings into {@link BigDecimal} on import and writes
+ * {@link BigDecimal} into cells on export. A numeric cell is converted via {@code BigDecimal.valueOf(double)} (so its
  * precision is limited by the underlying {@code double}); string input is parsed exactly via {@code new BigDecimal(String)}.
  * Boolean cells map to 1/0. Export always writes the value as text ({@link BigDecimal#toPlainString()}, quote-prefixed) to
  * preserve full precision rather than as a lossy numeric cell.
@@ -36,12 +36,12 @@ final class PxlBigDecimalCodec {
     }
 
     /**
-     * Parses an Excel cell into a {@code BigDecimal}. NUMERIC cells are converted via {@code BigDecimal.valueOf(double)};
+     * Parses an Excel cell into a {@link BigDecimal}. NUMERIC cells are converted via {@code BigDecimal.valueOf(double)};
      * STRING cells are delegated to the string overload; BOOLEAN cells map to 1 (true) or 0 (false); BLANK cells yield {@code null}.
      *
      * @param cell       the source cell
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code BigDecimal}, or {@code null} for a blank cell
+     * @return the parsed {@link BigDecimal}, or {@code null} for a blank cell
      * @throws PxlCellCodecException if the cell type is unsupported
      */
     static BigDecimal parseBigDecimalValue(final Cell cell,
@@ -79,14 +79,14 @@ final class PxlBigDecimalCodec {
     }
 
     /**
-     * Parses a string into a {@code BigDecimal}. Trims first when {@code importTrim} is enabled and returns {@code null} for
-     * blank input. When an import {@link DecimalFormat} is configured (parsing to {@code BigDecimal}) its result is used;
+     * Parses a string into a {@link BigDecimal}. Trims first when {@code importTrim} is enabled and returns {@code null} for
+     * blank input. When an import {@link DecimalFormat} is configured (parsing to {@link BigDecimal}) its result is used;
      * otherwise {@code new BigDecimal(String)} parses the value exactly.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code BigDecimal}, or {@code null} for blank input
-     * @throws PxlCellCodecException if the string is not a valid {@code BigDecimal}
+     * @return the parsed {@link BigDecimal}, or {@code null} for blank input
+     * @throws PxlCellCodecException if the string is not a valid {@link BigDecimal}
      */
     static BigDecimal parseBigDecimalValue(final String s,
                                            final PxlImportColumnMeta columnMeta)
@@ -118,16 +118,16 @@ final class PxlBigDecimalCodec {
     }
 
     /**
-     * Writes a {@code BigDecimal} value into a cell. Accepts a {@code BigDecimal} directly or a {@code String} (parsed via
+     * Writes a {@link BigDecimal} value into a cell. Accepts a {@link BigDecimal} directly or a {@link String} (parsed via
      * {@code new BigDecimal(String)}; blank becomes {@code null}). A {@code null} value blanks the cell. When the column is
      * exported as text the value is formatted via {@link #makeBigDecimalExportString}; otherwise its
      * {@link BigDecimal#toPlainString()} form is written quote-prefixed (as text, to preserve precision).
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code BigDecimal} or {@code String})
+     * @param object     the source value ({@link BigDecimal} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@code BigDecimal}
+     * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@link BigDecimal}
      */
     static String buildBigDecimalCell(final Cell cell,
                                       final Object object,
@@ -172,7 +172,7 @@ final class PxlBigDecimalCodec {
     }
 
     /**
-     * Renders the export string for a {@code BigDecimal}: applies the export {@link DecimalFormat} when configured, otherwise
+     * Renders the export string for a {@link BigDecimal}: applies the export {@link DecimalFormat} when configured, otherwise
      * applies masking over the {@link BigDecimal#toPlainString()} form when an export masking pattern is set, otherwise
      * returns that plain-string form.
      *

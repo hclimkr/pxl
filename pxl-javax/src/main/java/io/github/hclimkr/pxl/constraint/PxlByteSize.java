@@ -18,7 +18,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * <p>
  * Supported types are:
  * <ul>
- *     <li>{@code CharSequence} (byte length of character sequence is evaluated)</li>
+ *     <li>{@link CharSequence} (byte length of character sequence is evaluated)</li>
  * </ul>
  * <p>
  * {@code null} elements are considered valid. Determine the byte length by encoding the string in the specified

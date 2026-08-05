@@ -18,8 +18,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@code Long} column values — parses cells and strings into {@code Long} on import and writes {@code Long}
- * into cells on export. Numeric input is range-checked against the {@code Long} range (throwing on overflow) and truncated
+ * Codec for {@link Long} column values — parses cells and strings into {@link Long} on import and writes {@link Long}
+ * into cells on export. Numeric input is range-checked against the {@link Long} range (throwing on overflow) and truncated
  * to its integer part; note that a numeric cell is a {@code double}, so magnitudes beyond 2^53 lose precision. Boolean cells map to 1/0.
  */
 final class PxlLongCodec {
@@ -33,14 +33,14 @@ final class PxlLongCodec {
     }
 
     /**
-     * Parses an Excel cell into a {@code Long}. NUMERIC cells are range-checked against the {@code Long} range and truncated
+     * Parses an Excel cell into a {@link Long}. NUMERIC cells are range-checked against the {@link Long} range and truncated
      * to their integer part (magnitudes beyond 2^53 already lose precision as a {@code double}); STRING cells are delegated
      * to the string overload; BOOLEAN cells map to 1 (true) or 0 (false); BLANK cells yield {@code null}.
      *
      * @param cell       the source cell
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code Long}, or {@code null} for a blank cell
-     * @throws PxlCellCodecException if the numeric value is outside the {@code Long} range or the cell type is unsupported
+     * @return the parsed {@link Long}, or {@code null} for a blank cell
+     * @throws PxlCellCodecException if the numeric value is outside the {@link Long} range or the cell type is unsupported
      */
     static Long parseLongValue(final Cell cell,
                                final PxlImportColumnMeta columnMeta)
@@ -77,14 +77,14 @@ final class PxlLongCodec {
     }
 
     /**
-     * Parses a string into a {@code Long}. Trims first when {@code importTrim} is enabled and returns {@code null} for blank
-     * input. When an import {@link DecimalFormat} is configured the parsed number is range-checked against the {@code Long}
+     * Parses a string into a {@link Long}. Trims first when {@code importTrim} is enabled and returns {@code null} for blank
+     * input. When an import {@link DecimalFormat} is configured the parsed number is range-checked against the {@link Long}
      * range and truncated; otherwise {@link Long#parseLong(String)} is used (preserving full precision).
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code Long}, or {@code null} for blank input
-     * @throws PxlCellCodecException if the string is not a valid {@code Long} or is outside the {@code Long} range
+     * @return the parsed {@link Long}, or {@code null} for blank input
+     * @throws PxlCellCodecException if the string is not a valid {@link Long} or is outside the {@link Long} range
      */
     static Long parseLongValue(final String s,
                                final PxlImportColumnMeta columnMeta)
@@ -116,16 +116,16 @@ final class PxlLongCodec {
     }
 
     /**
-     * Writes a {@code Long} value into a cell. Accepts a {@code Long} directly or a {@code String} (parsed via
+     * Writes a {@link Long} value into a cell. Accepts a {@link Long} directly or a {@link String} (parsed via
      * {@link Long#parseLong(String)}; blank becomes {@code null}). A {@code null} value blanks the cell. When the column
      * is exported as text the value is formatted via {@link #makeLongExportString} and written quote-prefixed; otherwise
      * it is written as a numeric cell (subject to the 2^53 {@code double} precision limit).
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Long} or {@code String})
+     * @param object     the source value ({@link Long} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@code Long}
+     * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@link Long}
      */
     static String buildLongCell(final Cell cell,
                                 final Object object,
@@ -166,7 +166,7 @@ final class PxlLongCodec {
     }
 
     /**
-     * Renders the export string for a {@code Long}: applies the export {@link DecimalFormat} when configured, otherwise
+     * Renders the export string for a {@link Long}: applies the export {@link DecimalFormat} when configured, otherwise
      * applies masking when an export masking pattern is set, otherwise returns the plain {@link String#valueOf(long)} form.
      *
      * @param longValue  the value to render

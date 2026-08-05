@@ -25,7 +25,7 @@ import java.util.stream.Stream;
  * writes enum constants into cells on export.
  *
  * <p>Conversion honours any {@code @PxlImportConverter}/{@code @PxlExportConverter} method or a
- * {@code String} constructor; otherwise it matches a constant by its {@code toString} result (falling back
+ * {@link String} constructor; otherwise it matches a constant by its {@code toString} result (falling back
  * to {@link Enum#name()}), comparing case-insensitively and ignoring whitespace. BLANK/blank values map to
  * {@code null}.
  */
@@ -104,15 +104,15 @@ public final class PxlEnumCodec {
     }
 
     /**
-     * Writes the given value as an enum cell and returns the exported string. A {@code String} source is
+     * Writes the given value as an enum cell and returns the exported string. A {@link String} source is
      * imported to an enum and re-exported (sample flow); an {@link Enum} source is matched to the target
      * enum by ordinal. A {@code null} result blanks the cell.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@link Enum})
+     * @param object     the source value (a {@link String} or {@link Enum})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when blank
-     * @throws PxlCellCodecException if the source is not a {@code String}/{@code Enum}, or the value cannot be converted
+     * @throws PxlCellCodecException if the source is not a {@link String}/{@link Enum}, or the value cannot be converted
      * @throws PxlArgumentException  if the resolved converter or target enum type is invalid
      */
     static String buildEnumCell(final Cell cell,
@@ -205,7 +205,7 @@ public final class PxlEnumCodec {
 
     /**
      * Parses a string into an enum constant using the given import converter metadata: a {@code @PxlImportConverter} method
-     * takes precedence, then a {@code String} constructor, then matching an enum constant by its {@code toString} value and
+     * takes precedence, then a {@link String} constructor, then matching an enum constant by its {@code toString} value and
      * finally by {@link Enum#name()} (both compared case- and whitespace-insensitively).
      *
      * @param stringValue   the source string

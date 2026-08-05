@@ -19,8 +19,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link java.time.LocalTime} column values — parses cells/strings into {@code LocalTime} on
- * import and writes {@code LocalTime} into cells on export.
+ * Codec for {@link LocalTime} column values — parses cells/strings into {@link LocalTime} on
+ * import and writes {@link LocalTime} into cells on export.
  *
  * <p>Import reads NUMERIC cells as Excel time fractions and strings via the column's cached
  * {@link DateTimeFormatter} (falling back to the built-in read formatters, then ISO-8601). A BOOLEAN cell
@@ -38,13 +38,13 @@ final class PxlLocalTimeCodec {
     }
 
     /**
-     * Parses the given cell into a {@link java.time.LocalTime}. NUMERIC cells are read as Excel time
+     * Parses the given cell into a {@link LocalTime}. NUMERIC cells are read as Excel time
      * fractions (via POI's local date-time truncated to the time); STRING cells are delegated to the string
      * parser; BOOLEAN cells are rejected as an unsupported cell type; BLANK cells yield {@code null}.
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code LocalTime}, or {@code null} when blank
+     * @return the parsed {@link LocalTime}, or {@code null} when blank
      * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is invalid
      */
     static LocalTime parseLocalTimeValue(final Cell cell,
@@ -86,13 +86,13 @@ final class PxlLocalTimeCodec {
     }
 
     /**
-     * Parses a string token into a {@link java.time.LocalTime}. The column's cached formatter is tried
+     * Parses a string token into a {@link LocalTime}. The column's cached formatter is tried
      * first, then the built-in read formatters, then ISO-8601. The value is trimmed when {@code importTrim}
      * is set; a blank value yields {@code null}.
      *
      * @param s          the raw string token
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code LocalTime}, or {@code null} when blank
+     * @return the parsed {@link LocalTime}, or {@code null} when blank
      * @throws PxlCellCodecException if the value matches no known time format
      */
     static LocalTime parseLocalTimeValue(final String s,
@@ -136,13 +136,13 @@ final class PxlLocalTimeCodec {
     }
 
     /**
-     * Writes the given value as a {@code LocalTime} cell and returns the exported string. A {@code String}
-     * source is parsed with the export formatter; a {@link java.time.LocalTime} source is used directly. A
+     * Writes the given value as a {@link LocalTime} cell and returns the exported string. A {@link String}
+     * source is parsed with the export formatter; a {@link LocalTime} source is used directly. A
      * {@code null} result blanks the cell; otherwise the cell is written as a formatted string when
      * exported to string, or as a numeric Excel-time cell when no pattern/masking applies.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code LocalTime})
+     * @param object     the source value (a {@link String} or {@link LocalTime})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when blank
      * @throws PxlCellCodecException if the source is unsupported or the string is not a valid time
@@ -196,7 +196,7 @@ final class PxlLocalTimeCodec {
     }
 
     /**
-     * Renders the export string for a {@code LocalTime}: formats it with the configured export {@link DateTimeFormatter}
+     * Renders the export string for a {@link LocalTime}: formats it with the configured export {@link DateTimeFormatter}
      * (or the built-in default write formatter when none is set), then applies string-level export processing via
      * {@link PxlStringCodec#makeExportString}.
      *

@@ -20,8 +20,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link java.time.ZonedDateTime} column values — parses cells/strings into {@code ZonedDateTime}
- * on import and writes {@code ZonedDateTime} into cells on export.
+ * Codec for {@link ZonedDateTime} column values — parses cells/strings into {@link ZonedDateTime}
+ * on import and writes {@link ZonedDateTime} into cells on export.
  *
  * <p>NUMERIC cells are read as Excel serials and placed at the system default zone; a BOOLEAN cell is
  * rejected as an unsupported cell type. Strings are parsed with the column's cached formatter, then ISO-8601
@@ -39,14 +39,14 @@ final class PxlZonedDateTimeCodec {
     }
 
     /**
-     * Parses the given cell into a {@link java.time.ZonedDateTime} at the system default zone.
+     * Parses the given cell into a {@link ZonedDateTime} at the system default zone.
      * Date-formatted NUMERIC cells use POI's local date-time; other numerics are
      * Excel serials; STRING cells are delegated to the string parser; BOOLEAN cells are rejected as an
      * unsupported cell type; BLANK cells yield {@code null}.
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code ZonedDateTime}, or {@code null} when blank
+     * @return the parsed {@link ZonedDateTime}, or {@code null} when blank
      * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is invalid
      */
     static ZonedDateTime parseZonedDateTimeValue(final Cell cell,
@@ -89,13 +89,13 @@ final class PxlZonedDateTimeCodec {
     }
 
     /**
-     * Parses a string token into a {@link java.time.ZonedDateTime}. The column's cached formatter is tried
+     * Parses a string token into a {@link ZonedDateTime}. The column's cached formatter is tried
      * first, then ISO-8601 parsing with an explicit offset/zone. The value is trimmed when {@code importTrim}
      * is set; a blank value yields {@code null}.
      *
      * @param s          the raw string token
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code ZonedDateTime}, or {@code null} when blank
+     * @return the parsed {@link ZonedDateTime}, or {@code null} when blank
      * @throws PxlCellCodecException if the value matches no known format
      */
     static ZonedDateTime parseZonedDateTimeValue(final String s,
@@ -130,14 +130,14 @@ final class PxlZonedDateTimeCodec {
     }
 
     /**
-     * Writes the given value as a {@code ZonedDateTime} cell and returns the exported string. A
-     * {@code String} source is parsed with the export formatter, falling back to ISO-8601; a
-     * {@link java.time.ZonedDateTime} source is used directly. A {@code null} result blanks the cell;
+     * Writes the given value as a {@link ZonedDateTime} cell and returns the exported string. A
+     * {@link String} source is parsed with the export formatter, falling back to ISO-8601; a
+     * {@link ZonedDateTime} source is used directly. A {@code null} result blanks the cell;
      * otherwise the cell is written as a formatted string when exported to string, or as a numeric
      * Excel-date cell (local part only) when no pattern/masking applies.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code ZonedDateTime})
+     * @param object     the source value (a {@link String} or {@link ZonedDateTime})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when blank
      * @throws PxlCellCodecException if the source is unsupported or the string is not a valid zoned date-time
@@ -198,7 +198,7 @@ final class PxlZonedDateTimeCodec {
     }
 
     /**
-     * Renders the export string for a {@code ZonedDateTime}: formats it with the configured export {@link DateTimeFormatter}
+     * Renders the export string for a {@link ZonedDateTime}: formats it with the configured export {@link DateTimeFormatter}
      * (or {@link DateTimeFormatter#ISO_ZONED_DATE_TIME} when none is set), then applies string-level export processing via
      * {@link PxlStringCodec#makeExportString}.
      *

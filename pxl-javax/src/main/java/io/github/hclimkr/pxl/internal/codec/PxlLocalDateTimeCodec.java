@@ -19,8 +19,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link java.time.LocalDateTime} column values — parses cells/strings into {@code LocalDateTime}
- * on import and writes {@code LocalDateTime} into cells on export.
+ * Codec for {@link LocalDateTime} column values — parses cells/strings into {@link LocalDateTime}
+ * on import and writes {@link LocalDateTime} into cells on export.
  *
  * <p>Import reads date-formatted NUMERIC cells via POI (other numerics as Excel
  * serials) and strings via the column's cached {@link DateTimeFormatter} (falling back to the built-in
@@ -38,14 +38,14 @@ final class PxlLocalDateTimeCodec {
     }
 
     /**
-     * Parses the given cell into a {@link java.time.LocalDateTime}. Date-formatted NUMERIC cells use POI's
+     * Parses the given cell into a {@link LocalDateTime}. Date-formatted NUMERIC cells use POI's
      * local date-time; other numerics are treated as Excel date serials; STRING cells
      * are delegated to the string parser; BOOLEAN cells are rejected as an unsupported cell type; BLANK cells
      * yield {@code null}.
      *
      * @param cell       the cell to read
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code LocalDateTime}, or {@code null} when blank
+     * @return the parsed {@link LocalDateTime}, or {@code null} when blank
      * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is invalid
      */
     static LocalDateTime parseLocalDateTimeValue(final Cell cell,
@@ -87,13 +87,13 @@ final class PxlLocalDateTimeCodec {
     }
 
     /**
-     * Parses a string token into a {@link java.time.LocalDateTime}. The column's cached formatter is tried
+     * Parses a string token into a {@link LocalDateTime}. The column's cached formatter is tried
      * first, then the built-in read formatters, then ISO-8601. The value is trimmed when {@code importTrim}
      * is set; a blank value yields {@code null}.
      *
      * @param s          the raw string token
      * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@code LocalDateTime}, or {@code null} when blank
+     * @return the parsed {@link LocalDateTime}, or {@code null} when blank
      * @throws PxlCellCodecException if the value matches no known date-time format
      */
     static LocalDateTime parseLocalDateTimeValue(final String s,
@@ -137,13 +137,13 @@ final class PxlLocalDateTimeCodec {
     }
 
     /**
-     * Writes the given value as a {@code LocalDateTime} cell and returns the exported string. A
-     * {@code String} source is parsed with the export formatter; a {@link java.time.LocalDateTime} source
+     * Writes the given value as a {@link LocalDateTime} cell and returns the exported string. A
+     * {@link String} source is parsed with the export formatter; a {@link LocalDateTime} source
      * is used directly. A {@code null} result blanks the cell; otherwise the cell is written as a formatted
      * string when exported to string, or as a numeric Excel-date cell when no pattern/masking applies.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code LocalDateTime})
+     * @param object     the source value (a {@link String} or {@link LocalDateTime})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string, or {@code null} when blank
      * @throws PxlCellCodecException if the source is unsupported or the string is not a valid date-time
@@ -197,7 +197,7 @@ final class PxlLocalDateTimeCodec {
     }
 
     /**
-     * Renders the export string for a {@code LocalDateTime}: formats it with the configured export {@link DateTimeFormatter}
+     * Renders the export string for a {@link LocalDateTime}: formats it with the configured export {@link DateTimeFormatter}
      * (or the built-in default write formatter when none is set), then applies string-level export processing via
      * {@link PxlStringCodec#makeExportString}.
      *

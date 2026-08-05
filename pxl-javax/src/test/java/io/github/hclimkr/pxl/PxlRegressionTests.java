@@ -21,6 +21,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -150,7 +151,7 @@ public class PxlRegressionTests {
     @Test
     public void columnPattern_invalid_throws() {
         final BadPatternRow row = new BadPatternRow();
-        row.setDate(java.time.LocalDate.of(2023, 1, 1));
+        row.setDate(LocalDate.of(2023, 1, 1));
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlArgumentException.class, () ->

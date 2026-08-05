@@ -117,13 +117,13 @@ final class PxlPrimitiveShortCodec {
     }
 
     /**
-     * Writes a {@code short} value into a cell. Accepts a {@code Short} directly or a {@code String} (parsed via
+     * Writes a {@code short} value into a cell. Accepts a {@link Short} directly or a {@link String} (parsed via
      * {@link Short#parseShort(String)}; blank becomes {@code null}). A {@code null} value blanks the cell. When the column
      * is exported as text the value is formatted via {@link #makePrimitiveShortExportString} and written quote-prefixed;
      * otherwise it is written as a numeric cell.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@code Short} or {@code String})
+     * @param object     the source value ({@link Short} or {@link String})
      * @param columnMeta resolved export metadata for the column
      * @return the string representation of the written value, or {@code null} when the value is {@code null}
      * @throws PxlCellCodecException if a string value is malformed or the object type cannot be converted to {@code short}

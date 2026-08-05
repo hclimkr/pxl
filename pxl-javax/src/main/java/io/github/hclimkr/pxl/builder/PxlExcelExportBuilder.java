@@ -1,5 +1,6 @@
 package io.github.hclimkr.pxl.builder;
 
+import io.github.hclimkr.pxl.Pxl;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
@@ -22,7 +23,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Builder that exports data to an Excel workbook/file/stream. Created via {@link io.github.hclimkr.pxl.Pxl#exportExcel()}.
+ * Builder that exports data to an Excel workbook/file/stream. Created via {@link Pxl#exportExcel()}.
  *
  * <p>There are two usage forms.</p>
  * <ul>

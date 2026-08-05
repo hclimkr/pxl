@@ -797,7 +797,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      *
      * @param sheetField     the {@code @PxlSheet} field to read
      * @param workbookObject the workbook object holding the field
-     * @return the field value cast to {@code Collection}, or {@code null} if it is {@code null} or not a collection
+     * @return the field value cast to {@link Collection}, or {@code null} if it is {@code null} or not a collection
      * @throws PxlReflectionException if the field value cannot be read
      */
     private static Collection<?> getRowObjects(final Field sheetField,
@@ -815,7 +815,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
     /**
      * Prepares the sheet before rows are written. (export)
-     * Applies the default row height and, for streaming ({@code SXSSFSheet}) sheets, registers auto-sized
+     * Applies the default row height and, for streaming ({@link SXSSFSheet}) sheets, registers auto-sized
      * columns for width tracking.
      *
      * @param sheet     the sheet being built

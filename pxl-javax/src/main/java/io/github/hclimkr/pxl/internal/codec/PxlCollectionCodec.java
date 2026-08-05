@@ -40,7 +40,7 @@ final class PxlCollectionCodec {
     }
 
     /**
-     * Parses the given cell into a collection by first reading it as a {@code String} via
+     * Parses the given cell into a collection by first reading it as a {@link String} via
      * {@link PxlStringCodec} and delegating to
      * {@link #parseCollectionValue(String, PxlImportColumnMeta)}.
      *
@@ -188,12 +188,12 @@ final class PxlCollectionCodec {
     /**
      * Writes a collection value into a single cell by exporting each element with the codec for the field's
      * parameterized element type and joining the results with the column's export collection separator.
-     * {@code null} elements become empty strings (preserving index fidelity). A {@code String} source is
-     * first split on the separator. When {@code exportStringAsPicture} is set for a {@code Collection}
+     * {@code null} elements become empty strings (preserving index fidelity). A {@link String} source is
+     * first split on the separator. When {@code exportStringAsPicture} is set for a {@link Collection}
      * source, elements are rendered as embedded pictures instead of text.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@code String} or {@code Collection})
+     * @param object     the source value (a {@link String} or {@link Collection})
      * @param columnMeta the resolved export metadata for this column
      * @return the joined string
      * @throws PxlReflectionException if the element type cannot be resolved or the collection cannot be instantiated

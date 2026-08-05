@@ -131,7 +131,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
      *
      * @param csvName            the sheet name for the CSV
      * @param csvStream          the CSV input stream to read
-     * @param rowCollectionClass the collection type instantiated to hold the row objects (e.g. {@code List}, {@code Set})
+     * @param rowCollectionClass the collection type instantiated to hold the row objects (e.g. {@link List}, {@link Set})
      * @param rowClass           the row class instantiated for each data row
      * @param workbookOption     optional runtime workbook override (may be {@code null})
      * @param validator          optional bean validator applied when data validation is enabled (may be {@code null})

@@ -11,6 +11,7 @@ import lombok.*;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -215,7 +216,7 @@ public final class PxlExportSheetOption {
      * Appends a column export option to this sheet option.
      *
      * @param exportColumnOption the column option to append
-     * @return {@code true} (as specified by {@link java.util.Collection#add})
+     * @return {@code true} (as specified by {@link Collection#add})
      * @throws PxlNullPointerException if {@code exportColumnOption} is {@code null}
      */
     public boolean addExportColumnOption(final PxlExportColumnOption exportColumnOption)

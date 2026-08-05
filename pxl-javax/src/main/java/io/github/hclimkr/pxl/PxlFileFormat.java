@@ -122,7 +122,7 @@ public enum PxlFileFormat {
      * Resolves the file format an open POI workbook holds, from its implementation type.
      * <p>
      * {@link HSSFWorkbook} maps to {@link #XLS}; {@link XSSFWorkbook}, {@link SXSSFWorkbook} and the streaming
-     * reader's {@code StreamingWorkbook} all map to {@link #XLSX}, because all three sit on the same OOXML
+     * reader's {@link StreamingWorkbook} all map to {@link #XLSX}, because all three sit on the same OOXML
      * container and differ only in how they read or write it. Which of them it is, is the engine question that
      * {@link PxlExcelEngine#fromPoiWorkbook(Workbook)} answers. {@link #CSV} is never returned, as no POI
      * workbook represents it.

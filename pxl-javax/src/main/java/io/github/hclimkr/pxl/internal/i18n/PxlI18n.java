@@ -126,11 +126,11 @@ public class PxlI18n {
      * <p>
      * Returns the {@code key} unchanged when the bundle or key is {@code null}, when the key is blank,
      * or when the key is missing from the bundle. When {@code params} are provided, the resolved
-     * message is formatted via {@link java.text.MessageFormat#format(String, Object...)}.
+     * message is formatted via {@link MessageFormat#format(String, Object...)}.
      *
      * @param resourceBundle the bundle to read from; {@code null} yields the key unchanged
      * @param key            the message key, also used as the fallback value
-     * @param params         optional {@link java.text.MessageFormat} arguments
+     * @param params         optional {@link MessageFormat} arguments
      * @return the resolved (and possibly formatted) message, or the key when unresolved
      */
     public static String getMessage(final ResourceBundle resourceBundle,
@@ -180,7 +180,7 @@ public class PxlI18n {
      * @param baseName the resource bundle base name; blank means i18n is not used
      * @param locale   the locale to resolve; {@code null} means i18n is not used
      * @param key      the message key, also used as the fallback value
-     * @param params   optional {@link java.text.MessageFormat} arguments
+     * @param params   optional {@link MessageFormat} arguments
      * @return the resolved (and possibly formatted) message, or the key when unresolved
      * @throws PxlI18nException if the bundle cannot be found for the given base name and locale
      */
