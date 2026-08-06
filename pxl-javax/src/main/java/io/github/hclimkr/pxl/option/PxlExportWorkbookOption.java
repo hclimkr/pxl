@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl.option;
 
 import io.github.hclimkr.pxl.PxlExcelEngine;
+import io.github.hclimkr.pxl.annotation.PxlColumn;
 import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.exception.PxlI18nException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
@@ -35,7 +36,10 @@ public final class PxlExportWorkbookOption {
     private final String exportPassword = null;
 
     /**
-     * Specifies whether to validate the data to be exported.
+     * Specifies whether to bean-validate the data to be exported.
+     * <p>
+     * This is Bean Validation over the objects being written, not Excel's "data validation" feature — the
+     * dropdown written into the file comes from {@link PxlColumn#exportOptionItems()} instead.
      */
     @Builder.Default
     private final Boolean exportDataValidation = null;

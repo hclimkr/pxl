@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl.option;
 
 import io.github.hclimkr.pxl.PxlConstants;
+import io.github.hclimkr.pxl.annotation.PxlColumn;
 import io.github.hclimkr.pxl.annotation.PxlSheet;
 import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.exception.PxlI18nException;
@@ -30,7 +31,10 @@ public final class PxlImportWorkbookOption {
     private final String importPassword = null;
 
     /**
-     * Specifies whether to validate the data to be imported.
+     * Specifies whether to bean-validate the data to be imported.
+     * <p>
+     * This is Bean Validation over the bound result, not Excel's "data validation" feature — the dropdown an
+     * Excel file carries is written from {@link PxlColumn#exportOptionItems()} instead.
      */
     @Builder.Default
     private final Boolean importDataValidation = null;
