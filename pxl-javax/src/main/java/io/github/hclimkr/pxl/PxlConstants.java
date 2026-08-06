@@ -192,8 +192,12 @@ public interface PxlConstants {
     int IMPORT_MAX_NUMBER_OF_CSV_ROWS = 100_000;    // max number of rows in the CSV to import
     /**
      * Maximum number of columns allowed per CSV on import.
+     * <p>
+     * CSV itself bounds neither rows nor columns, so this is a defensive ceiling rather than a format rule. It
+     * matches {@link PxlFileFormat#XLSX}, which keeps a row class that exports to XLSX readable back from CSV —
+     * a lower cap would reject the very files PXL had written.
      */
-    int IMPORT_MAX_NUMBER_OF_CSV_COLUMNS = 100;     // max number of columns in the CSV to import
+    int IMPORT_MAX_NUMBER_OF_CSV_COLUMNS = 16_384;  // max number of columns in the CSV to import (= XLSX)
     /**
      * Maximum number of CSV files (sheets) allowed on export.
      */
@@ -204,8 +208,10 @@ public interface PxlConstants {
     int EXPORT_MAX_NUMBER_OF_CSV_ROWS = 100_000;    // max number of rows in the CSV to export
     /**
      * Maximum number of columns allowed per CSV on export.
+     * <p>
+     * Kept equal to {@link #IMPORT_MAX_NUMBER_OF_CSV_COLUMNS} so a CSV PXL writes is one PXL can read back.
      */
-    int EXPORT_MAX_NUMBER_OF_CSV_COLUMNS = 100;     // max number of columns in the CSV to export
+    int EXPORT_MAX_NUMBER_OF_CSV_COLUMNS = 16_384;  // max number of columns in the CSV to export (= XLSX)
 
     /**
      * Default Commons-CSV parse format used for import (Excel dialect, quoted, empty lines ignored).

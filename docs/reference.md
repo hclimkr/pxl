@@ -1146,7 +1146,7 @@ List<Employee> rows = pxl.importExcel()
 |--------|------------|------------|-------------|--------------------------------------------------------------|
 | XLSX   | 100        | 1,048,576  | 16,384      | Can be read with the Streaming Reader without memory issues (GC overhead) |
 | XLS    | 100        | 65,536     | 256         | The Streaming Reader is not supported, but non-streaming also has no memory issues |
-| CSV    | 100        | 100,000    | 100         | Import only. One file is one sheet, so "sheets" counts the files passed to `fromFiles(...)`/`fromStreams(...)` |
+| CSV    | 100        | 100,000    | 16,384      | Import only. One file is one sheet, so "sheets" counts the files passed to `fromFiles(...)`/`fromStreams(...)`.<br/>The column cap matches XLSX so that a row class exporting to XLSX stays readable from CSV; the row cap is lower because a CSV is parsed into memory whole |
 
 > These are the limits `PxlFileFormat` carries (`getMaxExportRows()` and its siblings), so an engine is bound by the
 > limits of the format it writes — `XSSF` and `SXSSF` alike.  

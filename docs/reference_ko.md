@@ -1138,7 +1138,7 @@ List<Employee> rows = pxl.importExcel()
 |------|---------|-----------|--------|------------------------------------------------|
 | XLSX | 100     | 1,048,576 | 16,384 | Streaming Reader로 메모리 문제(GC overhead) 없이 읽기 가능 |
 | XLS  | 100     | 65,536    | 256    | Streaming Reader 미지원이나, 비스트리밍으로도 메모리 문제 없음     |
-| CSV  | 100     | 100,000   | 100    | import 전용. 파일 하나가 시트 하나이므로 "시트"는 `fromFiles(...)`/`fromStreams(...)`에 넘긴 파일 수를 뜻한다 |
+| CSV  | 100     | 100,000   | 16,384 | import 전용. 파일 하나가 시트 하나이므로 "시트"는 `fromFiles(...)`/`fromStreams(...)`에 넘긴 파일 수를 뜻한다.<br/>열 한도는 XLSX와 같게 맞춰 XLSX로 export되는 행 클래스가 CSV로도 그대로 읽히게 했고, 행 한도가 더 낮은 것은 CSV를 통째로 메모리에 적재해 파싱하기 때문이다 |
 
 > 이 한도는 `PxlFileFormat`이 갖고 있는 값(`getMaxExportRows()` 등)이다. 따라서 엔진은 자기가 쓰는 형식의 한도를 그대로 따르며, `XSSF`와 `SXSSF`도 마찬가지다.  
 > XLSX·XLS의 행/열 수치는 형식 자체의 한도지만, 시트 수와 CSV의 모든 수치는 형식이 아니라 PXL이 두는 한도다. 어느 쪽이든 초과하면 `PxlDataException`이다.

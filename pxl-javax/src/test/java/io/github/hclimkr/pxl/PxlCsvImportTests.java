@@ -783,8 +783,8 @@ public class PxlCsvImportTests {
 
     @Test
     public void importCsvStream_columnCountOverLimit_throws() throws Exception {
-        // CSV allows 100 columns per sheet, counted off the header record rather than off the bound columns -
-        // one column past it fails even though the row class binds a single one.
+        // The column cap is counted off the header record rather than off the bound columns, so one column past
+        // it fails even though the row class binds a single one.
         final StringBuilder header = new StringBuilder("City");
         final StringBuilder data = new StringBuilder("Seoul");
         for (int columnIndex = 1; columnIndex <= PxlConstants.IMPORT_MAX_NUMBER_OF_CSV_COLUMNS; columnIndex++) {

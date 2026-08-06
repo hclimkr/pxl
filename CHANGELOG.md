@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The CSV column cap is 16,384 rather than 100, on both the import and the export constant
+  (`PxlConstants.IMPORT_MAX_NUMBER_OF_CSV_COLUMNS` / `EXPORT_MAX_NUMBER_OF_CSV_COLUMNS`). A CSV whose header
+  carries more than 100 fields used to be rejected with `PxlDataException`, so the same row class could be
+  written to XLSX (16,384 columns) and then fail to be read back from CSV. 100 had no basis in the format —
+  CSV bounds neither rows nor columns — while XLSX is the widest format PXL writes, which makes the new value
+  the one that keeps a PXL-written file PXL-readable. The cap still catches pathological input: no row class
+  declares 16,384 `@PxlColumn` fields. Nothing narrows, so no CSV that imported before stops importing.
+  <br/>The row cap stays at 100,000. It is the one that correlates with memory, since a CSV is parsed into
+  memory whole. Note that neither cap is a memory guard as implemented — both are checked after
+  `CSVParser.getRecords()` has already materialized the file — so raising the column cap costs no protection
+  that was being provided.
 - **The six option classes are immutable and builder-only.** Every field of
   `Pxl{Import,Export}{Workbook,Sheet,Column}Option` is now `final`, and `@Setter`/`@NoArgsConstructor` are gone
   from all of them, which removes **65 setters and 6 no-argument constructors** from the public API. Build an
