@@ -164,6 +164,14 @@ public final class PxlI18nDiagnosticKeys {
      */
     public static final String CORE_IMPORT_CSV_MULTIPLE_SHEET_MATCH = "core.import.csv.multipleSheetMatch";
     /**
+     * {@code importCsvCharset} does not name a charset this JVM supports; {@code {0}}=charsetName.
+     */
+    public static final String CORE_IMPORT_CSV_CHARSET_INVALID = "core.import.csv.charsetInvalid";
+    /**
+     * {@code importCsvDelimiter} cannot be used as a CSV delimiter (a line break, or the quote character).
+     */
+    public static final String CORE_IMPORT_CSV_DELIMITER_INVALID = "core.import.csv.delimiterInvalid";
+    /**
      * Sheet count exceeds the configured maximum; {@code {0}}=max.
      */
     public static final String CORE_SHEET_COUNT_EXCEEDED = "core.sheet.countExceeded";

@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.4] - 2026-08-06
+### Fixed
+
+- A CSV import configured with an unusable charset or delimiter now fails with `PxlArgumentException` naming
+  the attribute, where it used to surface as `PxlSystemException` naming neither. `Charset.forName(...)` and
+  the delimiter check inside `CSVFormat.Builder.build()` both reject their input with unchecked exceptions,
+  and both sat inside a `try` that catches `IOException` only — so `importCsvCharset("UTF8-typo")` or
+  `importCsvDelimiter('\n')` (or `'"'`, which collides with the quote character) escaped to the builder
+  boundary and were flattened by its catch-all. The two calls are now made before that block and normalized
+  individually, keeping the original exception as the cause.
 
 ### Changed
 
@@ -194,8 +202,7 @@ First public release.
   full `java.time` including zoned/offset/`Duration`/`Period`, enums, collections,
   and custom objects), with per-column custom converters.
 
-[Unreleased]: https://github.com/hclimkr/pxl/compare/v0.9.4...HEAD
-[0.9.4]: https://github.com/hclimkr/pxl/compare/v0.9.3...v0.9.4
+[Unreleased]: https://github.com/hclimkr/pxl/compare/v0.9.3...HEAD
 [0.9.3]: https://github.com/hclimkr/pxl/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/hclimkr/pxl/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/hclimkr/pxl/compare/v0.9.0...v0.9.1

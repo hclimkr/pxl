@@ -273,7 +273,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
      * @return the collection of populated row objects, or {@code null} when the sheet is disabled or has no columns
      * @throws PxlNullPointerException if {@code csvStream} or {@code sheetMeta} is {@code null}
      * @throws PxlReflectionException  if instantiating a class or reading/writing a field fails
-     * @throws PxlArgumentException    if the {@code @PxlRowIndex} field type is unsupported
+     * @throws PxlArgumentException    if {@code importCsvCharset} names no supported charset, {@code importCsvDelimiter} cannot be a delimiter, or the {@code @PxlRowIndex} field type is unsupported
      * @throws PxlIOException          if the CSV cannot be read
      * @throws PxlDataException        if a limit is exceeded
      * @throws PxlCellCodecException   if a cell value cannot be decoded
@@ -313,20 +313,35 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 //
         final List<CSVRecord> csvRecords;
         CSVParser csvParser = null;
+
+        final String importCsvCharset = workbookMeta.getImportCsvCharset();
+        final char importCsvDelimiter = workbookMeta.getImportCsvDelimiter();
+
+        // Both calls below reject invalid configuration with unchecked exceptions, which the IOException-only
+        // try below would not catch: they would reach the builder boundary and be flattened into a
+        // PxlSystemException naming neither the attribute nor its value. Normalize them here instead.
+        final CSVFormat importCsvFormat;
         try {
-            final String importCsvCharset = workbookMeta.getImportCsvCharset();
-            final char importCsvDelimiter = workbookMeta.getImportCsvDelimiter();
-            final CSVFormat importCsvFormat = PxlConstants.DEFAULT_IMPORT_CSV_FORMAT
+            importCsvFormat = PxlConstants.DEFAULT_IMPORT_CSV_FORMAT
                     .builder()
                     .setDelimiter(importCsvDelimiter)
                     .build();
+        } catch (RuntimeException runtimeException) {
+            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_CSV_DELIMITER_INVALID), runtimeException);
+        }
 
+        final Charset importCharset;
+        try {
+            importCharset = Charset.forName(importCsvCharset);
+        } catch (RuntimeException runtimeException) {
+            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_CSV_CHARSET_INVALID, String.valueOf(importCsvCharset)), runtimeException);
+        }
+
+        try {
             // BOM handling: strip the BOM at the byte level only for charsets whose decoder does not consume the BOM itself.
             //  - UTF-8 and endian-explicit forms (UTF-16LE/BE): the decoder passes the BOM through as U+FEFF, so it must be stripped here.
             //    (If not stripped, U+FEFF remains in the first header cell and the first column fails to match.)
             //  - "UTF-16" (auto): the decoder uses the BOM to determine and consume the endianness, so it must NOT be stripped (stripping here breaks endianness detection).
-            final Charset importCharset = Charset.forName(importCsvCharset);
-
             final List<ByteOrderMark> bomsToStrip = new ArrayList<>();
             bomsToStrip.add(ByteOrderMark.UTF_8);
             if (importCharset.equals(StandardCharsets.UTF_16LE)) {

@@ -15,7 +15,9 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.Normalizer;
@@ -156,6 +158,73 @@ public class PxlCsvImportTests {
         assertThat(employees).hasSize(1);
         assertThat(employees.get(0).getName()).isEqualTo("Alice");
         assertThat(employees.get(0).getSalary()).isEqualByComparingTo("50000.50");
+    }
+
+    @Test
+    public void importCsv_unsupportedCharset_throwsArgumentException() {
+        // Charset.forName throws unchecked, so this used to escape the IOException-only try and reach the builder
+        // boundary as a PxlSystemException that named neither the attribute nor its value.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvCharset("NoSuchCharset-1")
+                .build();
+
+        final PxlArgumentException exception = assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
+                .override(option)
+                .sheet(Employee.class)
+                .fromStream("Employees", stream(EMPLOYEES_CSV)));
+
+        // Both bundles name the attribute and echo the value, so these hold whatever the process locale is.
+        assertThat(exception).hasMessageContaining("importCsvCharset");
+        assertThat(exception).hasMessageContaining("NoSuchCharset-1");
+        assertThat(exception).hasCauseInstanceOf(UnsupportedCharsetException.class);
+    }
+
+    @Test
+    public void importCsv_malformedCharsetName_throwsArgumentException() {
+        // A name that is not merely unsupported but illegally formed takes the other Charset.forName branch.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvCharset("UTF 8")
+                .build();
+
+        final PxlArgumentException exception = assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
+                .override(option)
+                .sheet(Employee.class)
+                .fromStream("Employees", stream(EMPLOYEES_CSV)));
+
+        assertThat(exception).hasMessageContaining("importCsvCharset");
+        assertThat(exception).hasCauseInstanceOf(IllegalCharsetNameException.class);
+    }
+
+    @Test
+    public void importCsv_lineBreakDelimiter_throwsArgumentException() {
+        // CSVFormat rejects the delimiter while the format is built, also unchecked.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvDelimiter('\n')
+                .build();
+
+        final PxlArgumentException exception = assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
+                .override(option)
+                .sheet(Employee.class)
+                .fromStream("Employees", stream(EMPLOYEES_CSV)));
+
+        assertThat(exception).hasMessageContaining("importCsvDelimiter");
+        assertThat(exception).hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    public void importCsv_quoteCharAsDelimiter_throwsArgumentException() {
+        // The other rejected delimiter: identical to the quote character.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvDelimiter('"')
+                .build();
+
+        final PxlArgumentException exception = assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
+                .override(option)
+                .sheet(Employee.class)
+                .fromStream("Employees", stream(EMPLOYEES_CSV)));
+
+        assertThat(exception).hasMessageContaining("importCsvDelimiter");
+        assertThat(exception).hasCauseInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
