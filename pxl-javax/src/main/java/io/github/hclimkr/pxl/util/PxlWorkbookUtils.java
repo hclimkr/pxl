@@ -217,11 +217,11 @@ public final class PxlWorkbookUtils {
      *
      * @param workbook the workbook to create an evaluator for
      * @return a formula evaluator, or {@code null} if the workbook is streaming or provides no creation helper
+     * @see <a href="https://poi.apache.org/components/spreadsheet/eval.html">POI formula evaluation</a>
      */
     public static FormulaEvaluator createFormulaEvaluator(final Workbook workbook) {
 
         // NOTE: StreamingWorkbook getCreationHelper() is not supported.
-        // https://poi.apache.org/components/spreadsheet/eval.html
         final FormulaEvaluator formulaEvaluator = (workbook instanceof StreamingWorkbook)
                 ? null
                 : Optional.ofNullable(workbook.getCreationHelper())

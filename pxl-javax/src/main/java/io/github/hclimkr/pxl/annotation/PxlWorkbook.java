@@ -30,9 +30,9 @@ public @interface PxlWorkbook {
 
     /**
      * Specifies whether to use the Stream Reader on import. (Works only with XLSX files.)
-     * https://github.com/pjfanning/excel-streaming-reader
      *
      * @return {@code true} to read XLSX files with the streaming reader; defaults to {@link PxlConstants#DEFAULT_IMPORT_USING_STREAM_READER} ({@code false})
+     * @see <a href="https://github.com/pjfanning/excel-streaming-reader">excel-streaming-reader</a>
      */
     boolean importUsingStreamReader() default PxlConstants.DEFAULT_IMPORT_USING_STREAM_READER;
 
@@ -52,9 +52,9 @@ public @interface PxlWorkbook {
 
     /**
      * Specifies the Character Encoding Set of the CSV to import.
-     * https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html
      *
      * @return the character encoding used to read a CSV; defaults to {@link PxlConstants#DEFAULT_IMPORT_CSV_CHARSET} ({@code "UTF-8"})
+     * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
      */
     String importCsvCharset() default PxlConstants.DEFAULT_IMPORT_CSV_CHARSET;
 

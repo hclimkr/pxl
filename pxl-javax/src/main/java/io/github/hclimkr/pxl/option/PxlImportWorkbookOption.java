@@ -32,7 +32,8 @@ public final class PxlImportWorkbookOption {
 
     /**
      * Specifies whether to use the stream reader on import. (Works only with XLSX files.)
-     * https://github.com/pjfanning/excel-streaming-reader
+     *
+     * @see <a href="https://github.com/pjfanning/excel-streaming-reader">excel-streaming-reader</a>
      */
     @Builder.Default
     private final Boolean importUsingStreamReader = null;
@@ -51,7 +52,8 @@ public final class PxlImportWorkbookOption {
 
     /**
      * Specifies the character encoding set of the CSV to be imported.
-     * https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html
+     *
+     * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
      */
     @Builder.Default
     private final String importCsvCharset = null;

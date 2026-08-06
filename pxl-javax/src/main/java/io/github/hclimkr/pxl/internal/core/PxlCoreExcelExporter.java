@@ -59,6 +59,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      * @throws PxlReflectionException  if instantiating a class or reading/writing a field fails
      * @throws PxlArgumentException    if a configuration value is invalid
      * @throws PxlCellCodecException   if a cell value cannot be encoded
+     * @see <a href="https://poi.apache.org/components/spreadsheet/eval.html#sxssf">SXSSF formula evaluation</a>
      */
     public static Workbook buildWorkbook(final Object workbookObject,
                                          final PxlExportWorkbookMeta workbookMeta,
@@ -106,7 +107,6 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
         if (workbookMeta.hasAnyExportStringAsFormulaColumn()) {
             if (workbook instanceof SXSSFWorkbook) {
-                // https://poi.apache.org/components/spreadsheet/eval.html#sxssf
                 // Delegate re-calculation to Excel. The application will perform a full recalculation when the workbook is opened.
                 workbook.setForceFormulaRecalculation(true);
             } else {
@@ -137,6 +137,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      * @throws PxlDataException        if there is no data to write
      * @throws PxlCellCodecException   if a cell value cannot be encoded
      * @throws PxlReflectionException  if instantiating a class or reading/writing a field fails
+     * @see <a href="https://poi.apache.org/components/spreadsheet/eval.html#sxssf">SXSSF formula evaluation</a>
      */
     public static Workbook buildWorkbook(final String sheetName,
                                          final Collection<?> rowObjects,
@@ -179,7 +180,6 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
         if (workbookMeta.hasAnyExportStringAsFormulaColumn()) {
             if (workbook instanceof SXSSFWorkbook) {
-                // https://poi.apache.org/components/spreadsheet/eval.html#sxssf
                 // Delegate re-calculation to Excel. The application will perform a full recalculation when the workbook is opened.
                 workbook.setForceFormulaRecalculation(true);
             } else {
@@ -211,6 +211,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      * @throws PxlArgumentException    if a configuration value is invalid
      * @throws PxlCellCodecException   if a cell value cannot be encoded
      * @throws PxlReflectionException  if instantiating a class or reading/writing a field fails
+     * @see <a href="https://poi.apache.org/components/spreadsheet/eval.html#sxssf">SXSSF formula evaluation</a>
      */
     public static Workbook buildWorkbook(final List<String> sheetNames,
                                          final List<Collection<?>> sheetObjects,
@@ -284,7 +285,6 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
         if (workbookMeta.hasAnyExportStringAsFormulaColumn()) {
             if (workbook instanceof SXSSFWorkbook) {
-                // https://poi.apache.org/components/spreadsheet/eval.html#sxssf
                 // Delegate re-calculation to Excel. The application will perform a full recalculation when the workbook is opened.
                 workbook.setForceFormulaRecalculation(true);
             } else {

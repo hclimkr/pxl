@@ -115,9 +115,10 @@ public interface PxlConstants {
      */
     boolean DEFAULT_IMPORT_DATA_VALIDATION = true;
 
-    // https://github.com/pjfanning/excel-streaming-reader
     /**
      * Whether the low-memory streaming reader is used for import by default (XLSX only).
+     *
+     * @see <a href="https://github.com/pjfanning/excel-streaming-reader">excel-streaming-reader</a>
      */
     boolean DEFAULT_IMPORT_USING_STREAM_READER = false;
 
@@ -217,9 +218,10 @@ public interface PxlConstants {
             .setTrim(false)     // !DEFAULT_IMPORT_TRIM
             .build();
 
-    // https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html
     /**
      * Default charset used to decode CSV input.
+     *
+     * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
      */
     String DEFAULT_IMPORT_CSV_CHARSET = "UTF-8";
 
