@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `PxlImportWorkbookOption.importResourceBundle` is now `final` like every other field of that class, so Lombok
+  no longer generates `setImportResourceBundle(ResourceBundle)` for it. The field was the one non-final member
+  left, and the setter it produced was the only one the class had. Build the option through its builder
+  (`PxlImportWorkbookOption.builder().importResourceBundle(bundle)`), which is how the option is documented and
+  how every other field was already set. `PxlExportWorkbookOption` keeps its setters for now.
 - `@PxlWorkbook(importCsvCharset)` / `(importCsvDelimiter)` now default to the "not specified" sentinels
   `PxlConstants.UNSPECIFIED_IMPORT_CSV_CHARSET` (`""`) and `UNSPECIFIED_IMPORT_CSV_DELIMITER` (`'\0'`) rather than
   to `"UTF-8"` and `','`; the effective defaults moved to the bottom of the cascade above. Every value a caller

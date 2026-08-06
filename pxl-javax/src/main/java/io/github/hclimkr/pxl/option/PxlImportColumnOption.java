@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Excel column import option
+ * Column import option, for an Excel or a CSV source alike.
  */
 @Getter
 @Setter

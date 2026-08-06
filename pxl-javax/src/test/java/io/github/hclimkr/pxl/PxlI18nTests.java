@@ -248,6 +248,99 @@ public class PxlI18nTests {
     }
 
     // ------------------------------------------------------------------
+    // A bundle injected into the option wins over the annotated base name
+    // ------------------------------------------------------------------
+
+    // The English base bundle, read against a workbook whose annotation asks for Korean. Every value here is ASCII,
+    // so the assertions below do not depend on how properties files happen to be decoded.
+    private static ResourceBundle baseBundle() {
+        return ResourceBundle.getBundle("messages", Locale.ROOT);
+    }
+
+    @Test
+    public void exportI18n_optionResourceBundle_overridesAnnotationBaseName() throws Exception {
+        // I18nCountryWorkbook declares ko_KR, so left alone it writes "직원"/"역할". Handing the option the base
+        // bundle must displace that entirely - the annotated triple is not consulted at all.
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportResourceBundle(baseBundle())
+                .exportDataValidation(false)
+                .build();
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        pxl.exportExcel()
+                .workbook(sampleCountryWorkbook())
+                .override(option)
+                .toStream(outputStream);
+
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+            assertThat(workbook.getSheet("Staff")).as("the injected bundle should decide the sheet name").isNotNull();
+            assertThat(workbook.getSheet("직원")).as("the annotated ko_KR bundle should not be loaded").isNull();
+
+            final Set<String> headers = new HashSet<>();
+            for (final Cell cell : workbook.getSheet("Staff").getRow(0)) {
+                headers.add(cell.getStringCellValue());
+            }
+            assertThat(headers).contains("Role", "Full Name");
+        }
+    }
+
+    @Test
+    public void importI18n_optionResourceBundle_overridesAnnotationBaseName() throws Exception {
+        // Written with the English names above, the same workbook binds them back only because the import side
+        // resolves its names through the injected bundle too - its own annotation would look for the Korean ones.
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .workbook(sampleCountryWorkbook())
+                .override(PxlExportWorkbookOption.builder()
+                        .exportResourceBundle(baseBundle())
+                        .exportDataValidation(false)
+                        .build())
+                .toFile(excelFile);
+
+        final I18nCountryWorkbook imported = pxl.importExcel()
+                .workbookName("W")
+                .override(PxlImportWorkbookOption.builder()
+                        .importResourceBundle(baseBundle())
+                        .build())
+                .workbook(I18nCountryWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(imported.getPeople()).as("should match via the injected bundle's names").hasSize(1);
+        assertThat(imported.getPeople().get(0).getRole()).isEqualTo("admin");
+        assertThat(imported.getPeople().get(0).getFullName()).isEqualTo("Bob");
+    }
+
+    @Test
+    public void importI18n_optionResourceBundle_unknownAnnotationBaseName_doesNotThrow() throws Exception {
+        // I18nMissingBundleWorkbook names a bundle that does not exist, which on its own is a PxlI18nException.
+        // An injected bundle takes its place before it is ever loaded, so the import succeeds.
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .workbook(sampleCountryWorkbook())
+                .override(PxlExportWorkbookOption.builder()
+                        .exportResourceBundle(baseBundle())
+                        .exportDataValidation(false)
+                        .build())
+                .toFile(excelFile);
+
+        assertThatThrownBy(() -> pxl.importExcel()
+                .workbook(I18nMissingBundleWorkbook.class)
+                .fromFile(excelFile))
+                .as("without a bundle the missing base name should fail")
+                .isInstanceOf(PxlI18nException.class);
+
+        final I18nMissingBundleWorkbook imported = pxl.importExcel()
+                .override(PxlImportWorkbookOption.builder()
+                        .importResourceBundle(baseBundle())
+                        .build())
+                .workbook(I18nMissingBundleWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(imported.getPeople()).as("the injected bundle should replace the missing one").hasSize(1);
+        assertThat(imported.getPeople().get(0).getFullName()).isEqualTo("Bob");
+    }
+
+    // ------------------------------------------------------------------
     // export sample: exportSample and exportOptionItems are translated as well
     // ------------------------------------------------------------------
 

@@ -16,7 +16,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Excel sheet import option
+ * Sheet import option, for an Excel or a CSV source alike. A CSV workbook is read as one file per sheet, so this
+ * is the level at which its charset and delimiter are settled; an Excel import ignores that pair.
  */
 @Getter
 @Setter

@@ -1,6 +1,8 @@
 package io.github.hclimkr.pxl.option;
 
 import io.github.hclimkr.pxl.PxlExcelEngine;
+import io.github.hclimkr.pxl.annotation.PxlWorkbook;
+import io.github.hclimkr.pxl.exception.PxlI18nException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
@@ -64,6 +66,11 @@ public final class PxlExportWorkbookOption {
 
     /**
      * Specifies the resource bundle for multilingual support on export.
+     * <p>
+     * Takes precedence over {@link PxlWorkbook#exportI18nBaseName()} and its language/country pair: given a bundle
+     * here, PXL uses it and never loads the annotated one, so a base name that resolves to nothing cannot raise
+     * {@link PxlI18nException}. Use it when the bundle comes from somewhere an annotation cannot name — one the
+     * application already resolved for the current request, say. Left {@code null}, the annotation decides.
      */
     @Builder.Default
     private ResourceBundle exportResourceBundle = null;

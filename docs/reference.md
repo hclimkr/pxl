@@ -373,8 +373,8 @@ When you pass an option object to the `.override()` step to provide runtime valu
 | `importUsingStreamReader`                                         | `false`    | Whether to use the Streaming Reader on import (XLSX only)                                                                                                                         |
 | `importStreamReaderRowCacheSize`                                  | `100`      | Row cache size of the Streaming Reader                                                                                                                                            |
 | `importStreamReaderBufferSize`                                    | `4096`     | Buffer size of the Streaming Reader                                                                                                                                               |
-| `importCsvCharset`                                                | `"UTF-8"`  | CSV only. Character encoding of the CSV to import, for every sheet of the workbook. A single sheet may depart from it with `@PxlSheet(importCsvCharset)`.<br/>Handles a leading BOM automatically (strips the UTF-8/UTF-16LE/BE BOM; for `UTF-16` (auto), the BOM is used to determine endianness) |
-| `importCsvDelimiter`                                              | `','`      | CSV only. Delimiter of the CSV to import, for every sheet of the workbook (`char`). A single sheet may depart from it with `@PxlSheet(importCsvDelimiter)`                                   |
+| `importCsvCharset`                                                | `""`→`"UTF-8"` | CSV only. Character encoding of the CSV to import, for every sheet of the workbook. A single sheet may depart from it with `@PxlSheet(importCsvCharset)`.<br/>Handles a leading BOM automatically (strips the UTF-8/UTF-16LE/BE BOM; for `UTF-16` (auto), the BOM is used to determine endianness) |
+| `importCsvDelimiter`                                              | `'\0'`→`','` | CSV only. Delimiter of the CSV to import, for every sheet of the workbook (`char`). A single sheet may depart from it with `@PxlSheet(importCsvDelimiter)`                                   |
 | `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on import                                                                                                       |
 | `exportExcelEngine`                                               | `XSSF`     | POI engine that writes the workbook (`PxlExcelEngine`): `XSSF`=XLSX (default), `HSSF`=XLS, `SXSSF`=streaming XLSX.<br/>It selects the writer, not the format — `XSSF` and `SXSSF` both produce `.xlsx`. CSV is not an engine and cannot be named here. |
 | `exportPassword`                                                  | `""`       | Document protection password to set on export.<br/>Applies to `toFile(...)`/`toStream(...)` only, not to `toWorkbook()`.                                                          |
@@ -535,6 +535,8 @@ Options are not a single workbook level but a 3-level tree of workbook → sheet
 - Attach child options with the builder's list setter (`.importColumnOptions(List)`, etc.) or the `add*Option(...)` method.
 - Matching key: a sheet option is linked to its target by `fieldName` (the `@PxlSheet` field name of the workbook class), and a column option by `fieldName` (the `@PxlColumn` field name of the row class).  
   If you omit a sheet option's `fieldName`, it applies to all sheets as a wildcard (`*`); the single-sheet form (`sheet(...)`) uses this approach.
+- Renaming at runtime: a sheet option overrides `@PxlSheet(name)` with `importSheetNames`/`exportSheetNames`, and a column option overrides `@PxlColumn(name)` with `importColumnNames`/`exportColumnNames` (a list, so aliases work the same as in the annotation).  
+  They replace the annotation `name`, so they are bundle keys as well — with i18n on, an overriding name is translated before it is matched or written (↓ [i18n](#i18n)).
 - Any level/field not specified follows the annotation value (or default if none).
 
 ```java
@@ -669,6 +671,24 @@ bare word that another message could collide with.
 i18n is disabled by default (opt-in).  
 It works only when `import/exportI18nBaseName` is explicitly specified (or a `ResourceBundle` is injected into the option); if the base name is empty, no bundle is loaded and the name is used as-is.  
 If a base name is specified but its `ResourceBundle` cannot be found, it fails with `PxlI18nException`.
+
+Instead of naming a base name, you can hand PXL a bundle you already hold, through the workbook option's
+`importResourceBundle`/`exportResourceBundle`.  
+An injected bundle takes precedence over the annotation: the
+`import/exportI18nBaseName`·`Language`·`Country` triple is not even loaded, so it cannot fail with `PxlI18nException`.  
+Use it when the bundle comes from somewhere the annotation cannot name — a container-managed `MessageSource`, or a
+locale chosen per request.
+
+```java
+ResourceBundle bundle = ResourceBundle.getBundle("messages", userLocale);   // resolved by the application
+
+List<Person> rows = pxl.importExcel()
+                       .override(PxlImportWorkbookOption.builder()
+                                                        .importResourceBundle(bundle)   // wins over @PxlWorkbook(importI18nBaseName)
+                                                        .build())
+                       .sheet(Person.class, "staff.sheet")
+                       .fromFile(file);
+```
 
 `src/main/resources/messages.properties` — the base bundle, read as UTF-8:
 
@@ -1074,9 +1094,9 @@ Resolution runs top to bottom, and the first level that names a value wins:
 
 | Level | "not specified" is |
 |-------|--------------------|
-| `PxlImportSheetOption.importCsvCharset` / `importCsvDelimiter` | `null` |
+| `PxlImportSheetOption.importCsvCharset` / `importCsvDelimiter` | `null`, and `""` / `'\0'` too |
 | `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)`         | `""` / `'\0'`     |
-| `PxlImportWorkbookOption.importCsvCharset` / `importCsvDelimiter` | `null` |
+| `PxlImportWorkbookOption.importCsvCharset` / `importCsvDelimiter` | `null`, and `""` / `'\0'` too |
 | `@PxlWorkbook(importCsvCharset)` / `(importCsvDelimiter)`      | `""` / `'\0'`     |
 | built-in default                                               | `"UTF-8"` / `','` |
 
@@ -1122,13 +1142,16 @@ List<Employee> rows = pxl.importExcel()
 
 ## Limitation
 
-| Format | Max rows   | Max columns | Notes                                                         |
-|--------|------------|-------------|--------------------------------------------------------------|
-| XLSX   | 1,048,576  | 16,384      | Can be read with the Streaming Reader without memory issues (GC overhead) |
-| XLS    | 65,536     | 256         | The Streaming Reader is not supported, but non-streaming also has no memory issues |
+| Format | Max sheets | Max rows   | Max columns | Notes                                                         |
+|--------|------------|------------|-------------|--------------------------------------------------------------|
+| XLSX   | 100        | 1,048,576  | 16,384      | Can be read with the Streaming Reader without memory issues (GC overhead) |
+| XLS    | 100        | 65,536     | 256         | The Streaming Reader is not supported, but non-streaming also has no memory issues |
+| CSV    | 100        | 100,000    | 100         | Import only. One file is one sheet, so "sheets" counts the files passed to `fromFiles(...)`/`fromStreams(...)` |
 
 > These are the limits `PxlFileFormat` carries (`getMaxExportRows()` and its siblings), so an engine is bound by the
-> limits of the format it writes — `XSSF` and `SXSSF` alike.
+> limits of the format it writes — `XSSF` and `SXSSF` alike.  
+> The row/column figures for XLSX·XLS are the format's own; the sheet count, and every CSV figure, are limits PXL
+> imposes rather than the format. Exceeding any of them raises `PxlDataException`.
 
 - Automatic column width (`autoSizeColumn`) and large data  
   If you do not specify `exportColumnWidth`, the default (auto) applies, so on export POI `autoSizeColumn` measures every row cell of that column with font metrics (O(row count) per column).  

@@ -26,7 +26,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Excel sheet import metadata.
+ * Sheet import metadata, resolved for an Excel or a CSV source alike. For a CSV the sheet is a whole file, which
+ * is why {@code importCsvCharset}/{@code importCsvDelimiter} are resolved here rather than on the workbook meta.
  */
 @Getter
 public final class PxlImportSheetMeta {

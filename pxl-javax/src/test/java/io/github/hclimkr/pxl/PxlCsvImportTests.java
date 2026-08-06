@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.Normalizer;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -679,6 +680,144 @@ public class PxlCsvImportTests {
                 .fromStream("Cities", stream(SEOUL_CSV, "MS949"));
 
         assertThat(rows).extracting(CharsetRow::getCity).containsExactly("서울");
+    }
+
+    @Test
+    public void importCsvFiles_perSheetCharset_decodesEachFileWithItsOwn(@TempDir final Path tempDir) throws Exception {
+        // The file-name form of the same thing: each file carries its own encoding, and the name (extension
+        // removed) still selects the sheet whose charset decodes it.
+        final Path legacyPath = tempDir.resolve("Legacy.csv");
+        final Path modernPath = tempDir.resolve("Modern.csv");
+        Files.write(legacyPath, SEOUL_CSV.getBytes(Charset.forName("MS949")));
+        Files.write(modernPath, BUSAN_CSV.getBytes(StandardCharsets.UTF_8));
+
+        final MixedCharsetWorkbook workbook = pxl.importCsv()
+                .workbook(MixedCharsetWorkbook.class)
+                .fromFiles(Arrays.asList(legacyPath.toFile(), modernPath.toFile()));
+
+        assertThat(workbook.getLegacy()).extracting(CharsetRow::getCity).containsExactly("서울");
+        assertThat(workbook.getModern()).extracting(CharsetRow::getCity).containsExactly("부산");
+    }
+
+    @Test
+    public void importCsvStreams_blankSheetOptionCharset_fallsBackToSheetAnnotation() throws Exception {
+        // A blank sheet option hands the decision to the level directly below it, which is the sheet's own
+        // annotation - not all the way down to the workbook. "Modern" must therefore stay UTF-8, not become MS949.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importSheetOptions(Arrays.asList(PxlImportSheetOption.builder()
+                        .fieldName("modern")
+                        .importCsvCharset("")
+                        .build()))
+                .build();
+        final List<String> csvNames = Arrays.asList("Legacy", "Modern");
+        final List<InputStream> csvStreams = Arrays.asList(
+                stream(SEOUL_CSV, "MS949"),
+                stream(BUSAN_CSV, "UTF-8"));
+
+        final MixedCharsetWorkbook workbook = pxl.importCsv()
+                .override(option)
+                .workbook(MixedCharsetWorkbook.class)
+                .fromStreams(csvNames, csvStreams);
+
+        assertThat(workbook.getLegacy()).extracting(CharsetRow::getCity).containsExactly("서울");
+        assertThat(workbook.getModern()).extracting(CharsetRow::getCity).containsExactly("부산");
+    }
+
+    @Test
+    public void importCsvStreams_nulSheetOptionDelimiter_fallsBackToSheetAnnotation() throws Exception {
+        // The delimiter counterpart: NUL on the "comma" field leaves its @PxlSheet comma standing rather than
+        // dropping through to the workbook's tab.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importSheetOptions(Arrays.asList(PxlImportSheetOption.builder()
+                        .fieldName("comma")
+                        .importCsvDelimiter('\0')
+                        .build()))
+                .build();
+        final List<String> csvNames = Arrays.asList("Tabbed", "Comma");
+        final List<InputStream> csvStreams = Arrays.asList(stream(DEPARTMENTS_TSV), stream(DEPARTMENTS_CSV));
+
+        final MixedDelimiterWorkbook workbook = pxl.importCsv()
+                .override(option)
+                .workbook(MixedDelimiterWorkbook.class)
+                .fromStreams(csvNames, csvStreams);
+
+        assertThat(workbook.getTabbed()).extracting(Department::getCode).containsExactly("ENG");
+        assertThat(workbook.getComma()).extracting(Department::getCode).containsExactly("ENG", "SAL");
+    }
+
+    @Test
+    public void importCsvStream_sheetForm_wildcardSheetOptionDelimiter_applies() throws Exception {
+        // The sheet form's delimiter route, the counterpart of the wildcard charset above: with no @PxlSheet
+        // field to read, the ad-hoc sheet meta resolves the delimiter from the wildcard option alone.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importSheetOptions(Arrays.asList(PxlImportSheetOption.builder()
+                        .importCsvDelimiter('\t')
+                        .build()))
+                .build();
+
+        final List<Department> departments = pxl.importCsv()
+                .override(option)
+                .sheet(Department.class)
+                .fromStream("Departments", stream(DEPARTMENTS_TSV));
+
+        assertThat(departments).extracting(Department::getCode).containsExactly("ENG");
+        assertThat(departments.get(0).getHeadcount()).isEqualTo(12);
+    }
+
+    @Test
+    public void importCsvStream_invalidDelimiterOnSheetAnnotation_errorNamesSheet() throws Exception {
+        // The same workbook the Excel path reads without complaint (see PxlExcelImportTests): read as CSV, the
+        // quote character @PxlSheet declares as this sheet's delimiter is rejected, and the sheet is named.
+        final PxlArgumentException exception = assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
+                .workbook(IgnoredCsvAttrsWorkbook.class)
+                .fromStream("Employees", stream(EMPLOYEES_CSV)));
+
+        assertThat(exception.getMessage()).contains("Employees");
+        assertThat(exception).hasMessageContaining("importCsvDelimiter");
+        assertThat(exception).hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // Format limits (PxlFileFormat.CSV): sheets/columns per sheet
+    // ------------------------------------------------------------------
+
+    @Test
+    public void importCsvStream_columnCountOverLimit_throws() throws Exception {
+        // CSV allows 100 columns per sheet, counted off the header record rather than off the bound columns -
+        // one column past it fails even though the row class binds a single one.
+        final StringBuilder header = new StringBuilder("City");
+        final StringBuilder data = new StringBuilder("Seoul");
+        for (int columnIndex = 1; columnIndex <= PxlConstants.IMPORT_MAX_NUMBER_OF_CSV_COLUMNS; columnIndex++) {
+            header.append(",Extra").append(columnIndex);
+            data.append(",x");
+        }
+        final String wideCsv = header + "\n" + data + "\n";
+
+        final PxlDataException exception = assertThrows(PxlDataException.class, () -> pxl.importCsv()
+                .sheet(CharsetRow.class)
+                .fromStream("Cities", stream(wideCsv)));
+
+        assertThat(exception).hasMessageContaining("Cities");
+        assertThat(exception.getMessage()).contains(String.valueOf(PxlConstants.IMPORT_MAX_NUMBER_OF_CSV_COLUMNS));
+    }
+
+    @Test
+    public void importCsvStreams_sheetCountOverLimit_throws() throws Exception {
+        // One CSV is one sheet, so the sheet limit bounds how many sources may be handed over at once. It is
+        // checked before any of them is matched to a @PxlSheet field, so the names need not correspond to any.
+        final int sourceCount = PxlConstants.IMPORT_MAX_NUMBER_OF_CSV_SHEETS + 1;
+        final List<String> csvNames = new ArrayList<>();
+        final List<InputStream> csvStreams = new ArrayList<>();
+        for (int sourceIndex = 0; sourceIndex < sourceCount; sourceIndex++) {
+            csvNames.add("Sheet" + sourceIndex);
+            csvStreams.add(stream(DEPARTMENTS_CSV));
+        }
+
+        final PxlDataException exception = assertThrows(PxlDataException.class, () -> pxl.importCsv()
+                .workbook(DefaultCsvWorkbook.class)
+                .fromStreams(csvNames, csvStreams));
+
+        assertThat(exception.getMessage()).contains(String.valueOf(PxlConstants.IMPORT_MAX_NUMBER_OF_CSV_SHEETS));
     }
 
     // ------------------------------------------------------------------

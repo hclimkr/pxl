@@ -369,8 +369,8 @@ response.setHeader("Content-Disposition",
 | `importUsingStreamReader`                                         | `false`    | Import 시 Streaming Reader 사용 여부 (XLSX 전용)                                                                                                                                                                                    |
 | `importStreamReaderRowCacheSize`                                  | `100`      | Streaming Reader의 row cache size                                                                                                                                                                                                   |
 | `importStreamReaderBufferSize`                                    | `4096`     | Streaming Reader의 buffer size                                                                                                                                                                                                      |
-| `importCsvCharset`                                                | `"UTF-8"`  | CSV 전용. Import할 CSV의 문자 인코딩(워크북의 모든 시트 공통). 개별 시트는 `@PxlSheet(importCsvCharset)`으로 따로 설정할 수 있다.<br/>선두 BOM 자동 처리(UTF-8/UTF-16LE/BE의 BOM 제거, `UTF-16`(auto)의 BOM은 엔디안 판별에 사용)             |
-| `importCsvDelimiter`                                              | `','`      | CSV 전용. Import할 CSV의 구분자(워크북의 모든 시트 공통, `char`). 개별 시트는 `@PxlSheet(importCsvDelimiter)`으로 따로 설정할 수 있다                                                                                                              |
+| `importCsvCharset`                                                | `""`→`"UTF-8"` | CSV 전용. Import할 CSV의 문자 인코딩(워크북의 모든 시트 공통). 개별 시트는 `@PxlSheet(importCsvCharset)`으로 따로 설정할 수 있다.<br/>선두 BOM 자동 처리(UTF-8/UTF-16LE/BE의 BOM 제거, `UTF-16`(auto)의 BOM은 엔디안 판별에 사용)             |
+| `importCsvDelimiter`                                              | `'\0'`→`','` | CSV 전용. Import할 CSV의 구분자(워크북의 모든 시트 공통, `char`). 개별 시트는 `@PxlSheet(importCsvDelimiter)`으로 따로 설정할 수 있다                                                                                                              |
 | `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Import 시 다국어 ResourceBundle의 base name / language / country                                                                                                                                                                    |
 | `exportExcelEngine`                                               | `XSSF`     | 워크북을 쓰는 POI 엔진(`PxlExcelEngine`): `XSSF`=XLSX(기본), `HSSF`=XLS, `SXSSF`=스트리밍 XLSX.<br/>형식이 아니라 writer를 고르는 속성이라 `XSSF`와 `SXSSF`는 똑같이 `.xlsx`를 만든다. CSV는 엔진이 아니므로 여기에 지정할 수 없다. |
 | `exportPassword`                                                  | `""`       | Export 시 설정할 문서보호 비밀번호.<br/>`toFile(...)`·`toStream(...)`에만 적용되고 `toWorkbook()`에는 적용되지 않는다.                                                                                                              |
@@ -531,6 +531,8 @@ List<Employee> rows = pxl.importExcel()
 - 자식 옵션은 빌더의 리스트 세터(`.importColumnOptions(List)` 등)나 `add*Option(...)` 메서드로 붙인다.
 - 매칭 키: 시트 옵션은 `fieldName`(워크북 클래스의 `@PxlSheet` 필드명), 컬럼 옵션은 `fieldName`(행 클래스의 `@PxlColumn` 필드명)으로 대상에 연결된다.  
   시트 옵션의 `fieldName`을 생략하면 와일드카드(`*`)로 모든 시트에 적용되며, 단일 시트 폼(`sheet(...)`)에서는 이 방식을 쓴다.
+- 런타임 이름 변경: 시트 옵션은 `importSheetNames`/`exportSheetNames`로 `@PxlSheet(name)`을, 컬럼 옵션은 `importColumnNames`/`exportColumnNames`로 `@PxlColumn(name)`을 오버라이드한다(애노테이션과 마찬가지로 리스트라 별칭도 그대로 쓸 수 있다).  
+  애노테이션의 `name`을 대체하는 값이므로 이들 역시 번들 키다 — i18n을 켜면 오버라이드한 이름도 매칭·출력 전에 번역된다(↓ [i18n](#i18n)).
 - 지정하지 않은 레벨·필드는 애노테이션 값(없으면 기본값)을 그대로 따른다.
 
 ```java
@@ -664,6 +666,21 @@ Pxl.resetMessageLocale();               // JVM 기본 locale로 복귀
 i18n은 기본적으로 비활성(opt-in) 이다.  
 `import/exportI18nBaseName`을 명시적으로 지정(또는 옵션에 `ResourceBundle` 주입)했을 때만 동작하며, base name이 비어 있으면 번들을 로드하지 않아 이름이 그대로 사용된다.  
 base name을 지정했으나 해당 `ResourceBundle`을 찾지 못하면 `PxlI18nException`으로 실패한다.
+
+base name을 지정하는 대신, 이미 갖고 있는 번들을 워크북 옵션의 `importResourceBundle`/`exportResourceBundle`로 직접 넘길 수도 있다.  
+주입한 번들이 애노테이션보다 우선하며, 이 경우 `import/exportI18nBaseName`·`Language`·`Country` 3종은 아예 로드되지 않으므로 `PxlI18nException`이 날 여지도 없다.  
+애노테이션으로는 지목할 수 없는 곳에서 번들이 오는 경우 — 컨테이너가 관리하는 `MessageSource`, 요청마다 달라지는 locale 등 — 에 쓴다.
+
+```java
+ResourceBundle bundle = ResourceBundle.getBundle("messages", userLocale);   // 애플리케이션이 결정한 번들
+
+List<Person> rows = pxl.importExcel()
+                       .override(PxlImportWorkbookOption.builder()
+                                                        .importResourceBundle(bundle)   // @PxlWorkbook(importI18nBaseName)보다 우선
+                                                        .build())
+                       .sheet(Person.class, "staff.sheet")
+                       .fromFile(file);
+```
 
 `src/main/resources/messages.properties` — base 번들이며 UTF-8로 읽는다.
 
@@ -1069,9 +1086,9 @@ CompanyWorkbook workbook = pxl.importCsv()
 
 | 단계 | "미지정"을 뜻하는 값 |
 |------|--------------------|
-| `PxlImportSheetOption.importCsvCharset` / `importCsvDelimiter` | `null` |
+| `PxlImportSheetOption.importCsvCharset` / `importCsvDelimiter` | `null`, 그리고 `""` / `'\0'`도 동일 |
 | `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)`         | `""` / `'\0'`      |
-| `PxlImportWorkbookOption.importCsvCharset` / `importCsvDelimiter` | `null` |
+| `PxlImportWorkbookOption.importCsvCharset` / `importCsvDelimiter` | `null`, 그리고 `""` / `'\0'`도 동일 |
 | `@PxlWorkbook(importCsvCharset)` / `(importCsvDelimiter)`      | `""` / `'\0'`      |
 | 내장 기본값                                                     | `"UTF-8"` / `','`  |
 
@@ -1117,12 +1134,14 @@ List<Employee> rows = pxl.importExcel()
 
 ## 제약 (Limitation)
 
-| 형식   | 최대 행      | 최대 열   | 비고                                             |
-|------|-----------|--------|------------------------------------------------|
-| XLSX | 1,048,576 | 16,384 | Streaming Reader로 메모리 문제(GC overhead) 없이 읽기 가능 |
-| XLS  | 65,536    | 256    | Streaming Reader 미지원이나, 비스트리밍으로도 메모리 문제 없음     |
+| 형식   | 최대 시트   | 최대 행      | 최대 열   | 비고                                             |
+|------|---------|-----------|--------|------------------------------------------------|
+| XLSX | 100     | 1,048,576 | 16,384 | Streaming Reader로 메모리 문제(GC overhead) 없이 읽기 가능 |
+| XLS  | 100     | 65,536    | 256    | Streaming Reader 미지원이나, 비스트리밍으로도 메모리 문제 없음     |
+| CSV  | 100     | 100,000   | 100    | import 전용. 파일 하나가 시트 하나이므로 "시트"는 `fromFiles(...)`/`fromStreams(...)`에 넘긴 파일 수를 뜻한다 |
 
-> 이 한도는 `PxlFileFormat`이 갖고 있는 값(`getMaxExportRows()` 등)이다. 따라서 엔진은 자기가 쓰는 형식의 한도를 그대로 따르며, `XSSF`와 `SXSSF`도 마찬가지다.
+> 이 한도는 `PxlFileFormat`이 갖고 있는 값(`getMaxExportRows()` 등)이다. 따라서 엔진은 자기가 쓰는 형식의 한도를 그대로 따르며, `XSSF`와 `SXSSF`도 마찬가지다.  
+> XLSX·XLS의 행/열 수치는 형식 자체의 한도지만, 시트 수와 CSV의 모든 수치는 형식이 아니라 PXL이 두는 한도다. 어느 쪽이든 초과하면 `PxlDataException`이다.
 
 - 자동 열 너비(`autoSizeColumn`)와 대량 데이터  
   `exportColumnWidth`를 지정하지 않으면 기본값(auto)이 적용되어, export 시 POI `autoSizeColumn`이 해당 열의 모든 행 셀을 폰트 메트릭으로 실측한다(열당 O(행 수)).  

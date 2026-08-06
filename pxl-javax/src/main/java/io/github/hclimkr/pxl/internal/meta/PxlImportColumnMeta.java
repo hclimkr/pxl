@@ -34,7 +34,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Excel column import metadata.
+ * Column import metadata, resolved for an Excel or a CSV source alike.
  */
 @Getter
 public final class PxlImportColumnMeta {

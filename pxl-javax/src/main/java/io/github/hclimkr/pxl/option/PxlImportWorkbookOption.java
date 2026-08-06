@@ -3,6 +3,7 @@ package io.github.hclimkr.pxl.option;
 import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.annotation.PxlSheet;
 import io.github.hclimkr.pxl.annotation.PxlWorkbook;
+import io.github.hclimkr.pxl.exception.PxlI18nException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
@@ -12,7 +13,8 @@ import lombok.*;
 import java.util.*;
 
 /**
- * Excel workbook import option
+ * Workbook import option, for an Excel or a CSV source alike — the attributes an Excel import has no use for
+ * (the CSV charset and delimiter) are ignored there rather than belonging to a separate option type.
  */
 @Getter
 @Setter
@@ -81,9 +83,14 @@ public final class PxlImportWorkbookOption {
 
     /**
      * Specifies the resource bundle for multilingual support on import.
+     * <p>
+     * Takes precedence over {@link PxlWorkbook#importI18nBaseName()} and its language/country pair: given a bundle
+     * here, PXL uses it and never loads the annotated one, so a base name that resolves to nothing cannot raise
+     * {@link PxlI18nException}. Use it when the bundle comes from somewhere an annotation cannot name — one the
+     * application already resolved for the current request, say. Left {@code null}, the annotation decides.
      */
     @Builder.Default
-    private ResourceBundle importResourceBundle = null;
+    private final ResourceBundle importResourceBundle = null;
 
     /**
      * Per-sheet import overrides, matched to sheet fields by name. Empty by default.

@@ -262,18 +262,20 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
     /**
      * Reads one CSV stream into row objects. (import)
-     * Strips the byte-order mark for BOM-carrying charsets, parses all records with the configured
-     * delimiter, computes the 0-based header/data row bounds from the 1-based meta values, resolves
-     * column indexes from the header row, populates the {@code @PxlRowIndex} field, skips empty rows,
-     * optionally validates each row, and finally checks column uniqueness.
+     * Takes the charset and the delimiter from the sheet meta, which resolved both for this sheet alone -
+     * a CSV workbook is one file per sheet, so its sheets may differ in either. Strips the byte-order mark
+     * for BOM-carrying charsets, parses all records with that delimiter, computes the 0-based header/data
+     * row bounds from the 1-based meta values, resolves column indexes from the header row, populates the
+     * {@code @PxlRowIndex} field, skips empty rows, optionally validates each row, and finally checks
+     * column uniqueness.
      *
      * @param csvStream the CSV input stream to read
-     * @param sheetMeta the resolved sheet meta
+     * @param sheetMeta the resolved sheet meta, supplying this sheet's charset and delimiter
      * @param validator optional bean validator applied when data validation is enabled (may be {@code null})
      * @return the collection of populated row objects, or {@code null} when the sheet is disabled or has no columns
      * @throws PxlNullPointerException if {@code csvStream} or {@code sheetMeta} is {@code null}
      * @throws PxlReflectionException  if instantiating a class or reading/writing a field fails
-     * @throws PxlArgumentException    if {@code importCsvCharset} names no supported charset, {@code importCsvDelimiter} cannot be a delimiter, or the {@code @PxlRowIndex} field type is unsupported
+     * @throws PxlArgumentException    if this sheet's {@code importCsvCharset} names no supported charset, its {@code importCsvDelimiter} cannot be a delimiter, or the {@code @PxlRowIndex} field type is unsupported
      * @throws PxlIOException          if the CSV cannot be read
      * @throws PxlDataException        if a limit is exceeded
      * @throws PxlCellCodecException   if a cell value cannot be decoded

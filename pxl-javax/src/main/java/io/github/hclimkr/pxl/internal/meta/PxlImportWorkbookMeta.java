@@ -19,7 +19,8 @@ import org.apache.poi.ss.usermodel.DataFormatter;
 import java.util.*;
 
 /**
- * Excel workbook import metadata.
+ * Workbook import metadata, resolved for an Excel or a CSV source alike; which one it was is recorded in
+ * {@code importFileFormat} once the source has been read.
  */
 @Getter
 public final class PxlImportWorkbookMeta {
