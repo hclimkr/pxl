@@ -534,10 +534,12 @@ public class PxlExceptionTests {
                     .fieldName(fieldName)
                     .exportSample("x")
                     .build();
-            final PxlExportSheetOption sheetOption = new PxlExportSheetOption();
-            sheetOption.addExportColumnOption(columnOption);
-            final PxlExportWorkbookOption workbookOption = new PxlExportWorkbookOption();
-            workbookOption.addExportSheetOption(sheetOption);
+            final PxlExportSheetOption sheetOption = PxlExportSheetOption.builder()
+                    .exportColumnOptions(Arrays.asList(columnOption))
+                    .build();
+            final PxlExportWorkbookOption workbookOption = PxlExportWorkbookOption.builder()
+                    .exportSheetOptions(Arrays.asList(sheetOption))
+                    .build();
 
             assertThrows(PxlCellCodecException.class,
                     () -> pxl.exportSampleExcel()
@@ -844,10 +846,10 @@ public class PxlExceptionTests {
 
     @Test
     public void optionAddMethods_nullArg_throwPxlNullPointer() {
-        assertThrows(PxlNullPointerException.class, () -> new PxlExportWorkbookOption().addExportSheetOption(null));
-        assertThrows(PxlNullPointerException.class, () -> new PxlImportWorkbookOption().addImportSheetOption(null));
-        assertThrows(PxlNullPointerException.class, () -> new PxlExportSheetOption().addExportColumnOption(null));
-        assertThrows(PxlNullPointerException.class, () -> new PxlImportSheetOption().addImportColumnOption(null));
+        assertThrows(PxlNullPointerException.class, () -> PxlExportWorkbookOption.builder().build().addExportSheetOption(null));
+        assertThrows(PxlNullPointerException.class, () -> PxlImportWorkbookOption.builder().build().addImportSheetOption(null));
+        assertThrows(PxlNullPointerException.class, () -> PxlExportSheetOption.builder().build().addExportColumnOption(null));
+        assertThrows(PxlNullPointerException.class, () -> PxlImportSheetOption.builder().build().addImportColumnOption(null));
     }
 
     @Test

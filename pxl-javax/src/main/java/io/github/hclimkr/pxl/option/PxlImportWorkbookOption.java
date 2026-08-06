@@ -8,7 +8,9 @@ import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 
 import java.util.*;
 
@@ -17,8 +19,6 @@ import java.util.*;
  * (the CSV charset and delimiter) are ignored there rather than belonging to a separate option type.
  */
 @Getter
-@Setter
-@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public final class PxlImportWorkbookOption {

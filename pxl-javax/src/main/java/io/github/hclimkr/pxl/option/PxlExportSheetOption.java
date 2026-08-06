@@ -7,7 +7,10 @@ import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.styler.PxlStyler;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
@@ -20,8 +23,6 @@ import java.util.stream.Collectors;
  * Excel sheet export option
  */
 @Getter
-@Setter
-@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public final class PxlExportSheetOption {
@@ -31,7 +32,7 @@ public final class PxlExportSheetOption {
      */
     @NonNull
     @Builder.Default
-    private String fieldName = PxlConstants.SHEET_FIELD_NAME_WILD_CARD;
+    private final String fieldName = PxlConstants.SHEET_FIELD_NAME_WILD_CARD;
 
     /**
      * Specifies the name of the sheet on export.
@@ -41,114 +42,114 @@ public final class PxlExportSheetOption {
      * translation that is written. A name the bundle does not carry is used as it stands.
      */
     @Builder.Default
-    private List<String> exportSheetNames = null;
+    private final List<String> exportSheetNames = null;
 
     /**
      * Specifies whether to export.
      */
     @Builder.Default
-    private Boolean exportEnabled = null;
+    private final Boolean exportEnabled = null;
 
     /**
      * Specifies whether to export as a sample.
      */
     @Builder.Default
-    private Boolean exportSampleEnabled = null;
+    private final Boolean exportSampleEnabled = null;
 
     /**
      * Specifies whether to override a superclass field that uses the same sheet name on export, if one exists.
      */
     @Builder.Default
-    private Boolean exportOverrideSuperClassSheet = null;
+    private final Boolean exportOverrideSuperClassSheet = null;
 
     /**
      * Specifies the height of rows within the sheet on export.
      */
     @Builder.Default
-    private Float exportRowHeightInPoints = null;
+    private final Float exportRowHeightInPoints = null;
 
     /**
      * Specifies the ordering among sheets on export. (in alphabetical order)
      */
     @Builder.Default
-    private String exportOrder = null;
+    private final String exportOrder = null;
 
     /**
      * Specifies the name of the field by which to group and split into multiple sheets on export.
      */
     @Builder.Default
-    private String exportGroupingFieldName = null;
+    private final String exportGroupingFieldName = null;
 
     /**
      * Specifies the index of the row used as the header on export.
      * (The default is the first row. When set explicitly, use a 1-based value, and it must be less than the value of exportFirstDataRowIndex.)
      */
     @Builder.Default
-    private Integer exportHeaderRowIndex = null;
+    private final Integer exportHeaderRowIndex = null;
 
     /**
      * Specifies the index of the starting row used as data on export.
      * (The default is the second row. When set explicitly, use a 1-based value, and it must be greater than the value of exportHeaderRowIndex and less than or equal to the value of exportLastDataRowIndex.)
      */
     @Builder.Default
-    private Integer exportFirstDataRowIndex = null;
+    private final Integer exportFirstDataRowIndex = null;
 
     /**
      * Specifies the index of the ending row used as data on export.
      * (The default is the last row. When set explicitly, use a 1-based value, and it must be greater than or equal to the value of exportFirstDataRowIndex.)
      */
     @Builder.Default
-    private Integer exportLastDataRowIndex = null;
+    private final Integer exportLastDataRowIndex = null;
 
     /**
      * Specifies the index of the starting column used as data on export.
      * (The default is the first column. When set explicitly, use a 1-based value, and it must be less than or equal to the value of exportLastDataColumnIndex.)
      */
     @Builder.Default
-    private Integer exportFirstDataColumnIndex = null;
+    private final Integer exportFirstDataColumnIndex = null;
 
     /**
      * Specifies the index of the ending column used as data on export.
      * (The default is the last column. When set explicitly, use a 1-based value, and it must be greater than or equal to the value of exportFirstDataColumnIndex.)
      */
     @Builder.Default
-    private Integer exportLastDataColumnIndex = null;
+    private final Integer exportLastDataColumnIndex = null;
 
     /**
      * Specifies whether to export when the data list is null.
      */
     @Builder.Default
-    private Boolean exportIfNull = null;
+    private final Boolean exportIfNull = null;
 
     /**
      * Specifies whether to export when the data list is empty.
      */
     @Builder.Default
-    private Boolean exportIfEmpty = null;
+    private final Boolean exportIfEmpty = null;
 
     /**
      * Specifies whether to apply a filter on export.
      */
     @Builder.Default
-    private Boolean exportColumnFilter = null;
+    private final Boolean exportColumnFilter = null;
 
     /**
      * Specifies the style applied to required header cells on export.
      */
     @Builder.Default
-    private Class<? extends PxlStyler> exportSheetRequiredHeaderCellStyler = null;
+    private final Class<? extends PxlStyler> exportSheetRequiredHeaderCellStyler = null;
 
     /**
      * Specifies the style applied to optional header cells on export.
      */
     @Builder.Default
-    private Class<? extends PxlStyler> exportSheetOptionalHeaderCellStyler = null;
+    private final Class<? extends PxlStyler> exportSheetOptionalHeaderCellStyler = null;
 
     /**
      * Specifies the style applied to data cells on export.
      */
     @Builder.Default
-    private Class<? extends PxlStyler> exportSheetDataCellStyler = null;
+    private final Class<? extends PxlStyler> exportSheetDataCellStyler = null;
 
     /**
      * Per-column export overrides, matched to column fields by name. Empty by default.

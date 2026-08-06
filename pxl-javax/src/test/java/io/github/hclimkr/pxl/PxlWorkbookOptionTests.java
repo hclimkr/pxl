@@ -637,7 +637,7 @@ public class PxlWorkbookOptionTests {
     public void importWorkbookOption_sheetOptionAccessors() throws PxlNullPointerException {
         final PxlImportSheetOption s0 = PxlImportSheetOption.builder().build();
         final PxlImportSheetOption s1 = PxlImportSheetOption.builder().build();
-        final PxlImportWorkbookOption option = new PxlImportWorkbookOption();
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder().build();
 
         assertThat(option.addImportSheetOption(s0)).isTrue();
         option.addImportSheetOption(s1);
@@ -659,7 +659,7 @@ public class PxlWorkbookOptionTests {
     public void exportWorkbookOption_sheetOptionAccessors() throws PxlNullPointerException {
         final PxlExportSheetOption s0 = PxlExportSheetOption.builder().build();
         final PxlExportSheetOption s1 = PxlExportSheetOption.builder().build();
-        final PxlExportWorkbookOption option = new PxlExportWorkbookOption();
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder().build();
 
         assertThat(option.addExportSheetOption(s0)).isTrue();
         option.addExportSheetOption(s1);

@@ -6,7 +6,10 @@ import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
@@ -20,8 +23,6 @@ import java.util.stream.Collectors;
  * is the level at which its charset and delimiter are settled; an Excel import ignores that pair.
  */
 @Getter
-@Setter
-@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public final class PxlImportSheetOption {
@@ -31,7 +32,7 @@ public final class PxlImportSheetOption {
      */
     @NonNull
     @Builder.Default
-    private String fieldName = PxlConstants.SHEET_FIELD_NAME_WILD_CARD;
+    private final String fieldName = PxlConstants.SHEET_FIELD_NAME_WILD_CARD;
 
     /**
      * Specifies the name of the sheet on import.
@@ -41,72 +42,72 @@ public final class PxlImportSheetOption {
      * translation that is matched. A name the bundle does not carry is used as it stands.
      */
     @Builder.Default
-    private List<String> importSheetNames = null;
+    private final List<String> importSheetNames = null;
 
     /**
      * Specifies whether to import.
      */
     @Builder.Default
-    private Boolean importEnabled = null;
+    private final Boolean importEnabled = null;
 
     /**
      * Specifies whether to override a superclass field that uses the same sheet name on import, if one exists.
      */
     @Builder.Default
-    private Boolean importOverrideSuperClassSheet = null;
+    private final Boolean importOverrideSuperClassSheet = null;
 
     /**
      * Specifies whether to import hidden rows on import.
      */
     @Builder.Default
-    private Boolean importExcludeHiddenRows = null;
+    private final Boolean importExcludeHiddenRows = null;
 
     /**
      * Specifies whether to import hidden columns on import.
      */
     @Builder.Default
-    private Boolean importExcludeHiddenColumns = null;
+    private final Boolean importExcludeHiddenColumns = null;
 
     /**
      * Specifies whether, for merged cells, each individual cell is treated as having the same value on import.
      */
     @Builder.Default
-    private Boolean importEachCellOfMergedRegion = null;
+    private final Boolean importEachCellOfMergedRegion = null;
 
     /**
      * Specifies the index of the row used as the header on import.
      * (The default is the first row. When set explicitly, use a 1-based value, and it must be less than the value of importFirstDataRowIndex.)
      */
     @Builder.Default
-    private Integer importHeaderRowIndex = null;
+    private final Integer importHeaderRowIndex = null;
 
     /**
      * Specifies the index of the starting row used as data on import.
      * (The default is the second row. When set explicitly, use a 1-based value, and it must be greater than the value of importHeaderRowIndex and less than or equal to the value of importLastDataRowIndex.)
      */
     @Builder.Default
-    private Integer importFirstDataRowIndex = null;
+    private final Integer importFirstDataRowIndex = null;
 
     /**
      * Specifies the index of the ending row used as data on import.
      * (The default is the last row. When set explicitly, use a 1-based value, and it must be greater than or equal to the value of importFirstDataRowIndex.)
      */
     @Builder.Default
-    private Integer importLastDataRowIndex = null;
+    private final Integer importLastDataRowIndex = null;
 
     /**
      * Specifies the index of the starting column used as data on import.
      * (The default is the first column. When set explicitly, use a 1-based value, and it must be less than or equal to the value of importLastDataColumnIndex.)
      */
     @Builder.Default
-    private Integer importFirstDataColumnIndex = null;
+    private final Integer importFirstDataColumnIndex = null;
 
     /**
      * Specifies the index of the ending column used as data on import.
      * (The default is the last column. When set explicitly, use a 1-based value, and it must be greater than or equal to the value of importFirstDataColumnIndex.)
      */
     @Builder.Default
-    private Integer importLastDataColumnIndex = null;
+    private final Integer importLastDataColumnIndex = null;
 
     /**
      * Specifies the Character Encoding Set of the CSV to import, for this sheet alone.
@@ -115,7 +116,7 @@ public final class PxlImportSheetOption {
      * Takes precedence over {@link PxlSheet#importCsvCharset()} and, through it, over the workbook charset.
      */
     @Builder.Default
-    private String importCsvCharset = null;
+    private final String importCsvCharset = null;
 
     /**
      * Specifies the Delimiter of the CSV to import, for this sheet alone.
@@ -124,7 +125,7 @@ public final class PxlImportSheetOption {
      * Takes precedence over {@link PxlSheet#importCsvDelimiter()} and, through it, over the workbook delimiter.
      */
     @Builder.Default
-    private Character importCsvDelimiter = null;
+    private final Character importCsvDelimiter = null;
 
     /**
      * Per-column import overrides, matched to column fields by name. Empty by default.

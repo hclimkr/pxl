@@ -18,23 +18,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was. The sheet form (`sheet(...)`) binds no `@PxlSheet` field, so there a wildcard `PxlImportSheetOption` is the
   sheet-level route.
 
-### Fixed
-
-- A CSV import configured with an unusable charset or delimiter now fails with `PxlArgumentException` naming
-  the attribute, where it used to surface as `PxlSystemException` naming neither. `Charset.forName(...)` and
-  the delimiter check inside `CSVFormat.Builder.build()` both reject their input with unchecked exceptions,
-  and both sat inside a `try` that catches `IOException` only — so `importCsvCharset("UTF8-typo")` or
-  `importCsvDelimiter('\n')` (or `'"'`, which collides with the quote character) escaped to the builder
-  boundary and were flattened by its catch-all. The two calls are now made before that block and normalized
-  individually, keeping the original exception as the cause.
-
 ### Changed
 
-- `PxlImportWorkbookOption.importResourceBundle` is now `final` like every other field of that class, so Lombok
-  no longer generates `setImportResourceBundle(ResourceBundle)` for it. The field was the one non-final member
-  left, and the setter it produced was the only one the class had. Build the option through its builder
-  (`PxlImportWorkbookOption.builder().importResourceBundle(bundle)`), which is how the option is documented and
-  how every other field was already set. `PxlExportWorkbookOption` keeps its setters for now.
+- **The six option classes are immutable and builder-only.** Every field of
+  `Pxl{Import,Export}{Workbook,Sheet,Column}Option` is now `final`, and `@Setter`/`@NoArgsConstructor` are gone
+  from all of them, which removes **65 setters and 6 no-argument constructors** from the public API. Build an
+  option with its builder — `PxlImportSheetOption.builder()...build()` — which was already the only construction
+  path anywhere in the library, its documentation, and its tests. The classes keep `@Getter`,
+  `@AllArgsConstructor` (the constructor `@Builder` calls), `@Builder`, and the `add*Option(...)` methods, whose
+  child list is still a fresh mutable `ArrayList` after `build()`.
+  <br/>Two levels had been inconsistent: only the workbook options were immutable, while the sheet and column
+  options exposed setters that nothing called, and the JavaBean pattern those setters existed for
+  (`new X()` then `setX(...)`) was never used either. One behaviour tightens as a result —
+  `Pxl{Import,Export}ColumnOption.fieldName` is `@NonNull` with no default, so the no-argument constructor was
+  the only way to obtain a column option without one; that option matched no column, and building without a
+  `fieldName` now fails fast with `NullPointerException` instead.
 - `@PxlWorkbook(importCsvCharset)` / `(importCsvDelimiter)` now default to the "not specified" sentinels
   `PxlConstants.UNSPECIFIED_IMPORT_CSV_CHARSET` (`""`) and `UNSPECIFIED_IMPORT_CSV_DELIMITER` (`'\0'`) rather than
   to `"UTF-8"` and `','`; the effective defaults moved to the bottom of the cascade above. Every value a caller
@@ -43,31 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `"UTF-8"` or `','` explicitly to return to the default against a workbook that names something else; had the
   annotation default stayed a usable value, a sheet saying nothing and a sheet saying `"UTF-8"` would have been
   indistinguishable, and the workbook attribute would have been unreachable in the workbook form.
-- The two CSV configuration errors now name the sheet they were resolved for:
-  `core.import.csv.charsetInvalid` gained a leading `{0}`=sheetName, shifting the charset name to `{1}`, and
-  `core.import.csv.delimiterInvalid` gained `{0}`=sheetName. With the values resolved per sheet, a workbook-wide
-  message would leave the caller to guess which of the files is misconfigured.
-- `PxlCellResolver.buildDataCell` returns the string it wrote rather than `void`, and computes that string
-  without writing when given a `null` cell; `buildDataString(value, columnMeta)` exposes the cell-less call.
-  The Excel path is untouched — its two call sites ignore the return value, and all 30 codecs already
-  returned their string and guarded the cell. `internal/codec` is not public API.
-- Diagnostic message keys are now grouped by binding direction. A key thrown on only one side starts with
-  that direction — `builder.export.*`, `core.import.*`, `meta.export.*`, `codec.import.*` — and the format,
-  where there is one, follows it (`core.import.csv.fileNameCountMismatch`). Keys genuinely shared by both
-  sides keep their neutral name: `core.sheet.countExceeded` is thrown by the exporter and both importers,
-  and `codec.columnType.unsupported` by all three codec entry points. These keys live in `internal/i18n`
-  and are not public API, so calling code is unaffected; what the grouping buys is that a message can no
-  longer sit under a name that hides where it comes from, which had already happened —
-  `builder.workbookSheetExclusive` and `meta.maskingInvalid` both read as neutral although neither is
-  reachable while importing.
-- Codec parse failures now name the direction they came from, and the export wording changed with them.
-  Exporting parses strings too: a `String` field value or an `exportSample` is parsed into the target type
-  before being written back out, so `codec.parse.invalid` and the enum/object parse keys were thrown from
-  both sides under a single name. Each is split in two (`codec.import.parse.invalid` /
-  `codec.export.parse.invalid`, and likewise for `enum.parseFailed`, `enum.parseError`,
-  `object.parseFailed`, `object.parseError`). **The export messages now open with "the export value '…'"**
-  (Korean "출력할 값 '…'") so a failure while writing is no longer worded as one while reading. Import
-  messages are unchanged.
 
 ## [0.9.3] - 2026-08-05
 

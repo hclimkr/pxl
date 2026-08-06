@@ -8,7 +8,9 @@ import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.styler.PxlStyler;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 
 import java.util.*;
 
@@ -16,8 +18,6 @@ import java.util.*;
  * Excel workbook export option
  */
 @Getter
-@Setter
-@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public final class PxlExportWorkbookOption {
@@ -50,19 +50,19 @@ public final class PxlExportWorkbookOption {
      * Specifies the style applied to required header cells on export.
      */
     @Builder.Default
-    private Class<? extends PxlStyler> exportWorkbookRequiredHeaderCellStyler = null;
+    private final Class<? extends PxlStyler> exportWorkbookRequiredHeaderCellStyler = null;
 
     /**
      * Specifies the style applied to optional header cells on export.
      */
     @Builder.Default
-    private Class<? extends PxlStyler> exportWorkbookOptionalHeaderCellStyler = null;
+    private final Class<? extends PxlStyler> exportWorkbookOptionalHeaderCellStyler = null;
 
     /**
      * Specifies the style applied to data cells on export.
      */
     @Builder.Default
-    private Class<? extends PxlStyler> exportWorkbookDataCellStyler = null;
+    private final Class<? extends PxlStyler> exportWorkbookDataCellStyler = null;
 
     /**
      * Specifies the resource bundle for multilingual support on export.
@@ -73,7 +73,7 @@ public final class PxlExportWorkbookOption {
      * application already resolved for the current request, say. Left {@code null}, the annotation decides.
      */
     @Builder.Default
-    private ResourceBundle exportResourceBundle = null;
+    private final ResourceBundle exportResourceBundle = null;
 
     /**
      * Per-sheet export overrides, matched to sheet fields by name. Empty by default.

@@ -306,7 +306,7 @@ public class PxlSheetOptionTests {
     public void importSheetOption_columnOptionAccessors() throws PxlNullPointerException {
         final PxlImportColumnOption c0 = PxlImportColumnOption.builder().fieldName("a").build();
         final PxlImportColumnOption c1 = PxlImportColumnOption.builder().fieldName("b").build();
-        final PxlImportSheetOption option = new PxlImportSheetOption();
+        final PxlImportSheetOption option = PxlImportSheetOption.builder().build();
 
         assertThat(option.addImportColumnOption(c0)).isTrue();
         option.addImportColumnOption(c1);
@@ -326,7 +326,7 @@ public class PxlSheetOptionTests {
     public void exportSheetOption_columnOptionAccessors() throws PxlNullPointerException {
         final PxlExportColumnOption c0 = PxlExportColumnOption.builder().fieldName("a").build();
         final PxlExportColumnOption c1 = PxlExportColumnOption.builder().fieldName("b").build();
-        final PxlExportSheetOption option = new PxlExportSheetOption();
+        final PxlExportSheetOption option = PxlExportSheetOption.builder().build();
 
         assertThat(option.addExportColumnOption(c0)).isTrue();
         option.addExportColumnOption(c1);
@@ -349,7 +349,7 @@ public class PxlSheetOptionTests {
                 .importSheetNames(Arrays.asList(" A B ", "", "  ", "c")).build();
         assertThat(PxlImportSheetOption.getImportSheetNames(option)).containsExactly("AB", "c");
         assertThat(PxlImportSheetOption.getImportSheetNames(null)).isNull();
-        assertThat(PxlImportSheetOption.getImportSheetNames(new PxlImportSheetOption())).isNull();   // names == null -> null
+        assertThat(PxlImportSheetOption.getImportSheetNames(PxlImportSheetOption.builder().build())).isNull();   // names == null -> null
     }
 
     @Test
@@ -359,7 +359,7 @@ public class PxlSheetOptionTests {
                 .exportSheetNames(Arrays.asList(" A B ", "", "c ")).build();
         assertThat(PxlExportSheetOption.getExportSheetNames(option)).containsExactly("A B", "c");
         assertThat(PxlExportSheetOption.getExportSheetNames(null)).isNull();
-        assertThat(PxlExportSheetOption.getExportSheetNames(new PxlExportSheetOption())).isNull();
+        assertThat(PxlExportSheetOption.getExportSheetNames(PxlExportSheetOption.builder().build())).isNull();
     }
 
     // ------------------------------------------------------------------
