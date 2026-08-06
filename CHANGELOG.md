@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)`, and the matching `importCsvCharset` /
+  `importCsvDelimiter` fields on `PxlImportSheetOption`, so the sheets of one CSV workbook can be read with
+  different encodings and delimiters. A CSV workbook is read as one file per sheet, which put both attributes on
+  the wrong level: a workbook holding a legacy MS949 export alongside a UTF-8 one had no way to say so. Resolution
+  runs sheet option → `@PxlSheet` → workbook option → `@PxlWorkbook` → built-in default, and a sheet that names
+  neither inherits the workbook value. Both are ignored for an Excel source, as the workbook-level pair already
+  was. The sheet form (`sheet(...)`) binds no `@PxlSheet` field, so there a wildcard `PxlImportSheetOption` is the
+  sheet-level route.
+
 ### Fixed
 
 - A CSV import configured with an unusable charset or delimiter now fails with `PxlArgumentException` naming
@@ -19,6 +30,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `@PxlWorkbook(importCsvCharset)` / `(importCsvDelimiter)` now default to the "not specified" sentinels
+  `PxlConstants.UNSPECIFIED_IMPORT_CSV_CHARSET` (`""`) and `UNSPECIFIED_IMPORT_CSV_DELIMITER` (`'\0'`) rather than
+  to `"UTF-8"` and `','`; the effective defaults moved to the bottom of the cascade above. Every value a caller
+  would actually write behaves as before — the one difference is that an explicitly blank charset now falls back
+  to `"UTF-8"` where it used to reach `Charset.forName("")` and throw. The sentinel is what lets a sheet name
+  `"UTF-8"` or `','` explicitly to return to the default against a workbook that names something else; had the
+  annotation default stayed a usable value, a sheet saying nothing and a sheet saying `"UTF-8"` would have been
+  indistinguishable, and the workbook attribute would have been unreachable in the workbook form.
+- The two CSV configuration errors now name the sheet they were resolved for:
+  `core.import.csv.charsetInvalid` gained a leading `{0}`=sheetName, shifting the charset name to `{1}`, and
+  `core.import.csv.delimiterInvalid` gained `{0}`=sheetName. With the values resolved per sheet, a workbook-wide
+  message would leave the caller to guess which of the files is misconfigured.
 - `PxlCellResolver.buildDataCell` returns the string it wrote rather than `void`, and computes that string
   without writing when given a `null` cell; `buildDataString(value, columnMeta)` exposes the cell-less call.
   The Excel path is untouched — its two call sites ignore the return value, and all 30 codecs already

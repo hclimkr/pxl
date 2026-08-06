@@ -103,6 +103,31 @@ public @interface PxlSheet {
     int importLastDataColumnIndex() default PxlConstants.DEFAULT_IMPORT_LAST_DATA_COLUMN_INDEX;
 
     /**
+     * Specifies the Character Encoding Set of the CSV to import, for this sheet alone.
+     * Ignored for an Excel source, where the whole workbook is one file.
+     * <p>
+     * A CSV workbook is read as one file per sheet, so each sheet may carry its own charset. Left blank, the sheet
+     * falls back to the workbook's {@code importCsvCharset}; a runtime sheet option overrides both.
+     *
+     * @return the character encoding used to read this sheet's CSV; defaults to {@link PxlConstants#UNSPECIFIED_IMPORT_CSV_CHARSET} ({@code ""}, i.e. inherit the workbook charset)
+     * @see PxlWorkbook#importCsvCharset()
+     * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
+     */
+    String importCsvCharset() default PxlConstants.UNSPECIFIED_IMPORT_CSV_CHARSET;
+
+    /**
+     * Specifies the Delimiter of the CSV to import, for this sheet alone.
+     * Ignored for an Excel source, where the whole workbook is one file.
+     * <p>
+     * A CSV workbook is read as one file per sheet, so each sheet may carry its own delimiter. Left at NUL, the sheet
+     * falls back to the workbook's {@code importCsvDelimiter}; a runtime sheet option overrides both.
+     *
+     * @return the CSV field delimiter used to read this sheet; defaults to {@link PxlConstants#UNSPECIFIED_IMPORT_CSV_DELIMITER} ({@code '\0'}, i.e. inherit the workbook delimiter)
+     * @see PxlWorkbook#importCsvDelimiter()
+     */
+    char importCsvDelimiter() default PxlConstants.UNSPECIFIED_IMPORT_CSV_DELIMITER;
+
+    /**
      * Specifies whether to export.
      *
      * @return {@code true} to write this sheet on export; {@code true} by default

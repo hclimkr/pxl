@@ -311,11 +311,13 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 //            return null;
 //        }
 //
+        final String sheetName = sheetMeta.getActualImportSheetName();
+
         final List<CSVRecord> csvRecords;
         CSVParser csvParser = null;
 
-        final String importCsvCharset = workbookMeta.getImportCsvCharset();
-        final char importCsvDelimiter = workbookMeta.getImportCsvDelimiter();
+        final String importCsvCharset = sheetMeta.getImportCsvCharset();
+        final char importCsvDelimiter = sheetMeta.getImportCsvDelimiter();
 
         // Both calls below reject invalid configuration with unchecked exceptions, which the IOException-only
         // try below would not catch: they would reach the builder boundary and be flattened into a
@@ -327,14 +329,14 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
                     .setDelimiter(importCsvDelimiter)
                     .build();
         } catch (RuntimeException runtimeException) {
-            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_CSV_DELIMITER_INVALID), runtimeException);
+            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_CSV_DELIMITER_INVALID, sheetName), runtimeException);
         }
 
         final Charset importCharset;
         try {
             importCharset = Charset.forName(importCsvCharset);
         } catch (RuntimeException runtimeException) {
-            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_CSV_CHARSET_INVALID, String.valueOf(importCsvCharset)), runtimeException);
+            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_CSV_CHARSET_INVALID, sheetName, String.valueOf(importCsvCharset)), runtimeException);
         }
 
         try {
@@ -368,8 +370,6 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
                 }
             }
         }
-
-        final String sheetName = sheetMeta.getActualImportSheetName();
 
         final int firstRowNum = 0;
         final int lastRowNum = PxlCollectionUtils.size(csvRecords);

@@ -61,6 +61,10 @@ public final class PxlImportSheetMeta {
 
     private final int importLastDataColumnIndex;    // 1-based inclusive
 
+    private final String importCsvCharset;          // CSV only; resolved against the workbook charset
+
+    private final char importCsvDelimiter;          // CSV only; resolved against the workbook delimiter
+
     private final List<PxlImportColumnOption> importColumnOptions;
 
     private final List<PxlImportColumnMeta> importColumnMetas;
@@ -106,6 +110,8 @@ public final class PxlImportSheetMeta {
      * @param importLastDataRowIndex        the 1-based inclusive last data row index
      * @param importFirstDataColumnIndex    the 1-based inclusive first data column index
      * @param importLastDataColumnIndex     the 1-based inclusive last data column index
+     * @param importCsvCharset              the resolved CSV charset for this sheet (CSV sources only)
+     * @param importCsvDelimiter            the resolved CSV field delimiter for this sheet (CSV sources only)
      * @param importColumnOptions           the per-column import overrides
      * @param importColumnMetas             the (initially empty) column metadata list
      */
@@ -124,6 +130,8 @@ public final class PxlImportSheetMeta {
                                final int importLastDataRowIndex,
                                final int importFirstDataColumnIndex,
                                final int importLastDataColumnIndex,
+                               final String importCsvCharset,
+                               final char importCsvDelimiter,
                                final List<PxlImportColumnOption> importColumnOptions,
                                final List<PxlImportColumnMeta> importColumnMetas) {
 
@@ -143,6 +151,8 @@ public final class PxlImportSheetMeta {
         this.importLastDataRowIndex = importLastDataRowIndex;
         this.importFirstDataColumnIndex = importFirstDataColumnIndex;
         this.importLastDataColumnIndex = importLastDataColumnIndex;
+        this.importCsvCharset = importCsvCharset;
+        this.importCsvDelimiter = importCsvDelimiter;
         this.importColumnOptions = importColumnOptions;
         this.importColumnMetas = importColumnMetas;
 
@@ -308,6 +318,20 @@ public final class PxlImportSheetMeta {
                 throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_SHEET_LAST_DATA_GE_FIRST_DATA, candidateSheetNames, "importLastDataColumnIndex", "importFirstDataColumnIndex"));
             }
 
+            final String importCsvCharset = Optional.ofNullable(sheetOption)
+                    .flatMap(option -> Optional.ofNullable(option.getImportCsvCharset()))
+                    .filter(StringUtils::isNotBlank)
+                    .orElseGet(() -> StringUtils.isNotBlank(sheetAnnotation.importCsvCharset()) ?
+                            sheetAnnotation.importCsvCharset() :
+                            workbookMeta.getImportCsvCharset());
+
+            final char importCsvDelimiter = Optional.ofNullable(sheetOption)
+                    .flatMap(option -> Optional.ofNullable(option.getImportCsvDelimiter()))
+                    .filter(delimiter -> delimiter != PxlConstants.UNSPECIFIED_IMPORT_CSV_DELIMITER)
+                    .orElseGet(() -> sheetAnnotation.importCsvDelimiter() != PxlConstants.UNSPECIFIED_IMPORT_CSV_DELIMITER ?
+                            sheetAnnotation.importCsvDelimiter() :
+                            workbookMeta.getImportCsvDelimiter());
+
             final List<PxlImportColumnOption> importColumnOptions = Optional.ofNullable(sheetOption)
                     .map(option -> option.getImportColumnOptions())
                     .orElseGet(ArrayList::new);
@@ -332,6 +356,8 @@ public final class PxlImportSheetMeta {
                             importLastDataRowIndex,         // importLastDataRowIndex
                             importFirstDataColumnIndex,     // importFirstDataColumnIndex
                             importLastDataColumnIndex,      // importLastDataColumnIndex
+                            importCsvCharset,               // importCsvCharset
+                            importCsvDelimiter,             // importCsvDelimiter
                             importColumnOptions,            // importColumnOptions
                             importColumnMetas               // importColumnMetas
                     ));
@@ -458,6 +484,16 @@ public final class PxlImportSheetMeta {
             throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_SHEET_LAST_DATA_GE_FIRST_DATA, candidateSheetNames, "importLastDataColumnIndex", "importFirstDataColumnIndex"));
         }
 
+        final String importCsvCharset = Optional.ofNullable(sheetOption)
+                .flatMap(option -> Optional.ofNullable(option.getImportCsvCharset()))
+                .filter(StringUtils::isNotBlank)
+                .orElseGet(workbookMeta::getImportCsvCharset);
+
+        final char importCsvDelimiter = Optional.ofNullable(sheetOption)
+                .flatMap(option -> Optional.ofNullable(option.getImportCsvDelimiter()))
+                .filter(delimiter -> delimiter != PxlConstants.UNSPECIFIED_IMPORT_CSV_DELIMITER)
+                .orElseGet(workbookMeta::getImportCsvDelimiter);
+
         final List<PxlImportColumnOption> importColumnOptions = Optional.ofNullable(sheetOption)
                 .map(option -> option.getImportColumnOptions())
                 .orElseGet(ArrayList::new);
@@ -480,6 +516,8 @@ public final class PxlImportSheetMeta {
                 importLastDataRowIndex,         // importLastDataRowIndex
                 importFirstDataColumnIndex,     // importFirstDataColumnIndex
                 importLastDataColumnIndex,      // importLastDataColumnIndex
+                importCsvCharset,               // importCsvCharset
+                importCsvDelimiter,             // importCsvDelimiter
                 importColumnOptions,            // importColumnOptions
                 importColumnMetas               // importColumnMetas
         );

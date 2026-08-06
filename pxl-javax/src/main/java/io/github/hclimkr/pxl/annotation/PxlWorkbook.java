@@ -51,20 +51,29 @@ public @interface PxlWorkbook {
     int importStreamReaderBufferSize() default PxlConstants.DEFAULT_IMPORT_STREAM_READER_BUFFER_SIZE;
 
     /**
-     * Specifies the Character Encoding Set of the CSV to import.
+     * Specifies the Character Encoding Set of the CSV to import, for every sheet of the workbook.
+     * Ignored for an Excel source, which is one file whose encoding the format itself carries.
+     * <p>
+     * A sheet may depart from it with {@link PxlSheet#importCsvCharset()}, since a CSV workbook is read as one file
+     * per sheet. Left blank, the workbook falls back to {@link PxlConstants#DEFAULT_IMPORT_CSV_CHARSET}
+     * ({@code "UTF-8"}); a runtime workbook option overrides it.
      *
-     * @return the character encoding used to read a CSV; defaults to {@link PxlConstants#DEFAULT_IMPORT_CSV_CHARSET} ({@code "UTF-8"})
+     * @return the character encoding used to read a CSV; defaults to {@link PxlConstants#UNSPECIFIED_IMPORT_CSV_CHARSET} ({@code ""}, i.e. fall back to {@code "UTF-8"})
      * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
      */
-    String importCsvCharset() default PxlConstants.DEFAULT_IMPORT_CSV_CHARSET;
+    String importCsvCharset() default PxlConstants.UNSPECIFIED_IMPORT_CSV_CHARSET;
 
     /**
-     * Specifies the Delimiter of the CSV to import.
+     * Specifies the Delimiter of the CSV to import, for every sheet of the workbook.
+     * Ignored for an Excel source, which has no delimiter.
+     * <p>
+     * A sheet may depart from it with {@link PxlSheet#importCsvDelimiter()}, since a CSV workbook is read as one file
+     * per sheet. Left at NUL, the workbook falls back to {@link PxlConstants#DEFAULT_IMPORT_CSV_DELIMITER}
+     * ({@code ','}); a runtime workbook option overrides it.
      *
-     * @return the CSV field delimiter on import; defaults to {@link PxlConstants#DEFAULT_IMPORT_CSV_DELIMITER} ({@code ','})
+     * @return the CSV field delimiter on import; defaults to {@link PxlConstants#UNSPECIFIED_IMPORT_CSV_DELIMITER} ({@code '\0'}, i.e. fall back to {@code ','})
      */
-
-    char importCsvDelimiter() default PxlConstants.DEFAULT_IMPORT_CSV_DELIMITER;
+    char importCsvDelimiter() default PxlConstants.UNSPECIFIED_IMPORT_CSV_DELIMITER;
 
     /**
      * Specifies the BaseName of the Resource Bundle for internationalization support on import.

@@ -108,6 +108,24 @@ public final class PxlImportSheetOption {
     private Integer importLastDataColumnIndex = null;
 
     /**
+     * Specifies the Character Encoding Set of the CSV to import, for this sheet alone.
+     * Ignored for an Excel source, where the whole workbook is one file.
+     * <p>
+     * Takes precedence over {@link PxlSheet#importCsvCharset()} and, through it, over the workbook charset.
+     */
+    @Builder.Default
+    private String importCsvCharset = null;
+
+    /**
+     * Specifies the Delimiter of the CSV to import, for this sheet alone.
+     * Ignored for an Excel source, where the whole workbook is one file.
+     * <p>
+     * Takes precedence over {@link PxlSheet#importCsvDelimiter()} and, through it, over the workbook delimiter.
+     */
+    @Builder.Default
+    private Character importCsvDelimiter = null;
+
+    /**
      * Per-column import overrides, matched to column fields by name. Empty by default.
      */
     @Builder.Default

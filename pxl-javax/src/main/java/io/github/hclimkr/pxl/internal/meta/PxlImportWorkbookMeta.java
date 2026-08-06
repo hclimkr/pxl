@@ -13,6 +13,7 @@ import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.DataFormatter;
 
 import java.util.*;
@@ -141,14 +142,18 @@ public final class PxlImportWorkbookMeta {
 
         final String importCsvCharset = Optional.ofNullable(workbookOption)
                 .flatMap(option -> Optional.ofNullable(option.getImportCsvCharset()))
+                .filter(StringUtils::isNotBlank)
                 .orElseGet(() -> Optional.ofNullable(workbookAnnotation)
                         .map(PxlWorkbook::importCsvCharset)
+                        .filter(StringUtils::isNotBlank)
                         .orElse(PxlConstants.DEFAULT_IMPORT_CSV_CHARSET));
 
         final char importCsvDelimiter = Optional.ofNullable(workbookOption)
                 .flatMap(option -> Optional.ofNullable(option.getImportCsvDelimiter()))
+                .filter(delimiter -> delimiter != PxlConstants.UNSPECIFIED_IMPORT_CSV_DELIMITER)
                 .orElseGet(() -> Optional.ofNullable(workbookAnnotation)
                         .map(PxlWorkbook::importCsvDelimiter)
+                        .filter(delimiter -> delimiter != PxlConstants.UNSPECIFIED_IMPORT_CSV_DELIMITER)
                         .orElse(PxlConstants.DEFAULT_IMPORT_CSV_DELIMITER));
 
         ResourceBundle importResourceBundle = Optional.ofNullable(workbookOption)

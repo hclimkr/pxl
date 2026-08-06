@@ -362,24 +362,24 @@ response.setHeader("Content-Disposition",
 
 ### `@PxlWorkbook` (클래스 대상)
 
-| 속성                                                                | 기본값        | 설명                                                                                                                                 |
-|-------------------------------------------------------------------|------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| `importPassword`                                                  | `""`       | Import 시 문서보호를 해제할 비밀번호                                                                                                 |
-| `importDataValidation`                                            | `true`     | Import된 데이터에 대해 유효성 검사 수행 여부                                                                                         |
-| `importUsingStreamReader`                                         | `false`    | Import 시 Streaming Reader 사용 여부 (XLSX 전용)                                                                                     |
-| `importStreamReaderRowCacheSize`                                  | `100`      | Streaming Reader의 row cache size                                                                                                    |
-| `importStreamReaderBufferSize`                                    | `4096`     | Streaming Reader의 buffer size                                                                                                       |
-| `importCsvCharset`                                                | `"UTF-8"`  | Import할 CSV의 문자 인코딩.<br/>선두 BOM 자동 처리(UTF-8/UTF-16LE/BE의 BOM 제거, `UTF-16`(auto)의 BOM은 엔디안 판별에 사용)          |
-| `importCsvDelimiter`                                              | `','`      | Import할 CSV의 구분자 (`char`)                                                                                                       |
-| `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Import 시 다국어 ResourceBundle의 base name / language / country                                                                     |
+| 속성                                                                | 기본값        | 설명                                                                                                                                                                                                                                |
+|-------------------------------------------------------------------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `importPassword`                                                  | `""`       | Import 시 문서보호를 해제할 비밀번호                                                                                                                                                                                                |
+| `importDataValidation`                                            | `true`     | Import된 데이터에 대해 유효성 검사 수행 여부                                                                                                                                                                                        |
+| `importUsingStreamReader`                                         | `false`    | Import 시 Streaming Reader 사용 여부 (XLSX 전용)                                                                                                                                                                                    |
+| `importStreamReaderRowCacheSize`                                  | `100`      | Streaming Reader의 row cache size                                                                                                                                                                                                   |
+| `importStreamReaderBufferSize`                                    | `4096`     | Streaming Reader의 buffer size                                                                                                                                                                                                      |
+| `importCsvCharset`                                                | `"UTF-8"`  | CSV 전용. Import할 CSV의 문자 인코딩(워크북의 모든 시트 공통). 개별 시트는 `@PxlSheet(importCsvCharset)`으로 따로 설정할 수 있다.<br/>선두 BOM 자동 처리(UTF-8/UTF-16LE/BE의 BOM 제거, `UTF-16`(auto)의 BOM은 엔디안 판별에 사용)             |
+| `importCsvDelimiter`                                              | `','`      | CSV 전용. Import할 CSV의 구분자(워크북의 모든 시트 공통, `char`). 개별 시트는 `@PxlSheet(importCsvDelimiter)`으로 따로 설정할 수 있다                                                                                                              |
+| `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Import 시 다국어 ResourceBundle의 base name / language / country                                                                                                                                                                    |
 | `exportExcelEngine`                                               | `XSSF`     | 워크북을 쓰는 POI 엔진(`PxlExcelEngine`): `XSSF`=XLSX(기본), `HSSF`=XLS, `SXSSF`=스트리밍 XLSX.<br/>형식이 아니라 writer를 고르는 속성이라 `XSSF`와 `SXSSF`는 똑같이 `.xlsx`를 만든다. CSV는 엔진이 아니므로 여기에 지정할 수 없다. |
-| `exportPassword`                                                  | `""`       | Export 시 설정할 문서보호 비밀번호.<br/>`toFile(...)`·`toStream(...)`에만 적용되고 `toWorkbook()`에는 적용되지 않는다.               |
-| `exportDataValidation`                                            | `true`     | Export할 데이터에 대해 유효성 검사 수행 여부                                                                                         |
-| `exportSXSSFRowAccessWindowSize`                                  | `100`      | SXSSF Export 시 rowAccessWindowSize                                                                                                  |
-| `exportWorkbookRequiredHeaderCellStyler`                          | (미지정)      | 필수 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderRequiredStyler`)                                                                   |
-| `exportWorkbookOptionalHeaderCellStyler`                          | (미지정)      | 선택 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderOptionalStyler`)                                                                   |
-| `exportWorkbookDataCellStyler`                                    | (미지정)      | 데이터 셀 스타일 (미지정/적용불가 시 `PxlDataVerticalCenterTextStyler`)                                                              |
-| `exportI18nBaseName` / `exportI18nLanguage` / `exportI18nCountry` | `""`/`"en"`/`""` | Export 시 다국어 ResourceBundle의 base name / language / country                                                                     |
+| `exportPassword`                                                  | `""`       | Export 시 설정할 문서보호 비밀번호.<br/>`toFile(...)`·`toStream(...)`에만 적용되고 `toWorkbook()`에는 적용되지 않는다.                                                                                                              |
+| `exportDataValidation`                                            | `true`     | Export할 데이터에 대해 유효성 검사 수행 여부                                                                                                                                                                                        |
+| `exportSXSSFRowAccessWindowSize`                                  | `100`      | SXSSF Export 시 rowAccessWindowSize                                                                                                                                                                                                 |
+| `exportWorkbookRequiredHeaderCellStyler`                          | (미지정)      | 필수 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderRequiredStyler`)                                                                                                                                                                  |
+| `exportWorkbookOptionalHeaderCellStyler`                          | (미지정)      | 선택 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderOptionalStyler`)                                                                                                                                                                  |
+| `exportWorkbookDataCellStyler`                                    | (미지정)      | 데이터 셀 스타일 (미지정/적용불가 시 `PxlDataVerticalCenterTextStyler`)                                                                                                                                                             |
+| `exportI18nBaseName` / `exportI18nLanguage` / `exportI18nCountry` | `""`/`"en"`/`""` | Export 시 다국어 ResourceBundle의 base name / language / country                                                                                                                                                                    |
 
 ### `@PxlWorkbookName` (필드 대상)
 
@@ -394,26 +394,28 @@ export(및 샘플 export)에서는 사용되지 않는다.
 `Collection` 타입 필드에 붙여 시트로 바인딩한다.  
 인덱스 속성의 기본값 `0`은 "auto"(첫 행/열 자동)를 뜻한다.
 
-| 속성                                                                                                          | 기본값     | 설명                                                       |
-|-------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------|
+| 속성                                                                                                          | 기본값     | 설명                                                                                                             |
+|-------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------|
 | `name`                                                                                                      | 필드명     | 시트 이름(배열). 실제 시트명과 일치해야 바인딩됨(공백·대소문자 무시).<br/>배열로 지정 시 그중 하나만 존재해야 함 |
-| `importEnabled`                                                                                             | `true`  | Import 사용 여부                                             |
-| `importOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지 여부(대소문자 무시)                          |
-| `importExcludeHiddenRows` / `importExcludeHiddenColumns`                                                    | `false` | 숨겨진 행/열 제외 여부                                            |
-| `importEachCellOfMergedRegion`                                                                              | `false` | 병합 셀을 개별 셀에 동일 값으로 처리할지                                  |
-| `importHeaderRowIndex` / `importFirstDataRowIndex` / `importLastDataRowIndex`                               | `0`     | Import 시 Header/시작/끝 데이터 행 (1-based, 아래 *인덱스 규칙* 참고) |
-| `importFirstDataColumnIndex` / `importLastDataColumnIndex`                                                  | `0`     | Import 시 시작/끝 데이터 열 (1-based)                        |
-| `exportEnabled` / `exportSampleEnabled`                                                                     | `true`  | Export / 샘플 Export 사용 여부                                 |
-| `exportOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지(대소문자 무시)                             |
-| `exportRowHeightInPoints`                                                                                   | `-1.0`  | 시트 내 행 높이(point). 미설정 시 기본 높이                            |
-| `exportOrder`                                                                                               | `""`    | 시트 생성 순서 키 (문자열 비교, 아래 *Export 순서* 참고)                   |
-| `exportGroupingFieldName`                                                                                   | `""`    | 이 필드 값으로 그룹핑하여 여러 시트로 분할                                 |
-| `exportHeaderRowIndex` / `exportFirstDataRowIndex` / `exportLastDataRowIndex`                               | `0`     | Export 시 Header/시작/끝 데이터 행 (1-based)                 |
-| `exportFirstDataColumnIndex` / `exportLastDataColumnIndex`                                                  | `0`     | Export 시 시작/끝 데이터 열 (1-based)                        |
-| `exportIfNull`                                                                                              | `false` | 필드가 null일 때 시트 생성 여부                                     |
-| `exportIfEmpty`                                                                                             | `true`  | 필드가 비었을 때 시트 생성 여부                                       |
-| `exportColumnFilter`                                                                                        | `false` | 필터 적용 여부                                                 |
-| `exportSheetRequiredHeaderCellStyler` / `exportSheetOptionalHeaderCellStyler` / `exportSheetDataCellStyler` | (미지정)   | 시트 단위 셀 스타일 (미지정 시 Workbook 단위로 위임)                      |
+| `importEnabled`                                                                                             | `true`  | Import 사용 여부                                                                                                 |
+| `importOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지 여부(대소문자 무시)                                                 |
+| `importExcludeHiddenRows` / `importExcludeHiddenColumns`                                                    | `false` | 숨겨진 행/열 제외 여부                                                                                           |
+| `importEachCellOfMergedRegion`                                                                              | `false` | 병합 셀을 개별 셀에 동일 값으로 처리할지                                                                         |
+| `importHeaderRowIndex` / `importFirstDataRowIndex` / `importLastDataRowIndex`                               | `0`     | Import 시 Header/시작/끝 데이터 행 (1-based, 아래 *인덱스 규칙* 참고)                                            |
+| `importFirstDataColumnIndex` / `importLastDataColumnIndex`                                                  | `0`     | Import 시 시작/끝 데이터 열 (1-based)                                                                            |
+| `importCsvCharset`                                                                                          | (상속)    | CSV 전용. 이 시트의 CSV를 읽을 문자 인코딩. 빈 값(`""`)이면 워크북 값을 상속                                     |
+| `importCsvDelimiter`                                                                                        | (상속)    | CSV 전용. 이 시트의 CSV를 읽을 구분자(`char`). NUL(`'\0'`)이면 워크북 값을 상속                                  |
+| `exportEnabled` / `exportSampleEnabled`                                                                     | `true`  | Export / 샘플 Export 사용 여부                                                                                   |
+| `exportOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지(대소문자 무시)                                                      |
+| `exportRowHeightInPoints`                                                                                   | `-1.0`  | 시트 내 행 높이(point). 미설정 시 기본 높이                                                                      |
+| `exportOrder`                                                                                               | `""`    | 시트 생성 순서 키 (문자열 비교, 아래 *Export 순서* 참고)                                                         |
+| `exportGroupingFieldName`                                                                                   | `""`    | 이 필드 값으로 그룹핑하여 여러 시트로 분할                                                                       |
+| `exportHeaderRowIndex` / `exportFirstDataRowIndex` / `exportLastDataRowIndex`                               | `0`     | Export 시 Header/시작/끝 데이터 행 (1-based)                                                                     |
+| `exportFirstDataColumnIndex` / `exportLastDataColumnIndex`                                                  | `0`     | Export 시 시작/끝 데이터 열 (1-based)                                                                            |
+| `exportIfNull`                                                                                              | `false` | 필드가 null일 때 시트 생성 여부                                                                                  |
+| `exportIfEmpty`                                                                                             | `true`  | 필드가 비었을 때 시트 생성 여부                                                                                  |
+| `exportColumnFilter`                                                                                        | `false` | 필터 적용 여부                                                                                                   |
+| `exportSheetRequiredHeaderCellStyler` / `exportSheetOptionalHeaderCellStyler` / `exportSheetDataCellStyler` | (미지정)   | 시트 단위 셀 스타일 (미지정 시 Workbook 단위로 위임)                                                             |
 
 ### `@PxlRowIndex` (필드 대상)
 
@@ -1044,6 +1046,38 @@ List<Employee> rows = pxl.importCsv()
 > CSV 기본 인코딩은 `UTF-8`이다.
 > 다른 인코딩(예: `US-ASCII`·`MS949`·`EUC-KR`) CSV는 위처럼 `importCsvCharset(...)`으로 지정한다. `importCsvDelimiter`는 `char`이므로 작은따옴표를 쓴다.
 
+CSV 워크북은 시트 하나가 파일 하나로 읽히므로 시트끼리 인코딩·구분자가 같을 필요가 없다.  
+그래서 두 속성은 `@PxlSheet`에도 있으며, 둘 다 지정하지 않은 시트는 워크북 값을 상속한다.
+
+```java
+@PxlWorkbook(importCsvCharset = "MS949")            // 따로 지정하지 않은 모든 시트에 적용
+public class CompanyWorkbook {
+
+    @PxlSheet(name = "Legacy")                       // MS949 상속
+    private List<CharsetRow> legacy;
+
+    @PxlSheet(name = "Modern", importCsvCharset = "UTF-8")   // 이 파일만 UTF-8로 읽음
+    private List<CharsetRow> modern;
+}
+
+CompanyWorkbook workbook = pxl.importCsv()
+                              .workbook(CompanyWorkbook.class)
+                              .fromFiles(Arrays.asList(legacyCsv, modernCsv));
+```
+
+해석은 위에서 아래로 내려가며, 값을 지정한 첫 단계가 우선순위 높다.
+
+| 단계 | "미지정"을 뜻하는 값 |
+|------|--------------------|
+| `PxlImportSheetOption.importCsvCharset` / `importCsvDelimiter` | `null` |
+| `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)`         | `""` / `'\0'`      |
+| `PxlImportWorkbookOption.importCsvCharset` / `importCsvDelimiter` | `null` |
+| `@PxlWorkbook(importCsvCharset)` / `(importCsvDelimiter)`      | `""` / `'\0'`      |
+| 내장 기본값                                                     | `"UTF-8"` / `','`  |
+
+> "미지정"이 실효 기본값이 아니라 미지정 표식이므로, 워크북이 다른 값을 지정한 상황에서 시트가 `"UTF-8"`·`','`를 명시해 기본값으로 되돌릴 수 있다.  
+> 시트 폼(`sheet(...)`)에는 `@PxlSheet`를 붙일 필드가 없으므로 와일드카드 `PxlImportSheetOption`이 유일한 시트 단계 경로다 — *옵션 구조* 참고.
+
 ### 워크북: 비밀번호로 암호화 Export
 
 ```java
@@ -1117,6 +1151,7 @@ List<Employee> rows = pxl.importExcel()
   `@PxlRowIndex`가 받는 값도 마찬가지로 1-based로, 가져온 행의 스프레드시트 행 번호이다.
 - ✅ **CSV 기본 인코딩은 `UTF-8`**  
   다른 인코딩(`US-ASCII`·`MS949`·`EUC-KR` 등)은 `importCsvCharset(...)`으로 명시한다.
+  워크북 폼에서는 시트마다 파일이 다르므로, 하나만 다른 시트는 워크북 전체를 한 설정으로 몰지 말고 `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)`로 그 시트만 지정한다.
 - ✅ **`long` / `BigInteger` / `BigDecimal` 정밀도**  
   큰 수는 숫자 셀(double, 2^53 한계)에서 정밀도가 손실될 수 있다. 정확히 보존하려면 `pattern`으로 문자열 셀 출력하거나 `BigInteger`/`BigDecimal`을 쓴다.
 - ✅ **`Pxl`은 재사용**한다.  

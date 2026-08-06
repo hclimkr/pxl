@@ -55,6 +55,16 @@ public class PxlCsvImportTests {
             "Name\tAge\tSalary\tActive\tHireDate\tGrade\tDepartment\n" +
                     "Alice\t30\t50000.50\tyes\t2020-01-15\tA\tEngineering\n";
 
+    private static final String DEPARTMENTS_TSV =
+            "Code\tDepartmentName\tHeadcount\n" +
+                    "ENG\tEngineering\t12\n";
+
+    // Non-ASCII payloads for the charset cascade. Only the encoding is under test, so the text itself is incidental -
+    // what matters is that each string is unreadable under the wrong charset of the pair.
+    private static final String SEOUL_CSV = "City\n서울\n";
+    private static final String BUSAN_CSV = "City\n부산\n";
+    private static final String CAFE_CSV = "City\ncafé\n";
+
     @BeforeAll
     public static void setUpBeforeClass() {
         pxl = new Pxl();
@@ -62,6 +72,10 @@ public class PxlCsvImportTests {
 
     private static InputStream stream(final String content) {
         return new ByteArrayInputStream(content.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private static InputStream stream(final String content, final String charsetName) {
+        return new ByteArrayInputStream(content.getBytes(Charset.forName(charsetName)));
     }
 
     private static File writeCsv(final Path dir, final String fileName, final String content) throws Exception {
@@ -384,6 +398,287 @@ public class PxlCsvImportTests {
 
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).getCity()).isEqualTo("서울");
+    }
+
+    // ------------------------------------------------------------------
+    // Per-sheet charset/delimiter cascade
+    // (sheet option > @PxlSheet > workbook option > @PxlWorkbook > built-in default)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void importCsvStreams_perSheetCharset_decodesEachSheetWithItsOwn() throws Exception {
+        // A CSV workbook is one file per sheet, so its sheets need not share an encoding. MixedCharsetWorkbook names
+        // MS949 at the workbook level and UTF-8 on "Modern": "Legacy" inherits, "Modern" departs.
+        final List<String> csvNames = Arrays.asList("Legacy", "Modern");
+        final List<InputStream> csvStreams = Arrays.asList(
+                stream(SEOUL_CSV, "MS949"),
+                stream(BUSAN_CSV, "UTF-8"));
+
+        final MixedCharsetWorkbook workbook = pxl.importCsv()
+                .workbook(MixedCharsetWorkbook.class)
+                .fromStreams(csvNames, csvStreams);
+
+        assertThat(workbook.getLegacy()).extracting(CharsetRow::getCity).containsExactly("서울");
+        assertThat(workbook.getModern()).extracting(CharsetRow::getCity).containsExactly("부산");
+    }
+
+    @Test
+    public void importCsvStreams_inheritedSheetCharset_isNotTheBuiltInDefault() throws Exception {
+        // Feeding "Legacy" UTF-8 bytes proves its inherited MS949 is genuinely applied: read as MS949 they cannot come
+        // back as the text they encode. Asserting only "not equal" keeps this off the exact replacement characters.
+        final List<String> csvNames = Arrays.asList("Legacy", "Modern");
+        final List<InputStream> csvStreams = Arrays.asList(
+                stream(SEOUL_CSV, "UTF-8"),
+                stream(BUSAN_CSV, "UTF-8"));
+
+        final MixedCharsetWorkbook workbook = pxl.importCsv()
+                .workbook(MixedCharsetWorkbook.class)
+                .fromStreams(csvNames, csvStreams);
+
+        assertThat(workbook.getLegacy().get(0).getCity()).isNotEqualTo("서울");
+        // Its sibling is unaffected, so what differs is the one sheet's charset and not a workbook-wide one.
+        assertThat(workbook.getModern()).extracting(CharsetRow::getCity).containsExactly("부산");
+    }
+
+    @Test
+    public void importCsvStreams_sheetCharsetEqualToDefault_stillOverridesWorkbook() throws Exception {
+        // "Modern" names UTF-8, which is also the built-in default. Were the annotation's "not specified" marker the
+        // effective default rather than a sentinel, this sheet would be indistinguishable from one that says nothing
+        // and would silently fall back to the workbook's MS949 - garbling the UTF-8 bytes below.
+        final List<String> csvNames = Arrays.asList("Legacy", "Modern");
+        final List<InputStream> csvStreams = Arrays.asList(
+                stream(SEOUL_CSV, "MS949"),
+                stream(SEOUL_CSV, "UTF-8"));
+
+        final MixedCharsetWorkbook workbook = pxl.importCsv()
+                .workbook(MixedCharsetWorkbook.class)
+                .fromStreams(csvNames, csvStreams);
+
+        // Same text, different bytes, both read correctly - only a per-sheet charset can do that.
+        assertThat(workbook.getLegacy()).extracting(CharsetRow::getCity).containsExactly("서울");
+        assertThat(workbook.getModern()).extracting(CharsetRow::getCity).containsExactly("서울");
+    }
+
+    @Test
+    public void importCsvStreams_perSheetDelimiter_splitsEachSheetWithItsOwn() throws Exception {
+        // The delimiter counterpart: the workbook names the tab, "Comma" names the comma.
+        final List<String> csvNames = Arrays.asList("Tabbed", "Comma");
+        final List<InputStream> csvStreams = Arrays.asList(stream(DEPARTMENTS_TSV), stream(DEPARTMENTS_CSV));
+
+        final MixedDelimiterWorkbook workbook = pxl.importCsv()
+                .workbook(MixedDelimiterWorkbook.class)
+                .fromStreams(csvNames, csvStreams);
+
+        assertThat(workbook.getTabbed()).extracting(Department::getCode).containsExactly("ENG");
+        assertThat(workbook.getTabbed().get(0).getHeadcount()).isEqualTo(12);
+        assertThat(workbook.getComma()).extracting(Department::getCode).containsExactly("ENG", "SAL");
+    }
+
+    @Test
+    public void importCsvStreams_workbookOptionCharset_losesToSheetAnnotation() throws Exception {
+        // The workbook option outranks @PxlWorkbook but not @PxlSheet, so this single override lands on "Legacy"
+        // alone - it drops from MS949 to ISO-8859-1, while "Modern" keeps the UTF-8 its own annotation names.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvCharset("ISO-8859-1")
+                .build();
+        final List<String> csvNames = Arrays.asList("Legacy", "Modern");
+        final List<InputStream> csvStreams = Arrays.asList(
+                stream(CAFE_CSV, "ISO-8859-1"),
+                stream(BUSAN_CSV, "UTF-8"));
+
+        final MixedCharsetWorkbook workbook = pxl.importCsv()
+                .override(option)
+                .workbook(MixedCharsetWorkbook.class)
+                .fromStreams(csvNames, csvStreams);
+
+        assertThat(workbook.getLegacy()).extracting(CharsetRow::getCity).containsExactly("café");
+        assertThat(workbook.getModern()).extracting(CharsetRow::getCity).containsExactly("부산");
+    }
+
+    @Test
+    public void importCsvStreams_sheetOptionCharset_overridesSheetAnnotation() throws Exception {
+        // The runtime sheet option is the top of the cascade: targeted at the "modern" field by name, it displaces
+        // the UTF-8 that field's @PxlSheet names. "Legacy" matches no option and keeps its inherited MS949.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importSheetOptions(Arrays.asList(PxlImportSheetOption.builder()
+                        .fieldName("modern")
+                        .importCsvCharset("ISO-8859-1")
+                        .build()))
+                .build();
+        final List<String> csvNames = Arrays.asList("Legacy", "Modern");
+        final List<InputStream> csvStreams = Arrays.asList(
+                stream(SEOUL_CSV, "MS949"),
+                stream(CAFE_CSV, "ISO-8859-1"));
+
+        final MixedCharsetWorkbook workbook = pxl.importCsv()
+                .override(option)
+                .workbook(MixedCharsetWorkbook.class)
+                .fromStreams(csvNames, csvStreams);
+
+        assertThat(workbook.getLegacy()).extracting(CharsetRow::getCity).containsExactly("서울");
+        assertThat(workbook.getModern()).extracting(CharsetRow::getCity).containsExactly("café");
+    }
+
+    @Test
+    public void importCsvStreams_sheetOptionDelimiter_overridesSheetAnnotation() throws Exception {
+        // Same precedence for the delimiter: the option pushes the "comma" field back onto the tab.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importSheetOptions(Arrays.asList(PxlImportSheetOption.builder()
+                        .fieldName("comma")
+                        .importCsvDelimiter('\t')
+                        .build()))
+                .build();
+        final List<String> csvNames = Arrays.asList("Tabbed", "Comma");
+        final List<InputStream> csvStreams = Arrays.asList(stream(DEPARTMENTS_TSV), stream(DEPARTMENTS_TSV));
+
+        final MixedDelimiterWorkbook workbook = pxl.importCsv()
+                .override(option)
+                .workbook(MixedDelimiterWorkbook.class)
+                .fromStreams(csvNames, csvStreams);
+
+        assertThat(workbook.getTabbed()).extracting(Department::getCode).containsExactly("ENG");
+        assertThat(workbook.getComma()).extracting(Department::getCode).containsExactly("ENG");
+    }
+
+    @Test
+    public void importCsvStreams_workbookNamesNeitherCsvAttribute_usesBuiltInDefaults() throws Exception {
+        // Both annotation levels hold the "not specified" sentinel here, so the built-in UTF-8/comma must apply.
+        // Taking the sentinel for a usable value instead would hand "" to Charset.forName and fail every sheet.
+        final List<String> csvNames = Arrays.asList("Cities", "Departments");
+        final List<InputStream> csvStreams = Arrays.asList(stream(SEOUL_CSV, "UTF-8"), stream(DEPARTMENTS_CSV));
+
+        final DefaultCsvWorkbook workbook = pxl.importCsv()
+                .workbook(DefaultCsvWorkbook.class)
+                .fromStreams(csvNames, csvStreams);
+
+        assertThat(workbook.getCities()).extracting(CharsetRow::getCity).containsExactly("서울");
+        assertThat(workbook.getDepartments()).extracting(Department::getCode).containsExactly("ENG", "SAL");
+    }
+
+    @Test
+    public void importCsvStreams_invalidSheetCharset_errorNamesOffendingSheet() throws Exception {
+        // With the charset resolved per sheet, a workbook-wide message would leave the caller to guess which of the
+        // files is misconfigured, so the message names the sheet the unusable value was resolved for.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importSheetOptions(Arrays.asList(PxlImportSheetOption.builder()
+                        .fieldName("modern")
+                        .importCsvCharset("NoSuchCharset-1")
+                        .build()))
+                .build();
+        final List<String> csvNames = Arrays.asList("Legacy", "Modern");
+        final List<InputStream> csvStreams = Arrays.asList(stream(SEOUL_CSV, "MS949"), stream(BUSAN_CSV, "UTF-8"));
+
+        final PxlArgumentException exception = assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
+                .override(option)
+                .workbook(MixedCharsetWorkbook.class)
+                .fromStreams(csvNames, csvStreams));
+
+        // Both bundles interpolate the sheet name and the value, so these hold whatever the process locale is.
+        assertThat(exception.getMessage())
+                .contains("Modern")
+                .contains("NoSuchCharset-1")
+                .doesNotContain("Legacy");
+        assertThat(exception).hasCauseInstanceOf(UnsupportedCharsetException.class);
+    }
+
+    @Test
+    public void importCsvStream_sheetForm_invalidCharset_errorNamesSheet() throws Exception {
+        // The sheet form binds no @PxlSheet field, so its sheet name is the one handed to fromStream.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvCharset("NoSuchCharset-1")
+                .build();
+
+        final PxlArgumentException exception = assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
+                .override(option)
+                .sheet(Employee.class)
+                .fromStream("Payroll", stream(EMPLOYEES_CSV)));
+
+        assertThat(exception.getMessage()).contains("Payroll");
+    }
+
+    @Test
+    public void importCsvStream_sheetForm_wildcardSheetOptionCharset_applies() throws Exception {
+        // The sheet form has no field to carry @PxlSheet, so the wildcard sheet option is the only sheet-level
+        // route into the cascade - the reason the option had to gain these two fields alongside the annotation.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importSheetOptions(Arrays.asList(PxlImportSheetOption.builder()
+                        .importCsvCharset("MS949")
+                        .build()))
+                .build();
+
+        final List<CharsetRow> rows = pxl.importCsv()
+                .override(option)
+                .sheet(CharsetRow.class)
+                .fromStream("Cities", stream(SEOUL_CSV, "MS949"));
+
+        assertThat(rows).extracting(CharsetRow::getCity).containsExactly("서울");
+    }
+
+    @Test
+    public void importCsvStream_sheetForm_sheetOptionCharset_overridesWorkbookOption() throws Exception {
+        // Both option levels are set; the sheet-level one must win.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvCharset("ISO-8859-1")
+                .importSheetOptions(Arrays.asList(PxlImportSheetOption.builder()
+                        .importCsvCharset("MS949")
+                        .build()))
+                .build();
+
+        final List<CharsetRow> rows = pxl.importCsv()
+                .override(option)
+                .sheet(CharsetRow.class)
+                .fromStream("Cities", stream(SEOUL_CSV, "MS949"));
+
+        assertThat(rows).extracting(CharsetRow::getCity).containsExactly("서울");
+    }
+
+    @Test
+    public void importCsvStream_blankOptionCharset_fallsBackToBuiltInDefault() throws Exception {
+        // Blank means "not specified" at every level, so an explicitly blank option is not an unusable charset name -
+        // it simply hands the decision on, ending at UTF-8.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvCharset("")
+                .build();
+
+        final List<CharsetRow> rows = pxl.importCsv()
+                .override(option)
+                .sheet(CharsetRow.class)
+                .fromStream("Cities", stream(SEOUL_CSV, "UTF-8"));
+
+        assertThat(rows).extracting(CharsetRow::getCity).containsExactly("서울");
+    }
+
+    @Test
+    public void importCsvStream_nulOptionDelimiter_fallsBackToBuiltInDefault() throws Exception {
+        // The delimiter counterpart of the blank charset: NUL hands the decision on and ends at the comma.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvDelimiter('\0')
+                .build();
+
+        final List<Department> departments = pxl.importCsv()
+                .override(option)
+                .sheet(Department.class)
+                .fromStream("Departments", stream(DEPARTMENTS_CSV));
+
+        assertThat(departments).extracting(Department::getCode).containsExactly("ENG", "SAL");
+    }
+
+    @Test
+    public void importCsvStream_blankSheetOptionCharset_fallsBackToWorkbookOption() throws Exception {
+        // A blank at the top of the cascade must not shadow the level below it: the workbook option still decides.
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importCsvCharset("MS949")
+                .importSheetOptions(Arrays.asList(PxlImportSheetOption.builder()
+                        .importCsvCharset("")
+                        .build()))
+                .build();
+
+        final List<CharsetRow> rows = pxl.importCsv()
+                .override(option)
+                .sheet(CharsetRow.class)
+                .fromStream("Cities", stream(SEOUL_CSV, "MS949"));
+
+        assertThat(rows).extracting(CharsetRow::getCity).containsExactly("서울");
     }
 
     // ------------------------------------------------------------------

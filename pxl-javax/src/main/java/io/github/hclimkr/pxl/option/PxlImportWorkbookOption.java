@@ -1,5 +1,8 @@
 package io.github.hclimkr.pxl.option;
 
+import io.github.hclimkr.pxl.PxlConstants;
+import io.github.hclimkr.pxl.annotation.PxlSheet;
+import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
@@ -51,7 +54,13 @@ public final class PxlImportWorkbookOption {
     private final Integer importStreamReaderBufferSize = null;
 
     /**
-     * Specifies the character encoding set of the CSV to be imported.
+     * Specifies the character encoding set of the CSV to be imported, for every sheet of the workbook.
+     * Ignored for an Excel source, which is one file whose encoding the format itself carries.
+     * <p>
+     * Overrides {@link PxlWorkbook#importCsvCharset()} but not {@link PxlSheet#importCsvCharset()}, since a CSV
+     * workbook is read as one file per sheet. Left {@code null} or blank, the workbook says nothing and the levels
+     * below decide, ending at {@link PxlConstants#DEFAULT_IMPORT_CSV_CHARSET} ({@code "UTF-8"}).
+     * The per-sheet counterpart is {@code PxlImportSheetOption.importCsvCharset}.
      *
      * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
      */
@@ -59,7 +68,13 @@ public final class PxlImportWorkbookOption {
     private final String importCsvCharset = null;
 
     /**
-     * Specifies the delimiter of the CSV to be imported.
+     * Specifies the delimiter of the CSV to be imported, for every sheet of the workbook.
+     * Ignored for an Excel source, which has no delimiter.
+     * <p>
+     * Overrides {@link PxlWorkbook#importCsvDelimiter()} but not {@link PxlSheet#importCsvDelimiter()}, since a CSV
+     * workbook is read as one file per sheet. Left {@code null} or NUL, the workbook says nothing and the levels
+     * below decide, ending at {@link PxlConstants#DEFAULT_IMPORT_CSV_DELIMITER} ({@code ','}).
+     * The per-sheet counterpart is {@code PxlImportSheetOption.importCsvDelimiter}.
      */
     @Builder.Default
     private final Character importCsvDelimiter = null;

@@ -1,6 +1,8 @@
 package io.github.hclimkr.pxl;
 
 import io.github.hclimkr.pxl.annotation.PxlColumn;
+import io.github.hclimkr.pxl.annotation.PxlSheet;
+import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.styler.PxlStyler;
 import io.github.hclimkr.pxl.styler.data.PxlDataVerticalCenterTextStyler;
 import io.github.hclimkr.pxl.styler.header.PxlHeaderOptionalStyler;
@@ -219,16 +221,38 @@ public interface PxlConstants {
             .build();
 
     /**
-     * Default charset used to decode CSV input.
+     * Charset used to decode CSV input when no level of the cascade specifies one.
      *
+     * @see #UNSPECIFIED_IMPORT_CSV_CHARSET
      * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
      */
     String DEFAULT_IMPORT_CSV_CHARSET = "UTF-8";
 
     /**
-     * Default CSV field delimiter.
+     * CSV field delimiter used when no level of the cascade specifies one.
+     *
+     * @see #UNSPECIFIED_IMPORT_CSV_DELIMITER
      */
     char DEFAULT_IMPORT_CSV_DELIMITER = ',';
+
+    /**
+     * Marks the CSV charset as not specified at an annotation level on import.
+     * <p>
+     * A CSV workbook is read as one file per sheet, so the charset resolves through a cascade — sheet option,
+     * {@link PxlSheet#importCsvCharset()}, workbook option, {@link PxlWorkbook#importCsvCharset()}, and finally
+     * {@link #DEFAULT_IMPORT_CSV_CHARSET}. An option level says "not specified" with {@code null}, which an annotation
+     * element cannot hold, so the two annotation levels say it with this value instead. Any blank value counts.
+     */
+    String UNSPECIFIED_IMPORT_CSV_CHARSET = "";
+
+    /**
+     * Marks the CSV field delimiter as not specified at an annotation level on import.
+     * <p>
+     * Resolves through the same cascade as {@link #UNSPECIFIED_IMPORT_CSV_CHARSET}, ending at
+     * {@link #DEFAULT_IMPORT_CSV_DELIMITER}. NUL stands in for "not specified" because it is not a delimiter
+     * anyone writes.
+     */
+    char UNSPECIFIED_IMPORT_CSV_DELIMITER = '\0';
 
     // BASE_NAME: "messages" if the messages_xx_XX.properties files are in src/main/resources
     //            "messages.messages" if the messages_xx_XX.properties files are in src/main/resources/messages

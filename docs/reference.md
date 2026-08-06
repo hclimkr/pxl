@@ -373,8 +373,8 @@ When you pass an option object to the `.override()` step to provide runtime valu
 | `importUsingStreamReader`                                         | `false`    | Whether to use the Streaming Reader on import (XLSX only)                                                                                                                         |
 | `importStreamReaderRowCacheSize`                                  | `100`      | Row cache size of the Streaming Reader                                                                                                                                            |
 | `importStreamReaderBufferSize`                                    | `4096`     | Buffer size of the Streaming Reader                                                                                                                                               |
-| `importCsvCharset`                                                | `"UTF-8"`  | Character encoding of the CSV to import.<br/>Handles a leading BOM automatically (strips the UTF-8/UTF-16LE/BE BOM; for `UTF-16` (auto), the BOM is used to determine endianness) |
-| `importCsvDelimiter`                                              | `','`      | Delimiter of the CSV to import (`char`)                                                                                                                                           |
+| `importCsvCharset`                                                | `"UTF-8"`  | CSV only. Character encoding of the CSV to import, for every sheet of the workbook. A single sheet may depart from it with `@PxlSheet(importCsvCharset)`.<br/>Handles a leading BOM automatically (strips the UTF-8/UTF-16LE/BE BOM; for `UTF-16` (auto), the BOM is used to determine endianness) |
+| `importCsvDelimiter`                                              | `','`      | CSV only. Delimiter of the CSV to import, for every sheet of the workbook (`char`). A single sheet may depart from it with `@PxlSheet(importCsvDelimiter)`                                   |
 | `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on import                                                                                                       |
 | `exportExcelEngine`                                               | `XSSF`     | POI engine that writes the workbook (`PxlExcelEngine`): `XSSF`=XLSX (default), `HSSF`=XLS, `SXSSF`=streaming XLSX.<br/>It selects the writer, not the format — `XSSF` and `SXSSF` both produce `.xlsx`. CSV is not an engine and cannot be named here. |
 | `exportPassword`                                                  | `""`       | Document protection password to set on export.<br/>Applies to `toFile(...)`/`toStream(...)` only, not to `toWorkbook()`.                                                          |
@@ -407,6 +407,8 @@ The default value `0` of an index attribute means "auto" (first row/column autom
 | `importEachCellOfMergedRegion`                                                                              | `false` | Whether to treat a merged cell as the same value in each individual cell |
 | `importHeaderRowIndex` / `importFirstDataRowIndex` / `importLastDataRowIndex`                               | `0`     | Header/first/last data row on import (1-based, see *Index Rules* below) |
 | `importFirstDataColumnIndex` / `importLastDataColumnIndex`                                                  | `0`     | First/last data column on import (1-based)              |
+| `importCsvCharset`                                                                                          | (inherit) | CSV only. Character encoding used to read this sheet's CSV. Blank (`""`) inherits the workbook value |
+| `importCsvDelimiter`                                                                                        | (inherit) | CSV only. Delimiter used to read this sheet's CSV (`char`). NUL (`'\0'`) inherits the workbook value |
 | `exportEnabled` / `exportSampleEnabled`                                                                     | `true`  | Whether export / sample export is enabled               |
 | `exportOverrideSuperClassSheet`                                                                             | `false` | Whether to override the superclass field of the same sheet name (case ignored) |
 | `exportRowHeightInPoints`                                                                                   | `-1.0`  | Row height within the sheet (points). Default height if unset |
@@ -1049,6 +1051,38 @@ List<Employee> rows = pxl.importCsv()
 > The default CSV encoding is `UTF-8`.
 > For CSV in a different encoding (e.g., `US-ASCII`·`MS949`·`EUC-KR`), specify it with `importCsvCharset(...)` as above. `importCsvDelimiter` is a `char`, so use single quotes.
 
+A CSV workbook is read as one file per sheet, so its sheets need not share an encoding or a delimiter.  
+Both attributes therefore exist on `@PxlSheet` as well, and a sheet that names neither inherits the workbook value.
+
+```java
+@PxlWorkbook(importCsvCharset = "MS949")            // applies to every sheet that does not say otherwise
+public class CompanyWorkbook {
+
+    @PxlSheet(name = "Legacy")                       // inherits MS949
+    private List<CharsetRow> legacy;
+
+    @PxlSheet(name = "Modern", importCsvCharset = "UTF-8")   // reads this one file as UTF-8
+    private List<CharsetRow> modern;
+}
+
+CompanyWorkbook workbook = pxl.importCsv()
+                              .workbook(CompanyWorkbook.class)
+                              .fromFiles(Arrays.asList(legacyCsv, modernCsv));
+```
+
+Resolution runs top to bottom, and the first level that names a value wins:
+
+| Level | "not specified" is |
+|-------|--------------------|
+| `PxlImportSheetOption.importCsvCharset` / `importCsvDelimiter` | `null` |
+| `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)`         | `""` / `'\0'`     |
+| `PxlImportWorkbookOption.importCsvCharset` / `importCsvDelimiter` | `null` |
+| `@PxlWorkbook(importCsvCharset)` / `(importCsvDelimiter)`      | `""` / `'\0'`     |
+| built-in default                                               | `"UTF-8"` / `','` |
+
+> Because "not specified" is a sentinel rather than the effective default, a sheet can name `"UTF-8"` or `','` explicitly to return to the default against a workbook that names something else.  
+> In the sheet form (`sheet(...)`) there is no field to carry `@PxlSheet`, so a wildcard `PxlImportSheetOption` is the only sheet-level route — see *Option Structure*.
+
 ### Workbook: Encrypt with Password Export
 
 ```java
@@ -1123,6 +1157,7 @@ List<Employee> rows = pxl.importExcel()
   The value received by `@PxlRowIndex` is likewise 1-based — the spreadsheet row number of the imported row.
 - ✅ **The default CSV encoding is `UTF-8`**  
   Specify other encodings (`US-ASCII`·`MS949`·`EUC-KR`, etc.) with `importCsvCharset(...)`.
+  In the workbook form each sheet is its own file, so a sheet that differs from the rest can name its own `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)` instead of forcing the whole workbook onto one setting.
 - ✅ **`long` / `BigInteger` / `BigDecimal` precision**  
   Large numbers may lose precision in a numeric cell (double, 2^53 limit). To preserve them exactly, output as a string cell with a `pattern` or use `BigInteger`/`BigDecimal`.
 - ✅ **Reuse `Pxl`.**  

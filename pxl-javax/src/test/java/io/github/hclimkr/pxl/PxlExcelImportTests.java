@@ -643,6 +643,33 @@ public class PxlExcelImportTests {
     }
 
     // ------------------------------------------------------------------
+    // CSV-only attributes on an Excel source
+    // ------------------------------------------------------------------
+
+    @Test
+    public void importExcel_csvCharsetAndDelimiterAttributes_ignored() throws Exception {
+        // importCsvCharset/importCsvDelimiter are declared on both the workbook and the sheet with values no CSV
+        // could ever be opened with - a charset name this JVM does not carry, and the quote character CSVFormat
+        // rejects as a delimiter. An Excel source is one file whose encoding the format itself carries and which has
+        // no delimiter, so it must never resolve either; were it to, this import would fail the way the CSV path does.
+        final IgnoredCsvAttrsWorkbook source = new IgnoredCsvAttrsWorkbook();
+        source.setEmployees(Arrays.asList(
+                Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering")));
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .workbook(source)
+                .override(noValidationOption())
+                .toFile(excelFile);
+
+        final IgnoredCsvAttrsWorkbook imported = pxl.importExcel()
+                .workbook(IgnoredCsvAttrsWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(imported.getEmployees()).extracting(Employee::getName).containsExactly("Alice");
+    }
+
+    // ------------------------------------------------------------------
     // Superclass sheet inheritance / override (importOverrideSuperClassSheet)
     // ------------------------------------------------------------------
 
