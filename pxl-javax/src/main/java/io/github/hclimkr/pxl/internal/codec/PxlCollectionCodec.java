@@ -216,7 +216,7 @@ final class PxlCollectionCodec {
         } else if (object instanceof Collection) {
             collectionObject = (Collection<?>) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Collection"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Collection"));
         }
 
         final List<String> strings = new ArrayList<>(PxlCollectionUtils.size(collectionObject));

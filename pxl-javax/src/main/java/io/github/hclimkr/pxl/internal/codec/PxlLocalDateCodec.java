@@ -60,7 +60,7 @@ final class PxlLocalDateCodec {
                 try {
                     localDateValue = PxlDateCellSupport.readNumericCellAsLocalDateTime(cell, "LocalDate").toLocalDate();
                 } catch (NumberFormatException numberFormatException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), "LocalDate"), numberFormatException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), "LocalDate"), numberFormatException);
                 }
                 break;
 
@@ -73,14 +73,14 @@ final class PxlLocalDateCodec {
                 // final boolean booleanCellValue = cell.getBooleanCellValue();
                 // localDateValue = DateUtil.getLocalDateTime(BooleanUtils.toInteger(booleanCellValue)).toLocalDate();
                 // break;
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
 
             case BLANK:
                 // empty
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return localDateValue;
@@ -133,7 +133,7 @@ final class PxlLocalDateCodec {
             // go to next parser
         }
 
-        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "LocalDate"));
+        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "LocalDate"));
     }
 
     /**
@@ -169,13 +169,13 @@ final class PxlLocalDateCodec {
                 try {
                     localDateValue = LocalDate.parse(stringValue, exportDateFormatter);
                 } catch (DateTimeParseException dateTimeParseException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "LocalDate"), dateTimeParseException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "LocalDate"), dateTimeParseException);
                 }
             }
         } else if (object instanceof LocalDate) {
             localDateValue = (LocalDate) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "LocalDate"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "LocalDate"));
         }
 
         if (Objects.isNull(localDateValue)) {
@@ -224,7 +224,7 @@ final class PxlLocalDateCodec {
 
             return PxlStringCodec.makeExportString(stringValue, columnMeta);
         } catch (DateTimeException dateTimeException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(localDateValue), "LocalDate"), dateTimeException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(localDateValue), "LocalDate"), dateTimeException);
         }
     }
 

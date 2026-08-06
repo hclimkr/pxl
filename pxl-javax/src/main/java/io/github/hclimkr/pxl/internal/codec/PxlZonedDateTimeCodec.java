@@ -62,7 +62,7 @@ final class PxlZonedDateTimeCodec {
                 try {
                     zonedDateTimeValue = PxlDateCellSupport.readNumericCellAsLocalDateTime(cell, "ZonedDateTime").atZone(zoneId);
                 } catch (NumberFormatException numberFormatException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), "ZonedDateTime"), numberFormatException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), "ZonedDateTime"), numberFormatException);
                 }
                 break;
 
@@ -75,14 +75,14 @@ final class PxlZonedDateTimeCodec {
                 // final boolean booleanCellValue = cell.getBooleanCellValue();
                 // zonedDateTimeValue = DateUtil.getLocalDateTime(BooleanUtils.toInteger(booleanCellValue)).atZone(zoneId);
                 // break;
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
 
             case BLANK:
                 // empty
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return zonedDateTimeValue;
@@ -126,7 +126,7 @@ final class PxlZonedDateTimeCodec {
             // go to next parser
         }
 
-        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "ZonedDateTime"));
+        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "ZonedDateTime"));
     }
 
     /**
@@ -168,14 +168,14 @@ final class PxlZonedDateTimeCodec {
                     try {
                         zonedDateTimeValue = ZonedDateTime.parse(stringValue);
                     } catch (DateTimeParseException isoParseException) {
-                        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "ZonedDateTime"), isoParseException);
+                        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "ZonedDateTime"), isoParseException);
                     }
                 }
             }
         } else if (object instanceof ZonedDateTime) {
             zonedDateTimeValue = (ZonedDateTime) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "ZonedDateTime"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "ZonedDateTime"));
         }
 
         if (Objects.isNull(zonedDateTimeValue)) {
@@ -223,7 +223,7 @@ final class PxlZonedDateTimeCodec {
 
             return PxlStringCodec.makeExportString(stringValue, columnMeta);
         } catch (DateTimeException dateTimeException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(zonedDateTimeValue), "ZonedDateTime"), dateTimeException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(zonedDateTimeValue), "ZonedDateTime"), dateTimeException);
         }
     }
 

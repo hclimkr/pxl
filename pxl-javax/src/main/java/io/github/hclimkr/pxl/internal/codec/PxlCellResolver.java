@@ -74,10 +74,10 @@ public final class PxlCellResolver {
 
         if (CellType.FORMULA.equals(cell.getCellType())) {
             if (cell instanceof StreamingCell) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_STREAMING_FORMULA_UNSUPPORTED));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_STREAMING_FORMULA_UNSUPPORTED));
             }
             if (Objects.isNull(formulaEvaluator)) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cell.getCellType().toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cell.getCellType().toString())));
             }
 
             formulaEvaluator.evaluateInCell(cell);

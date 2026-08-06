@@ -78,19 +78,24 @@ public final class PxlI18nDiagnosticKeys {
     /**
      * Unsupported cell type encountered during codec dispatch; {@code {0}}=cellType.
      */
-    public static final String CODEC_CELL_TYPE_UNSUPPORTED = "codec.cellType.unsupported";
+    public static final String CODEC_IMPORT_CELL_TYPE_UNSUPPORTED = "codec.import.cellType.unsupported";
     /**
-     * Value cannot be parsed into the target type; {@code {0}}=value, {@code {1}}=typeName.
+     * Value read from a cell cannot be parsed into the target type; {@code {0}}=value, {@code {1}}=typeName.
      */
-    public static final String CODEC_PARSE_INVALID = "codec.parse.invalid";
+    public static final String CODEC_IMPORT_PARSE_INVALID = "codec.import.parse.invalid";
+    /**
+     * String export value cannot be parsed into the target type before being written; {@code {0}}=value,
+     * {@code {1}}=typeName.
+     */
+    public static final String CODEC_EXPORT_PARSE_INVALID = "codec.export.parse.invalid";
     /**
      * Unsupported conversion between two types; {@code {0}}=sourceType, {@code {1}}=targetType.
      */
-    public static final String CODEC_CONVERT_UNSUPPORTED = "codec.convert.unsupported";
+    public static final String CODEC_EXPORT_CONVERT_UNSUPPORTED = "codec.export.convert.unsupported";
     /**
      * Failed to apply the configured format pattern; {@code {0}}=value.
      */
-    public static final String CODEC_PATTERN_APPLY_FAILED = "codec.pattern.applyFailed";
+    public static final String CODEC_EXPORT_PATTERN_APPLY_FAILED = "codec.export.pattern.applyFailed";
     /**
      * Unsupported column type; {@code {0}}=type.
      */
@@ -102,46 +107,62 @@ public final class PxlI18nDiagnosticKeys {
     /**
      * Formula cell cannot be evaluated by the streaming reader.
      */
-    public static final String CODEC_STREAMING_FORMULA_UNSUPPORTED = "codec.streaming.formulaUnsupported";
+    public static final String CODEC_IMPORT_STREAMING_FORMULA_UNSUPPORTED = "codec.import.streaming.formulaUnsupported";
     /**
-     * Enum constant not found for the given value; {@code {0}}=value, {@code {1}}=enumType.
+     * Enum constant not found for a value read from a cell; {@code {0}}=value, {@code {1}}=enumType.
      */
-    public static final String CODEC_ENUM_PARSE_FAILED = "codec.enum.parseFailed";
+    public static final String CODEC_IMPORT_ENUM_PARSE_FAILED = "codec.import.enum.parseFailed";
     /**
-     * Error while parsing an enum value; {@code {0}}=value, {@code {1}}=enumType.
+     * Enum constant not found for a string export value; {@code {0}}=value, {@code {1}}=enumType.
      */
-    public static final String CODEC_ENUM_PARSE_ERROR = "codec.enum.parseError";
+    public static final String CODEC_EXPORT_ENUM_PARSE_FAILED = "codec.export.enum.parseFailed";
+    /**
+     * Error while parsing an enum value read from a cell; {@code {0}}=value, {@code {1}}=enumType.
+     */
+    public static final String CODEC_IMPORT_ENUM_PARSE_ERROR = "codec.import.enum.parseError";
+    /**
+     * Error while parsing a string export value into an enum; {@code {0}}=value, {@code {1}}=enumType.
+     */
+    public static final String CODEC_EXPORT_ENUM_PARSE_ERROR = "codec.export.enum.parseError";
     /**
      * Error while formatting an enum value; {@code {0}}=enumType.
      */
-    public static final String CODEC_ENUM_FORMAT_ERROR = "codec.enum.formatError";
+    public static final String CODEC_EXPORT_ENUM_FORMAT_ERROR = "codec.export.enum.formatError";
     /**
-     * Custom object parse failed; {@code {0}}=value, {@code {1}}=type.
+     * Custom object parse failed for a value read from a cell; {@code {0}}=value, {@code {1}}=type.
      */
-    public static final String CODEC_OBJECT_PARSE_FAILED = "codec.object.parseFailed";
+    public static final String CODEC_IMPORT_OBJECT_PARSE_FAILED = "codec.import.object.parseFailed";
     /**
-     * Error while parsing a custom object; {@code {0}}=value, {@code {1}}=type.
+     * Custom object parse failed for a string export value; {@code {0}}=value, {@code {1}}=type.
      */
-    public static final String CODEC_OBJECT_PARSE_ERROR = "codec.object.parseError";
+    public static final String CODEC_EXPORT_OBJECT_PARSE_FAILED = "codec.export.object.parseFailed";
+    /**
+     * Error while parsing a custom object read from a cell; {@code {0}}=value, {@code {1}}=type.
+     */
+    public static final String CODEC_IMPORT_OBJECT_PARSE_ERROR = "codec.import.object.parseError";
+    /**
+     * Error while parsing a string export value into a custom object; {@code {0}}=value, {@code {1}}=type.
+     */
+    public static final String CODEC_EXPORT_OBJECT_PARSE_ERROR = "codec.export.object.parseError";
     /**
      * Error while formatting a custom object; {@code {0}}=type.
      */
-    public static final String CODEC_OBJECT_FORMAT_ERROR = "codec.object.formatError";
+    public static final String CODEC_EXPORT_OBJECT_FORMAT_ERROR = "codec.export.object.formatError";
     /**
      * Numeric value exceeds the type's representable precision; {@code {0}}=value, {@code {1}}=type.
      */
-    public static final String CODEC_VALUE_TOO_LARGE = "codec.value.tooLarge";
+    public static final String CODEC_EXPORT_VALUE_TOO_LARGE = "codec.export.value.tooLarge";
 
     // Binders / importers / exporter (internal/core).
 
     /**
      * CSV file count does not match the expected name count.
      */
-    public static final String CORE_CSV_FILE_NAME_COUNT_MISMATCH = "core.csv.fileNameCountMismatch";
+    public static final String CORE_IMPORT_CSV_FILE_NAME_COUNT_MISMATCH = "core.import.csv.fileNameCountMismatch";
     /**
      * CSV name matches more than one candidate sheet; {@code {0}}=csvName.
      */
-    public static final String CORE_CSV_MULTIPLE_SHEET_MATCH = "core.csv.multipleSheetMatch";
+    public static final String CORE_IMPORT_CSV_MULTIPLE_SHEET_MATCH = "core.import.csv.multipleSheetMatch";
     /**
      * Sheet count exceeds the configured maximum; {@code {0}}=max.
      */
@@ -149,47 +170,47 @@ public final class PxlI18nDiagnosticKeys {
     /**
      * Duplicate sheet detected; {@code {0}}=sheetName.
      */
-    public static final String CORE_SHEET_DUPLICATE = "core.sheet.duplicate";
+    public static final String CORE_IMPORT_SHEET_DUPLICATE = "core.import.sheet.duplicate";
     /**
      * Requested sheet not found; {@code {0}}=sheetName.
      */
-    public static final String CORE_SHEET_NOT_FOUND = "core.sheet.notFound";
+    public static final String CORE_IMPORT_SHEET_NOT_FOUND = "core.import.sheet.notFound";
     /**
      * Sheet row count exceeds the configured maximum; {@code {0}}=sheetName, {@code {1}}=max.
      */
-    public static final String CORE_SHEET_ROW_COUNT_EXCEEDED = "core.sheet.rowCountExceeded";
+    public static final String CORE_IMPORT_SHEET_ROW_COUNT_EXCEEDED = "core.import.sheet.rowCountExceeded";
     /**
      * Sheet column count exceeds the configured maximum; {@code {0}}=sheetName, {@code {1}}=max.
      */
-    public static final String CORE_SHEET_COLUMN_COUNT_EXCEEDED = "core.sheet.columnCountExceeded";
+    public static final String CORE_IMPORT_SHEET_COLUMN_COUNT_EXCEEDED = "core.import.sheet.columnCountExceeded";
     /**
      * No header column found in the header row; {@code {0}}=sheetName, {@code {1}}=rowNumber.
      */
-    public static final String CORE_SHEET_NO_HEADER_COLUMN = "core.sheet.noHeaderColumn";
+    public static final String CORE_IMPORT_SHEET_NO_HEADER_COLUMN = "core.import.sheet.noHeaderColumn";
     /**
      * Header row is missing; {@code {0}}=sheetName, {@code {1}}=rowNumber.
      */
-    public static final String CORE_SHEET_NO_HEADER_ROW = "core.sheet.noHeaderRow";
+    public static final String CORE_IMPORT_SHEET_NO_HEADER_ROW = "core.import.sheet.noHeaderRow";
     /**
      * Duplicate columns detected; {@code {0}}=sheetName, {@code {1}}=columnNames.
      */
-    public static final String CORE_COLUMN_DUPLICATE = "core.column.duplicate";
+    public static final String CORE_IMPORT_COLUMN_DUPLICATE = "core.import.column.duplicate";
     /**
      * Expected columns not found; {@code {0}}=sheetName, {@code {1}}=columnNames.
      */
-    public static final String CORE_COLUMN_NOT_FOUND = "core.column.notFound";
+    public static final String CORE_IMPORT_COLUMN_NOT_FOUND = "core.import.column.notFound";
     /**
      * Duplicate values in a unique column; {@code {0}}=duplicate values.
      */
-    public static final String CORE_COLUMN_VALUE_DUPLICATE = "core.column.valueDuplicate";
+    public static final String CORE_IMPORT_COLUMN_VALUE_DUPLICATE = "core.import.column.valueDuplicate";
     /**
      * Unsupported row-index field type; {@code {0}}=fieldName, {@code {1}}=type.
      */
-    public static final String CORE_ROW_INDEX_TYPE_UNSUPPORTED = "core.rowIndex.typeUnsupported";
+    public static final String CORE_IMPORT_ROW_INDEX_TYPE_UNSUPPORTED = "core.import.rowIndex.typeUnsupported";
     /**
      * Merged regions are not supported while streaming.
      */
-    public static final String CORE_STREAMING_MERGED_UNSUPPORTED = "core.streaming.mergedUnsupported";
+    public static final String CORE_IMPORT_STREAMING_MERGED_UNSUPPORTED = "core.import.streaming.mergedUnsupported";
     /**
      * No data supplied to export.
      */
@@ -236,11 +257,11 @@ public final class PxlI18nDiagnosticKeys {
     /**
      * Grouping field not found on the row class; {@code {0}}=fieldName, {@code {1}}=rowClass.
      */
-    public static final String META_SHEET_GROUPING_FIELD_NOT_FOUND = "meta.sheet.groupingFieldNotFound";
+    public static final String META_EXPORT_SHEET_GROUPING_FIELD_NOT_FOUND = "meta.export.sheet.groupingFieldNotFound";
     /**
      * Duplicate sheet name; {@code {0}}=names.
      */
-    public static final String META_DUPLICATE_SHEET_NAME = "meta.duplicateSheetName";
+    public static final String META_EXPORT_DUPLICATE_SHEET_NAME = "meta.export.duplicateSheetName";
     /**
      * Declared type is not a collection type; {@code {0}}=type.
      */
@@ -256,15 +277,15 @@ public final class PxlI18nDiagnosticKeys {
     /**
      * Column count exceeds the configured maximum; {@code {0}}=sheetName, {@code {1}}=max.
      */
-    public static final String META_COLUMN_COUNT_EXCEEDED = "meta.column.countExceeded";
+    public static final String META_EXPORT_COLUMN_COUNT_EXCEEDED = "meta.export.column.countExceeded";
     /**
      * Column range was truncated to fit the sheet limit; {@code {0}}=sheetName.
      */
-    public static final String META_COLUMN_RANGE_TRUNCATED = "meta.column.rangeTruncated";
+    public static final String META_EXPORT_COLUMN_RANGE_TRUNCATED = "meta.export.column.rangeTruncated";
     /**
      * Duplicate column name; {@code {0}}=sheetName, {@code {1}}=names.
      */
-    public static final String META_DUPLICATE_COLUMN_NAME = "meta.duplicateColumnName";
+    public static final String META_EXPORT_DUPLICATE_COLUMN_NAME = "meta.export.duplicateColumnName";
     /**
      * Invalid export number pattern; {@code {0}}=pattern.
      */
@@ -284,7 +305,7 @@ public final class PxlI18nDiagnosticKeys {
     /**
      * Invalid masking regex; {@code {0}}=regex.
      */
-    public static final String META_MASKING_INVALID = "meta.maskingInvalid";
+    public static final String META_EXPORT_MASKING_INVALID = "meta.export.maskingInvalid";
     /**
      * Export converter must return a String; {@code {0}}=type.
      */
@@ -433,11 +454,11 @@ public final class PxlI18nDiagnosticKeys {
     /**
      * Workbook and sheet forms are mutually exclusive; {@code {0}}=workbook form.
      */
-    public static final String BUILDER_WORKBOOK_SHEET_EXCLUSIVE = "builder.workbookSheetExclusive";
+    public static final String BUILDER_EXPORT_WORKBOOK_SHEET_EXCLUSIVE = "builder.export.workbookSheetExclusive";
     /**
      * Either the workbook or the sheet form is required; {@code {0}}=workbook form.
      */
-    public static final String BUILDER_WORKBOOK_SHEET_REQUIRED = "builder.workbookSheetRequired";
+    public static final String BUILDER_EXPORT_WORKBOOK_SHEET_REQUIRED = "builder.export.workbookSheetRequired";
     /**
      * No import source was supplied.
      */
@@ -445,7 +466,7 @@ public final class PxlI18nDiagnosticKeys {
     /**
      * CSV import accepts a single source only.
      */
-    public static final String BUILDER_CSV_SINGLE_SOURCE_ONLY = "builder.csv.singleSourceOnly";
+    public static final String BUILDER_IMPORT_CSV_SINGLE_SOURCE_ONLY = "builder.import.csv.singleSourceOnly";
 
     // Diagnostic log messages (SLF4J WARN, not thrown as exceptions). The *_FAILED keys take the
     // exception message (e.getMessage()) as their last positional parameter.

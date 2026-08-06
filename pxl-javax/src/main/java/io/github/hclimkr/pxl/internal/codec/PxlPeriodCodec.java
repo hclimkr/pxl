@@ -79,7 +79,7 @@ final class PxlPeriodCodec {
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return periodValue;
@@ -116,7 +116,7 @@ final class PxlPeriodCodec {
         try {
             return Period.parse(stringValue);
         } catch (DateTimeParseException dateTimeParseException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "Period"), dateTimeParseException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Period"), dateTimeParseException);
         }
     }
 
@@ -148,13 +148,13 @@ final class PxlPeriodCodec {
                 try {
                     periodValue = Period.parse(stringValue);
                 } catch (DateTimeParseException dateTimeParseException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "Period"), dateTimeParseException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Period"), dateTimeParseException);
                 }
             }
         } else if (object instanceof Period) {
             periodValue = (Period) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Period"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Period"));
         }
 
         if (Objects.isNull(periodValue)) {
@@ -204,9 +204,9 @@ final class PxlPeriodCodec {
 
             return PxlStringCodec.makeExportString(stringValue, columnMeta);
         } catch (ArithmeticException arithmeticException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_VALUE_TOO_LARGE, String.valueOf(periodValue), "Period"), arithmeticException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_VALUE_TOO_LARGE, String.valueOf(periodValue), "Period"), arithmeticException);
         } catch (IllegalArgumentException illegalArgumentException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(periodValue), "Period"), illegalArgumentException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(periodValue), "Period"), illegalArgumentException);
         }
     }
 

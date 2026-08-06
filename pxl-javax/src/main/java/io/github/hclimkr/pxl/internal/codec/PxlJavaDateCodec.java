@@ -63,7 +63,7 @@ final class PxlJavaDateCodec {
                 try {
                     dateValue = PxlDateCellSupport.readNumericCellAsJavaDate(cell, "Date");
                 } catch (NumberFormatException numberFormatException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), "Date"), numberFormatException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), "Date"), numberFormatException);
                 }
                 break;
 
@@ -76,14 +76,14 @@ final class PxlJavaDateCodec {
                 // final boolean booleanCellValue = cell.getBooleanCellValue();
                 // dateValue = DateUtil.getJavaDate(BooleanUtils.toInteger(booleanCellValue));
                 // break;
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
 
             case BLANK:
                 // empty
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return dateValue;
@@ -136,7 +136,7 @@ final class PxlJavaDateCodec {
             // go to next parser
         }
 
-        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "Date"));
+        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Date"));
     }
 
     /**
@@ -172,13 +172,13 @@ final class PxlJavaDateCodec {
                 try {
                     dateValue = exportJavaDateFormatter.parse(stringValue);
                 } catch (ParseException parseException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "Date"), parseException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Date"), parseException);
                 }
             }
         } else if (object instanceof Date) {
             dateValue = (Date) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Date"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Date"));
         }
 
         if (Objects.isNull(dateValue)) {

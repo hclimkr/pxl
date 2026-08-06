@@ -381,7 +381,7 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
                 result = PxlCoreCsvImporter.parseCsv(workbookName, names, streams, workbookClass, option, validator);
             } else {
                 if (names.size() != 1) {
-                    throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.BUILDER_CSV_SINGLE_SOURCE_ONLY));
+                    throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.BUILDER_IMPORT_CSV_SINGLE_SOURCE_ONLY));
                 }
                 result = PxlCoreCsvImporter.parseCsv(names.get(0), streams.get(0), collectionClass, rowClass, option, validator);
             }

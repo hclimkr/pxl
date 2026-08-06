@@ -150,7 +150,7 @@ public final class PxlDateCellSupport {
                 : DateUtil.getLocalDateTime(cell.getNumericCellValue());
 
         if (Objects.isNull(localDateTimeValue)) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), typeName));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), typeName));
         }
 
         return localDateTimeValue;
@@ -177,7 +177,7 @@ public final class PxlDateCellSupport {
                 : DateUtil.getJavaDate(cell.getNumericCellValue());
 
         if (Objects.isNull(dateValue)) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), typeName));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), typeName));
         }
 
         return dateValue;

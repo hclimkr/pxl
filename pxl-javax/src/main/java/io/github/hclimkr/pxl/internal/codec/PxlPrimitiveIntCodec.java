@@ -70,7 +70,7 @@ final class PxlPrimitiveIntCodec {
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return intValue;
@@ -102,13 +102,13 @@ final class PxlPrimitiveIntCodec {
             try {
                 intValue = PxlNumberSupport.requireWithinRange(importDecimalFormatter.parse(stringValue), Integer.MIN_VALUE, Integer.MAX_VALUE, "int").intValue();
             } catch (ParseException parseException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "int"), parseException);
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "int"), parseException);
             }
         } else {
             try {
                 intValue = Integer.parseInt(stringValue);
             } catch (NumberFormatException numberFormatException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "int"), numberFormatException);
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "int"), numberFormatException);
             }
         }
 
@@ -143,13 +143,13 @@ final class PxlPrimitiveIntCodec {
                 try {
                     intValue = Integer.parseInt(stringValue);
                 } catch (NumberFormatException numberFormatException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "int"), numberFormatException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "int"), numberFormatException);
                 }
             }
         } else if (object instanceof Integer) {
             intValue = (Integer) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "int"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "int"));
         }
 
         if (Objects.isNull(intValue)) {
@@ -190,7 +190,7 @@ final class PxlPrimitiveIntCodec {
                 final String stringValue = exportDecimalFormatter.format(intValue);
                 return PxlStringCodec.makeExportString(stringValue, columnMeta);
             } catch (IllegalArgumentException illegalArgumentException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PATTERN_APPLY_FAILED, String.valueOf(intValue)), illegalArgumentException);
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PATTERN_APPLY_FAILED, String.valueOf(intValue)), illegalArgumentException);
             }
         } else if (Objects.nonNull(exportMaskingPattern)) {
             final String stringValue = String.valueOf(intValue);

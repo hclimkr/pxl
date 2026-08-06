@@ -82,7 +82,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
                     .anyMatch(PxlImportSheetMeta::isImportEachCellOfMergedRegion);
 
             if (anySheetImportEachCellOfMergedRegion) {
-                throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_STREAMING_MERGED_UNSUPPORTED));
+                throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_STREAMING_MERGED_UNSUPPORTED));
             }
         }
 
@@ -149,7 +149,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
 
         if (workbookMeta.isImportUsingStreamReader()) {
             if (sheetMeta.isImportEachCellOfMergedRegion()) {
-                throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_STREAMING_MERGED_UNSUPPORTED));
+                throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_STREAMING_MERGED_UNSUPPORTED));
             }
         }
 
@@ -223,7 +223,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
 
             if (matchesSheetName(sheetNames, workbookSheetName)) {
                 if (sheetMeta.getActualImportSheetIndex() >= 0) {
-                    throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_DUPLICATE, sheetNames));
+                    throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_DUPLICATE, sheetNames));
                 }
 
                 sheetMeta.setActualImportSheetIndex(workbookSheetIndex);
@@ -233,7 +233,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
         }
 
         if ((sheetMeta.isRequired()) && (sheetMeta.getActualImportSheetIndex() < 0)) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_NOT_FOUND, sheetNames));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NOT_FOUND, sheetNames));
         }
     }
 
@@ -328,7 +328,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
         // In practice we import Excel files that already conform to the limit below, so the code below has no real effect.
         final int maxNumOfRows = workbookMeta.getImportFileFormat().getMaxImportRows();
         if (actualImportBoundDataRowIndex > maxNumOfRows) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_ROW_COUNT_EXCEEDED, sheetName, String.valueOf(maxNumOfRows)));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_ROW_COUNT_EXCEEDED, sheetName, String.valueOf(maxNumOfRows)));
         }
 
         sheetMeta.setActualImportHeaderRowIndex(actualImportHeaderRowIndex);
@@ -359,7 +359,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
 
                 final boolean noImportColumn = columnMetas.stream().allMatch(c -> c.getActualImportColumnIndex() < 0);
                 if (noImportColumn) {
-                    throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_NO_HEADER_COLUMN, sheetName, String.valueOf(actualImportHeaderRowIndex + 1)));
+                    throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NO_HEADER_COLUMN, sheetName, String.valueOf(actualImportHeaderRowIndex + 1)));
                 }
             } else if (rowIndex >= actualImportOriginDataRowIndex && rowIndex < actualImportBoundDataRowIndex) {
 
@@ -385,7 +385,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
                             PxlReflectionSupport.setFieldValue(rowIndexField, rowObject, rowIndexClass.cast(oneBasedRowIndex));
                         }
                     } catch (Exception e) {
-                        throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_ROW_INDEX_TYPE_UNSUPPORTED, rowIndexField.getName(), rowIndexField.getType().getSimpleName()), e);
+                        throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_ROW_INDEX_TYPE_UNSUPPORTED, rowIndexField.getName(), rowIndexField.getType().getSimpleName()), e);
                     }
                 }
 
@@ -409,7 +409,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
         // If the header row does not physically exist (empty sheet, misconfigured header row index, etc.), column index resolution
         // and required-column checks are never performed at all, so an empty result is silently returned. To match CSV behavior (which always processes a header), fail explicitly here.
         if (!headerRowProcessed) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_NO_HEADER_ROW, sheetName, String.valueOf(actualImportHeaderRowIndex + 1)));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NO_HEADER_ROW, sheetName, String.valueOf(actualImportHeaderRowIndex + 1)));
         }
 
         validateDataUniqueness(rowObjects, columnMetas, sheetName);
@@ -442,7 +442,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
         final short firstCellNum = headerRow.getFirstCellNum();
         final short lastCellNum = headerRow.getLastCellNum();
         if (firstCellNum < 0 || lastCellNum < 0) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_NO_HEADER_ROW, sheetName, String.valueOf(headerRowIndex + 1)));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NO_HEADER_ROW, sheetName, String.valueOf(headerRowIndex + 1)));
         }
 
         int actualImportOriginDataColumnIndex = sheetMeta.getImportFirstDataColumnIndex();
@@ -465,7 +465,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
         // In practice we import Excel files that already conform to the limit below, so the code below has no real effect.
         final int maxNumOfColumns = workbookMeta.getImportFileFormat().getMaxImportColumns();
         if (actualImportBoundDataColumnIndex > maxNumOfColumns) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_COLUMN_COUNT_EXCEEDED, sheetName, String.valueOf(maxNumOfColumns)));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_COLUMN_COUNT_EXCEEDED, sheetName, String.valueOf(maxNumOfColumns)));
         }
 
         sheetMeta.setActualImportOriginDataColumnIndex(actualImportOriginDataColumnIndex);
@@ -498,7 +498,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
 
                 if (candidateColumnNames.contains(columnName)) {
                     if (columnMeta.getActualImportColumnIndex() >= 0) {
-                        throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_COLUMN_DUPLICATE, sheetName, candidateColumnNames));
+                        throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_COLUMN_DUPLICATE, sheetName, candidateColumnNames));
                     }
 
                     columnMeta.setActualImportColumnIndex(importColumnIndex);
@@ -508,7 +508,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
             }
 
             if ((columnMeta.isRequired()) && (columnMeta.getActualImportColumnIndex() < 0)) {
-                throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_COLUMN_NOT_FOUND, sheetName, candidateColumnNames));
+                throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_COLUMN_NOT_FOUND, sheetName, candidateColumnNames));
             }
         }
     }

@@ -72,7 +72,7 @@ final class PxlBigDecimalCodec {
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return bigDecimalValue;
@@ -104,13 +104,13 @@ final class PxlBigDecimalCodec {
             try {
                 bigDecimalValue = (BigDecimal) importDecimalFormatter.parse(stringValue);
             } catch (ParseException parseException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "BigDecimal"), parseException);
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "BigDecimal"), parseException);
             }
         } else {
             try {
                 bigDecimalValue = new BigDecimal(stringValue);
             } catch (NumberFormatException numberFormatException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "BigDecimal"), numberFormatException);
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "BigDecimal"), numberFormatException);
             }
         }
 
@@ -146,13 +146,13 @@ final class PxlBigDecimalCodec {
                     // bigDecimalValue = BigDecimal.valueOf(Double.parseDouble(stringValue));
                     bigDecimalValue = new BigDecimal(stringValue);
                 } catch (NumberFormatException numberFormatException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "BigDecimal"), numberFormatException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "BigDecimal"), numberFormatException);
                 }
             }
         } else if (object instanceof BigDecimal) {
             bigDecimalValue = (BigDecimal) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "BigDecimal"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "BigDecimal"));
         }
 
         if (Objects.isNull(bigDecimalValue)) {
@@ -197,7 +197,7 @@ final class PxlBigDecimalCodec {
                 final String stringValue = exportDecimalFormatter.format(bigDecimalValue);
                 return PxlStringCodec.makeExportString(stringValue, columnMeta);
             } catch (IllegalArgumentException illegalArgumentException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PATTERN_APPLY_FAILED, String.valueOf(bigDecimalValue)), illegalArgumentException);
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PATTERN_APPLY_FAILED, String.valueOf(bigDecimalValue)), illegalArgumentException);
             }
         } else if (Objects.nonNull(exportMaskingPattern)) {
             // final String stringValue = NumberToTextConverter.toText(bigDecimalValue.doubleValue());

@@ -78,7 +78,7 @@ final class PxlDurationCodec {
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return durationValue;
@@ -115,7 +115,7 @@ final class PxlDurationCodec {
         try {
             return Duration.parse(stringValue);
         } catch (DateTimeParseException dateTimeParseException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "Duration"), dateTimeParseException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Duration"), dateTimeParseException);
         }
     }
 
@@ -147,13 +147,13 @@ final class PxlDurationCodec {
                 try {
                     durationValue = Duration.parse(stringValue);
                 } catch (DateTimeParseException dateTimeParseException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "Duration"), dateTimeParseException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Duration"), dateTimeParseException);
                 }
             }
         } else if (object instanceof Duration) {
             durationValue = (Duration) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Duration"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Duration"));
         }
 
         if (Objects.isNull(durationValue)) {
@@ -199,9 +199,9 @@ final class PxlDurationCodec {
 
             return PxlStringCodec.makeExportString(stringValue, columnMeta);
         } catch (ArithmeticException arithmeticException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_VALUE_TOO_LARGE, String.valueOf(durationValue), "Duration"), arithmeticException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_VALUE_TOO_LARGE, String.valueOf(durationValue), "Duration"), arithmeticException);
         } catch (IllegalArgumentException illegalArgumentException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(durationValue), "Duration"), illegalArgumentException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(durationValue), "Duration"), illegalArgumentException);
         }
     }
 

@@ -69,14 +69,14 @@ public final class PxlEnumCodec {
                 break;
 
             case BOOLEAN:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
 
             case BLANK:
                 // empty
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return enumValue;
@@ -143,10 +143,10 @@ public final class PxlEnumCodec {
                     .orElse(null);
 
             if (Objects.isNull(enumValue)) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "enum"));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "enum"));
             }
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "enum"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "enum"));
         }
 
         if (Objects.isNull(enumValue)) {
@@ -189,6 +189,8 @@ public final class PxlEnumCodec {
 
     /**
      * Parses a string into an enum constant of the given class, building import converter metadata from the class.
+     * This overload is reached from the export path only (a string export value is parsed before being written
+     * back out), so failures are reported with the export-side diagnostic keys.
      *
      * @param stringValue the source string
      * @param enumClass   the target enum class
@@ -200,7 +202,7 @@ public final class PxlEnumCodec {
                                              final Class<?> enumClass)
             throws PxlCellCodecException, PxlArgumentException {
 
-        return importStringToEnum(stringValue, PxlImportColumnMeta.PxlImportConverterMeta.of(enumClass));
+        return importStringToEnum(stringValue, PxlImportColumnMeta.PxlImportConverterMeta.of(enumClass), true);
     }
 
     /**
@@ -215,6 +217,25 @@ public final class PxlEnumCodec {
      */
     private static Object importStringToEnum(final String stringValue,
                                              final PxlImportColumnMeta.PxlImportConverterMeta converterMeta)
+            throws PxlCellCodecException {
+
+        return importStringToEnum(stringValue, converterMeta, false);
+    }
+
+    /**
+     * Parses a string into an enum constant using the given import converter metadata, reporting failures with the
+     * diagnostic keys of the calling direction. Both directions parse strings: import reads a cell, and export
+     * resolves a string export value before writing it back out.
+     *
+     * @param stringValue   the source string
+     * @param converterMeta the resolved import converter metadata
+     * @param forExport     {@code true} when called from the export path, {@code false} from the import path
+     * @return the parsed enum constant, or {@code null} when the input is blank or the metadata is {@code null}
+     * @throws PxlCellCodecException if no matching constant is found or the converter throws while parsing
+     */
+    private static Object importStringToEnum(final String stringValue,
+                                             final PxlImportColumnMeta.PxlImportConverterMeta converterMeta,
+                                             final boolean forExport)
             throws PxlCellCodecException {
 
         if (StringUtils.isBlank(stringValue) || Objects.isNull(converterMeta)) {
@@ -252,7 +273,9 @@ public final class PxlEnumCodec {
                             .orElse(null);
 
                     if (Objects.isNull(object)) {
-                        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_ENUM_PARSE_FAILED, String.valueOf(stringValue), enumClass.getSimpleName()));
+                        throw new PxlCellCodecException(PxlI18nDiagnostic.get(forExport ?
+                                PxlI18nDiagnosticKeys.CODEC_EXPORT_ENUM_PARSE_FAILED :
+                                PxlI18nDiagnosticKeys.CODEC_IMPORT_ENUM_PARSE_FAILED, String.valueOf(stringValue), enumClass.getSimpleName()));
                     }
                 }
             }
@@ -260,7 +283,9 @@ public final class PxlEnumCodec {
             throw e;
         } catch (Exception e) {
             final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_ENUM_PARSE_ERROR, String.valueOf(stringValue), enumClass.getSimpleName()), cause);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(forExport ?
+                    PxlI18nDiagnosticKeys.CODEC_EXPORT_ENUM_PARSE_ERROR :
+                    PxlI18nDiagnosticKeys.CODEC_IMPORT_ENUM_PARSE_ERROR, String.valueOf(stringValue), enumClass.getSimpleName()), cause);
         }
 
         return object;
@@ -305,7 +330,7 @@ public final class PxlEnumCodec {
             }
         } catch (Exception e) {
             final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_ENUM_FORMAT_ERROR, enumClass.getSimpleName()), cause);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_ENUM_FORMAT_ERROR, enumClass.getSimpleName()), cause);
         }
 
         return stringValue;

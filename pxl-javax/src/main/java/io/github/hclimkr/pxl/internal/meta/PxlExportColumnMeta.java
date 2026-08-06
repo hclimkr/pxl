@@ -189,7 +189,7 @@ public final class PxlExportColumnMeta {
             try {
                 this.exportMaskingPattern = Pattern.compile(this.exportMasking);
             } catch (IllegalArgumentException illegalArgumentException) {
-                throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_MASKING_INVALID, this.exportMasking), illegalArgumentException);
+                throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_EXPORT_MASKING_INVALID, this.exportMasking), illegalArgumentException);
             }
         } else {
             this.exportMaskingPattern = null;
@@ -529,7 +529,7 @@ public final class PxlExportColumnMeta {
         final long numOfExportedColumns = columnMetas.stream().filter(columnMeta -> columnMeta.getActualExportColumnIndex() >= 0).count();
         final int maxNumOfColumns = workbookMeta.getExportFileFormat().getMaxExportColumns();
         if (numOfExportedColumns > maxNumOfColumns) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_COLUMN_COUNT_EXCEEDED, sheetMeta.getActualExportSheetName(), String.valueOf(maxNumOfColumns)));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_EXPORT_COLUMN_COUNT_EXCEEDED, sheetMeta.getActualExportSheetName(), String.valueOf(maxNumOfColumns)));
         }
 
         // if the column range specified by exportLastDataColumnIndex is smaller than the number of columns to export, some columns cannot be assigned
@@ -537,7 +537,7 @@ public final class PxlExportColumnMeta {
                 .filter(columnMeta -> isForSample ? columnMeta.isExportSampleEnabled() : columnMeta.isExportEnabled())
                 .anyMatch(columnMeta -> columnMeta.getActualExportColumnIndex() < 0);
         if (hasDroppedColumn) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_COLUMN_RANGE_TRUNCATED, sheetMeta.getActualExportSheetName()));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_EXPORT_COLUMN_RANGE_TRUNCATED, sheetMeta.getActualExportSheetName()));
         }
 
         // check for duplicate export column names
@@ -547,7 +547,7 @@ public final class PxlExportColumnMeta {
                 .collect(Collectors.toList());
         final Set<String> duplicatedColumnNames = PxlCollectionUtils.findDuplicates(exportedColumnNames);
         if (!duplicatedColumnNames.isEmpty()) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_DUPLICATE_COLUMN_NAME, sheetMeta.getActualExportSheetName(), duplicatedColumnNames));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_EXPORT_DUPLICATE_COLUMN_NAME, sheetMeta.getActualExportSheetName(), duplicatedColumnNames));
         }
 
         sheetMeta.setActualExportOriginDataColumnIndex(actualExportOriginDataColumnIndex);

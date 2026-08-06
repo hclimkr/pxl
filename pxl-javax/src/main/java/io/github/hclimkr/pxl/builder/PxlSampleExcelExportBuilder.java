@@ -111,11 +111,11 @@ public final class PxlSampleExcelExportBuilder extends PxlAbstractExcelExportBui
             throws PxlException {
 
         if (Objects.nonNull(workbookClass) && PxlCollectionUtils.isNotEmpty(sheetNames)) {
-            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.BUILDER_WORKBOOK_SHEET_EXCLUSIVE, "workbook(Class)"));
+            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.BUILDER_EXPORT_WORKBOOK_SHEET_EXCLUSIVE, "workbook(Class)"));
         }
 
         if (Objects.isNull(workbookClass) && PxlCollectionUtils.isEmpty(sheetNames)) {
-            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.BUILDER_WORKBOOK_SHEET_REQUIRED, "workbook(Class)"));
+            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.BUILDER_EXPORT_WORKBOOK_SHEET_REQUIRED, "workbook(Class)"));
         }
 
         PxlExportWorkbookMeta workbookMeta = null;

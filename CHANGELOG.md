@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Diagnostic message keys are now grouped by binding direction. A key thrown on only one side starts with
+  that direction — `builder.export.*`, `core.import.*`, `meta.export.*`, `codec.import.*` — and the format,
+  where there is one, follows it (`core.import.csv.fileNameCountMismatch`). Keys genuinely shared by both
+  sides keep their neutral name: `core.sheet.countExceeded` is thrown by the exporter and both importers,
+  and `codec.columnType.unsupported` by all three codec entry points. These keys live in `internal/i18n`
+  and are not public API, so calling code is unaffected; what the grouping buys is that a message can no
+  longer sit under a name that hides where it comes from, which had already happened —
+  `builder.workbookSheetExclusive` and `meta.maskingInvalid` both read as neutral although neither is
+  reachable while importing.
+- Codec parse failures now name the direction they came from, and the export wording changed with them.
+  Exporting parses strings too: a `String` field value or an `exportSample` is parsed into the target type
+  before being written back out, so `codec.parse.invalid` and the enum/object parse keys were thrown from
+  both sides under a single name. Each is split in two (`codec.import.parse.invalid` /
+  `codec.export.parse.invalid`, and likewise for `enum.parseFailed`, `enum.parseError`,
+  `object.parseFailed`, `object.parseError`). **The export messages now open with "the export value '…'"**
+  (Korean "출력할 값 '…'") so a failure while writing is no longer worded as one while reading. Import
+  messages are unchanged.
+
 ## [0.9.3] - 2026-08-05
 
 ### Added

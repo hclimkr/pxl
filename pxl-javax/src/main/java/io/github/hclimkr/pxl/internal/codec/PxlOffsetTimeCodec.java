@@ -62,7 +62,7 @@ final class PxlOffsetTimeCodec {
                 try {
                     offsetTimeValue = PxlDateCellSupport.readNumericCellAsLocalDateTime(cell, "OffsetTime").toLocalTime().atOffset(zoneOffset);
                 } catch (NumberFormatException numberFormatException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), "OffsetTime"), numberFormatException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), "OffsetTime"), numberFormatException);
                 }
                 break;
 
@@ -75,14 +75,14 @@ final class PxlOffsetTimeCodec {
                 // final boolean booleanCellValue = cell.getBooleanCellValue();
                 // offsetTimeValue = DateUtil.getLocalDateTime(BooleanUtils.toInteger(booleanCellValue)).toLocalTime().atOffset(zoneOffset);
                 // break;
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
 
             case BLANK:
                 // empty
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return offsetTimeValue;
@@ -126,7 +126,7 @@ final class PxlOffsetTimeCodec {
             // go to next parser
         }
 
-        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "OffsetTime"));
+        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "OffsetTime"));
     }
 
     /**
@@ -168,14 +168,14 @@ final class PxlOffsetTimeCodec {
                     try {
                         offsetTimeValue = OffsetTime.parse(stringValue);
                     } catch (DateTimeParseException isoParseException) {
-                        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "OffsetTime"), isoParseException);
+                        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "OffsetTime"), isoParseException);
                     }
                 }
             }
         } else if (object instanceof OffsetTime) {
             offsetTimeValue = (OffsetTime) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "OffsetTime"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "OffsetTime"));
         }
 
         if (Objects.isNull(offsetTimeValue)) {
@@ -223,7 +223,7 @@ final class PxlOffsetTimeCodec {
 
             return PxlStringCodec.makeExportString(stringValue, columnMeta);
         } catch (DateTimeException dateTimeException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(offsetTimeValue), "OffsetTime"), dateTimeException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(offsetTimeValue), "OffsetTime"), dateTimeException);
         }
     }
 

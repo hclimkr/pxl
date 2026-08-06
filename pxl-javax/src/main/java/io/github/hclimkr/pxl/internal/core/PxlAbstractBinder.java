@@ -129,7 +129,7 @@ abstract class PxlAbstractBinder {
                         .collect(Collectors.joining(", "));
 
                 throw new PxlValidationException(sheetName, null, columnMeta.getActualImportColumnName(), null,
-                        PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_COLUMN_VALUE_DUPLICATE, duplicateValues));
+                        PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_COLUMN_VALUE_DUPLICATE, duplicateValues));
             }
         }
     }

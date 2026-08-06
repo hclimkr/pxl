@@ -67,7 +67,7 @@ final class PxlCharacterCodec {
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return charValue;
@@ -96,7 +96,7 @@ final class PxlCharacterCodec {
         try {
             charValue = stringValue.charAt(0);
         } catch (IndexOutOfBoundsException indexOutOfBoundsException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "Character"), indexOutOfBoundsException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Character"), indexOutOfBoundsException);
         }
 
         return charValue;
@@ -129,13 +129,13 @@ final class PxlCharacterCodec {
                 try {
                     charValue = stringValue.charAt(0);
                 } catch (IndexOutOfBoundsException indexOutOfBoundsException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "Character"), indexOutOfBoundsException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Character"), indexOutOfBoundsException);
                 }
             }
         } else if (object instanceof Character) {
             charValue = (Character) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Character"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Character"));
         }
 
         if (Objects.isNull(charValue)) {

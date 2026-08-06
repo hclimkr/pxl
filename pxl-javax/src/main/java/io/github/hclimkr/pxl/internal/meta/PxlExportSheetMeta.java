@@ -306,7 +306,7 @@ public final class PxlExportSheetMeta {
                         .findFirst()
                         .orElse(null);
                 if (Objects.isNull(exportGroupingField)) {
-                    throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_SHEET_GROUPING_FIELD_NOT_FOUND, exportGroupingFieldName, rowClass.getSimpleName()));
+                    throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_EXPORT_SHEET_GROUPING_FIELD_NOT_FOUND, exportGroupingFieldName, rowClass.getSimpleName()));
                 }
             }
 
@@ -461,7 +461,7 @@ public final class PxlExportSheetMeta {
                 .collect(Collectors.toList());
         final Set<String> duplicatedSheetNames = PxlWorkbookSupport.findDuplicateSheetNames(exportedSheetNames);
         if (!duplicatedSheetNames.isEmpty()) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_DUPLICATE_SHEET_NAME, duplicatedSheetNames));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_EXPORT_DUPLICATE_SHEET_NAME, duplicatedSheetNames));
         }
 
         return sheetMetas;
@@ -528,7 +528,7 @@ public final class PxlExportSheetMeta {
                     .findFirst()
                     .orElse(null);
             if (Objects.isNull(exportGroupingField)) {
-                throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_SHEET_GROUPING_FIELD_NOT_FOUND, exportGroupingFieldName, rowClass.getSimpleName()));
+                throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_EXPORT_SHEET_GROUPING_FIELD_NOT_FOUND, exportGroupingFieldName, rowClass.getSimpleName()));
             }
         }
 

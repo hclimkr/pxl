@@ -106,7 +106,7 @@ final class PxlObjectCodec {
         } else if (objectClass.isInstance(object)) {
             objectValue = object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Object"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Object"));
         }
 
         if (Objects.isNull(objectValue)) {
@@ -149,6 +149,8 @@ final class PxlObjectCodec {
 
     /**
      * Parses a string into an object of the given class, building import converter metadata from the class.
+     * This overload is reached from the export path only (a string export value is parsed before being written
+     * back out), so failures are reported with the export-side diagnostic keys.
      *
      * @param stringValue the source string
      * @param objectClass the target object class
@@ -160,7 +162,7 @@ final class PxlObjectCodec {
                                                final Class<?> objectClass)
             throws PxlCellCodecException, PxlArgumentException {
 
-        return importStringToObject(stringValue, PxlImportColumnMeta.PxlImportConverterMeta.of(objectClass));
+        return importStringToObject(stringValue, PxlImportColumnMeta.PxlImportConverterMeta.of(objectClass), true);
     }
 
     /**
@@ -174,6 +176,25 @@ final class PxlObjectCodec {
      */
     private static Object importStringToObject(final String stringValue,
                                                final PxlImportColumnMeta.PxlImportConverterMeta converterMeta)
+            throws PxlCellCodecException {
+
+        return importStringToObject(stringValue, converterMeta, false);
+    }
+
+    /**
+     * Parses a string into an object using the given import converter metadata, reporting failures with the
+     * diagnostic keys of the calling direction. Both directions parse strings: import reads a cell, and export
+     * resolves a string export value before writing it back out.
+     *
+     * @param stringValue   the source string
+     * @param converterMeta the resolved import converter metadata
+     * @param forExport     {@code true} when called from the export path, {@code false} from the import path
+     * @return the parsed object, or {@code null} when the input is blank or the metadata is {@code null}
+     * @throws PxlCellCodecException if neither a converter method nor a {@link String} constructor is available, or the conversion throws
+     */
+    private static Object importStringToObject(final String stringValue,
+                                               final PxlImportColumnMeta.PxlImportConverterMeta converterMeta,
+                                               final boolean forExport)
             throws PxlCellCodecException {
 
         if (StringUtils.isBlank(stringValue) || Objects.isNull(converterMeta)) {
@@ -192,13 +213,17 @@ final class PxlObjectCodec {
             } else if (Objects.nonNull(constructor)) {
                 object = constructor.newInstance(stringValue);
             } else {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_OBJECT_PARSE_FAILED, String.valueOf(stringValue), objectClass.getSimpleName()));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(forExport ?
+                        PxlI18nDiagnosticKeys.CODEC_EXPORT_OBJECT_PARSE_FAILED :
+                        PxlI18nDiagnosticKeys.CODEC_IMPORT_OBJECT_PARSE_FAILED, String.valueOf(stringValue), objectClass.getSimpleName()));
             }
         } catch (PxlCellCodecException e) {
             throw e;
         } catch (Exception e) {
             final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_OBJECT_PARSE_ERROR, String.valueOf(stringValue), objectClass.getSimpleName()), cause);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(forExport ?
+                    PxlI18nDiagnosticKeys.CODEC_EXPORT_OBJECT_PARSE_ERROR :
+                    PxlI18nDiagnosticKeys.CODEC_IMPORT_OBJECT_PARSE_ERROR, String.valueOf(stringValue), objectClass.getSimpleName()), cause);
         }
 
         return object;
@@ -239,7 +264,7 @@ final class PxlObjectCodec {
             }
         } catch (Exception e) {
             final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_OBJECT_FORMAT_ERROR, objectClass.getSimpleName()), cause);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_OBJECT_FORMAT_ERROR, objectClass.getSimpleName()), cause);
         }
 
         return stringValue;

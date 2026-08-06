@@ -61,7 +61,7 @@ final class PxlOffsetDateTimeCodec {
                 try {
                     offsetDateTimeValue = PxlDateCellSupport.readNumericCellAsLocalDateTime(cell, "OffsetDateTime").atZone(ZoneId.systemDefault()).toOffsetDateTime();
                 } catch (NumberFormatException numberFormatException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(cell), "OffsetDateTime"), numberFormatException);
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), "OffsetDateTime"), numberFormatException);
                 }
                 break;
 
@@ -74,14 +74,14 @@ final class PxlOffsetDateTimeCodec {
                 // final boolean booleanCellValue = cell.getBooleanCellValue();
                 // offsetDateTimeValue = DateUtil.getLocalDateTime(BooleanUtils.toInteger(booleanCellValue)).atZone(ZoneId.systemDefault()).toOffsetDateTime();
                 // break;
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
 
             case BLANK:
                 // empty
                 break;
 
             default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
         }
 
         return offsetDateTimeValue;
@@ -125,7 +125,7 @@ final class PxlOffsetDateTimeCodec {
             // go to next parser
         }
 
-        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "OffsetDateTime"));
+        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "OffsetDateTime"));
     }
 
     /**
@@ -167,14 +167,14 @@ final class PxlOffsetDateTimeCodec {
                     try {
                         offsetDateTimeValue = OffsetDateTime.parse(stringValue);
                     } catch (DateTimeParseException isoParseException) {
-                        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(stringValue), "OffsetDateTime"), isoParseException);
+                        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "OffsetDateTime"), isoParseException);
                     }
                 }
             }
         } else if (object instanceof OffsetDateTime) {
             offsetDateTimeValue = (OffsetDateTime) object;
         } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "OffsetDateTime"));
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "OffsetDateTime"));
         }
 
         if (Objects.isNull(offsetDateTimeValue)) {
@@ -222,7 +222,7 @@ final class PxlOffsetDateTimeCodec {
 
             return PxlStringCodec.makeExportString(stringValue, columnMeta);
         } catch (DateTimeException dateTimeException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, String.valueOf(offsetDateTimeValue), "OffsetDateTime"), dateTimeException);
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(offsetDateTimeValue), "OffsetDateTime"), dateTimeException);
         }
     }
 

@@ -416,11 +416,11 @@ public class PxlI18nTests {
         try {
             // codec.parse.invalid: {0}=value, {1}=type. Verifies MessageFormat substitution and quote escaping ('') in both locales.
             Pxl.setMessageLocale(Locale.ENGLISH);
-            assertThat(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, "abc", "Integer"))
+            assertThat(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, "abc", "Integer"))
                     .isEqualTo("'abc' is not a valid Integer value.");
 
             Pxl.setMessageLocale(Locale.KOREAN);
-            assertThat(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_PARSE_INVALID, "abc", "Integer"))
+            assertThat(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, "abc", "Integer"))
                     .isEqualTo("'abc'은(는) 올바른 형식의 Integer 값이 아닙니다.");
         } finally {
             Pxl.resetMessageLocale();
@@ -432,11 +432,11 @@ public class PxlI18nTests {
         try {
             // codec.convert.unsupported: verifies the Korean particle literal '(으)로' and quotes are rendered as-is.
             Pxl.setMessageLocale(Locale.ENGLISH);
-            assertThat(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, "String", "LocalDate"))
+            assertThat(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, "String", "LocalDate"))
                     .isEqualTo("a value of type 'String' cannot be converted to LocalDate.");
 
             Pxl.setMessageLocale(Locale.KOREAN);
-            assertThat(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_CONVERT_UNSUPPORTED, "String", "LocalDate"))
+            assertThat(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, "String", "LocalDate"))
                     .isEqualTo("'String' 타입의 값을 LocalDate(으)로 변환할 수 없습니다.");
         } finally {
             Pxl.resetMessageLocale();

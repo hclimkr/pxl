@@ -78,7 +78,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
         PxlAssertSupport.notNull(workbookClass, "workbookClass");
 
         if (PxlCollectionUtils.size(csvNames) != PxlCollectionUtils.size(csvStreams)) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_CSV_FILE_NAME_COUNT_MISMATCH));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_CSV_FILE_NAME_COUNT_MISMATCH));
         }
 
         final Object workbookObject = PxlReflectionSupport.newClassInstance(workbookClass);
@@ -193,7 +193,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
             throws PxlDataException {
 
         if (PxlCollectionUtils.size(csvNames) != PxlCollectionUtils.size(csvStreams)) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_CSV_FILE_NAME_COUNT_MISMATCH));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_CSV_FILE_NAME_COUNT_MISMATCH));
         }
 
         final int numOfSheets = PxlCollectionUtils.size(csvNames);
@@ -226,11 +226,11 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
                 if (matchesSheetName(sheetNames, csvName)) {
                     if (sheetMeta.getActualImportSheetIndex() >= 0) {
-                        throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_DUPLICATE, sheetNames));
+                        throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_DUPLICATE, sheetNames));
                     }
 
                     if (!claimedSheetStreamIndexes.add(csvStreamIndex)) {
-                        throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_CSV_MULTIPLE_SHEET_MATCH, csvName));
+                        throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_CSV_MULTIPLE_SHEET_MATCH, csvName));
                     }
 
                     sheetMeta.setActualImportSheetIndex(csvStreamIndex);
@@ -240,7 +240,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
             }
 
             if ((sheetMeta.isRequired()) && (sheetMeta.getActualImportSheetIndex() < 0)) {
-                throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_NOT_FOUND, sheetNames));
+                throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NOT_FOUND, sheetNames));
             }
         }
     }
@@ -386,7 +386,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
         final int maxNumOfRows = workbookMeta.getImportFileFormat().getMaxImportRows();
         if (actualImportBoundDataRowIndex - actualImportOriginDataRowIndex > maxNumOfRows) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_ROW_COUNT_EXCEEDED, sheetName, String.valueOf(maxNumOfRows)));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_ROW_COUNT_EXCEEDED, sheetName, String.valueOf(maxNumOfRows)));
         }
 
         sheetMeta.setActualImportHeaderRowIndex(actualImportHeaderRowIndex);
@@ -398,7 +398,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
         final boolean noImportColumn = columnMetas.stream().allMatch(c -> c.getActualImportColumnIndex() < 0);
         if (noImportColumn) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_NO_HEADER_COLUMN, sheetName, String.valueOf(actualImportHeaderRowIndex + 1)));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NO_HEADER_COLUMN, sheetName, String.valueOf(actualImportHeaderRowIndex + 1)));
         }
 
         // Obtain the row index field.
@@ -433,7 +433,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
                         PxlReflectionSupport.setFieldValue(rowIndexField, rowObject, rowIndexClass.cast(oneBasedRowIndex));
                     }
                 } catch (Exception e) {
-                    throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_ROW_INDEX_TYPE_UNSUPPORTED, rowIndexField.getName(), rowIndexField.getType().getSimpleName()), e);
+                    throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_ROW_INDEX_TYPE_UNSUPPORTED, rowIndexField.getName(), rowIndexField.getType().getSimpleName()), e);
                 }
             }
 
@@ -479,14 +479,14 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
         final CSVRecord csvRecord = PxlCollectionUtils.get(csvRecords, headerRowIndex);
         if (Objects.isNull(csvRecord)) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_NO_HEADER_ROW, csvName, String.valueOf(headerRowIndex + 1)));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NO_HEADER_ROW, csvName, String.valueOf(headerRowIndex + 1)));
         }
 
         final int firstCellNum = 0;
         final int lastCellNum = csvRecord.size();
 /*
         if (firstCellNum < 0 || lastCellNum < 0) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_NO_HEADER_ROW, csvName, String.valueOf(headerRowIndex + 1)));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NO_HEADER_ROW, csvName, String.valueOf(headerRowIndex + 1)));
         }
 */
 
@@ -509,7 +509,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
         final int maxNumOfColumns = workbookMeta.getImportFileFormat().getMaxImportColumns();
         if (actualImportBoundDataColumnIndex - actualImportOriginDataColumnIndex > maxNumOfColumns) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_COLUMN_COUNT_EXCEEDED, csvName, String.valueOf(maxNumOfColumns)));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_COLUMN_COUNT_EXCEEDED, csvName, String.valueOf(maxNumOfColumns)));
         }
 
         sheetMeta.setActualImportOriginDataColumnIndex(actualImportOriginDataColumnIndex);
@@ -530,7 +530,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
                 if (candidateColumnNames.contains(columnName)) {
                     if (columnMeta.getActualImportColumnIndex() >= 0) {
-                        throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_COLUMN_DUPLICATE, csvName, candidateColumnNames));
+                        throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_COLUMN_DUPLICATE, csvName, candidateColumnNames));
                     }
 
                     columnMeta.setActualImportColumnIndex(importColumnIndex);
@@ -540,7 +540,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
             }
 
             if ((columnMeta.isRequired()) && (columnMeta.getActualImportColumnIndex() < 0)) {
-                throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_COLUMN_NOT_FOUND, csvName, candidateColumnNames));
+                throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_COLUMN_NOT_FOUND, csvName, candidateColumnNames));
             }
         }
     }
