@@ -1156,8 +1156,9 @@ public class PxlExcelExportTests {
     }
 
     @Test
-    public void exportGrouping_nullRowObject_throws() {
-        // A null row object cannot be read for its grouping key / cell values and is rejected fail-fast.
+    public void exportGrouping_nullRowObject_throwsNamingPosition() {
+        // The grouping branch reads a field off every row to build its key, so it meets a null row before the
+        // write loop does. It is rejected by the same up-front check, with the same message.
         final GroupedWorkbook workbook = new GroupedWorkbook();
         workbook.setWorkbookName("Grouped");
         workbook.setEmployees(Arrays.asList(
@@ -1165,10 +1166,61 @@ public class PxlExcelExportTests {
                 null));
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        assertThrows(PxlCellCodecException.class, () ->
+        final PxlDataException exception = assertThrows(PxlDataException.class, () ->
                 pxl.exportExcel()
                         .workbook(workbook)
                         .override(noValidationOption())
                         .toStream(outputStream));
+
+        assertThat(exception.getMessage()).contains("Employees").contains("2");
+    }
+
+    // ------------------------------------------------------------------
+    // A null row object names its position rather than an innocent column
+    // ------------------------------------------------------------------
+
+    @Test
+    public void exportExcel_nullRowObject_throwsNamingPosition() {
+        // Reading a field off a null row raises a NullPointerException, which used to arrive as a
+        // PxlCellCodecException tagged with the first column - a column that did nothing wrong, since no codec ran.
+        // The failure now says what is actually wrong and where, and no cell-codec error is reported.
+        final List<Employee> employees = Arrays.asList(
+                Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"),
+                null,
+                Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales"));
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        final PxlDataException exception = assertThrows(PxlDataException.class, () ->
+                pxl.exportExcel()
+                        .sheet(Employee.class, employees, "Employees")
+                        .override(noValidationOption())
+                        .toStream(outputStream));
+
+        assertThat(exception.getMessage())
+                .as("names the sheet and the one-based position of the null element")
+                .contains("Employees")
+                .contains("2");
+        assertThat(exception).isNotInstanceOf(PxlCellCodecException.class);
+        assertThat(exception.getMessage())
+                .as("no column should be blamed")
+                .doesNotContain("Name");
+    }
+
+    @Test
+    public void exportExcel_nullRowObject_writesNothing() throws Exception {
+        // The check runs before the destination is opened, so the failure leaves no partial file behind -
+        // the same guarantee the builder's prepare()/writeTo() ordering gives every other export failure.
+        final List<Employee> employees = Arrays.asList(
+                Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"),
+                null);
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        assertThrows(PxlDataException.class, () ->
+                pxl.exportExcel()
+                        .sheet(Employee.class, employees, "Employees")
+                        .override(noValidationOption())
+                        .toFile(excelFile));
+
+        assertThat(excelFile).as("a failed export must not leave a file behind").doesNotExist();
     }
 }

@@ -247,6 +247,10 @@ public final class PxlI18nDiagnosticKeys {
      * Export row count exceeds the configured maximum; {@code {0}}=sheetName, {@code {1}}=max.
      */
     public static final String CORE_EXPORT_SHEET_ROW_COUNT_EXCEEDED = "core.export.sheetRowCountExceeded";
+    /**
+     * A row object to export is {@code null}; {@code {0}}=sheetName, {@code {1}}=one-based position in the row collection.
+     */
+    public static final String CORE_EXPORT_ROW_NULL = "core.export.rowNull";
 
     // Resolved metadata (internal/meta).
 

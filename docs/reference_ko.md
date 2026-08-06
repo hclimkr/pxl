@@ -627,7 +627,7 @@ private String code;
 | `PxlReflectionException`  | 리플렉션 실패 시                                                                                                                       |
 | `PxlArgumentException`    | 인자/애노테이션 설정 오류 시                                                                                                           |
 | `PxlNullPointerException` | 필수(non-null) 인자가 `null`일 때                                                                                                      |
-| `PxlDataException`        | 워크북/CSV 형태가 기대와 다를 때 — 대상 시트·컬럼을 못 찾거나 중복, 시트/행/열 수 한도 초과, 헤더 행·컬럼 없음, export할 데이터 없음, 이름·클래스·스트림 개수 불일치, 행/열 인덱스 설정 위반 |
+| `PxlDataException`        | 워크북/CSV 형태가 기대와 다를 때 — 대상 시트·컬럼을 못 찾거나 중복, 시트/행/열 수 한도 초과, 헤더 행·컬럼 없음, export할 데이터 없음, export할 컬렉션에 `null` 원소 포함, 이름·클래스·스트림 개수 불일치, 행/열 인덱스 설정 위반 |
 | `PxlIOException`          | I/O 오류일 때 — 파일·스트림을 열거나 읽지 못함(파일 없음·미지원 포맷·`importPassword` 불일치로 복호화 실패 포함), 쓰기 실패             |
 | `PxlI18nException`        | i18n ResourceBundle을 못 찾을 때                                                                                                       |
 | `PxlSystemException`      | PXL이 분류하지 않은 실패일 때 — 위 타입에 해당하지 않는 예외(POI의 예기치 못한 런타임 실패 등)를 경계에서 감싼 것(원인은 `getCause()`) |

@@ -18,6 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was. The sheet form (`sheet(...)`) binds no `@PxlSheet` field, so there a wildcard `PxlImportSheetOption` is the
   sheet-level route.
 
+### Fixed
+
+- A `null` row object in the collection handed to an export is now reported as what it is. Reading a field off
+  it raises a `NullPointerException`, which arrived as a `PxlCellCodecException` tagged with the **first
+  column** — a column that did nothing wrong, since no codec had run — and carrying `java.lang.NullPointerException`
+  as its entire message, because the reflective read fails before any conversion. The failure is now a
+  `PxlDataException` naming the sheet and the one-based position of the null element
+  (`core.export.rowNull`), raised before a row is created, so nothing is written and no column is blamed.
+  <br/>The grouping branch (`exportGroupingFieldName`) had been treating a null row as a legitimate value,
+  routing it to the `(ungrouped)` sheet, only for writing that sheet to fail the same way — the two halves of
+  the same loop disagreed about whether a null row was allowed. The check there is gone; the collection is
+  validated once, up front, for both branches.
+
 ### Changed
 
 - The CSV column cap is 16,384 rather than 100, on both the import and the export constant

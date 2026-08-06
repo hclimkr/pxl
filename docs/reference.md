@@ -631,7 +631,7 @@ For details, see "Exception/Diagnostic Message Language" in [i18n](#i18n).
 | `PxlReflectionException`  | On reflection failure                   |
 | `PxlArgumentException`    | On an argument/annotation configuration error |
 | `PxlNullPointerException` | When a required (non-null) argument is `null` |
-| `PxlDataException`        | When the workbook/CSV shape does not match what the binding expects — a target sheet/column that cannot be found or is duplicated, a sheet/row/column count limit exceeded, a missing header row/column, nothing to export, counts that do not line up (names vs. classes vs. streams), or invalid row/column index settings |
+| `PxlDataException`        | When the workbook/CSV shape does not match what the binding expects — a target sheet/column that cannot be found or is duplicated, a sheet/row/column count limit exceeded, a missing header row/column, nothing to export, a `null` element in the collection to export, counts that do not line up (names vs. classes vs. streams), or invalid row/column index settings |
 | `PxlIOException`          | On an I/O error — a source that cannot be opened or read (a missing file, an unsupported format, or decryption failing on a wrong `importPassword`), or a failed write |
 | `PxlI18nException`        | When an i18n ResourceBundle cannot be found |
 | `PxlSystemException`      | On a failure PXL does not classify — anything not covered by the types above (e.g. an unexpected runtime failure from POI), wrapped at the boundary with the original as its `getCause()` |

@@ -419,11 +419,12 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
     /**
      * Builds one logical sheet, splitting into multiple physical sheets when a grouping field is set. (export)
      * Computes the 0-based header/data row bounds from the 1-based meta values, resolves the column metas,
-     * and enforces the row- and sheet-count limits (accounting for group expansion).
+     * rejects a {@code null} row object before anything is written, and enforces the row- and sheet-count limits
+     * (accounting for group expansion).
      *
      * @param sheetMeta  the resolved sheet meta
-     * @param rowObjects the row objects to write (may be {@code null} or empty)
-     * @throws PxlDataException        if a row- or sheet-count limit is exceeded
+     * @param rowObjects the row objects to write (may be {@code null} or empty, but must contain no {@code null} element)
+     * @throws PxlDataException        if a row object is {@code null}, or a row- or sheet-count limit is exceeded
      * @throws PxlCellCodecException   if a cell value cannot be encoded
      * @throws PxlReflectionException  if reading a field or resolving a generic type fails
      * @throws PxlNullPointerException if a required argument is null
@@ -486,12 +487,21 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
             return;
         }
 
+        int rowPosition = 0;
+        for (final Object rowObject : PxlCollectionUtils.emptyIfNull(rowObjects)) {
+            rowPosition++;
+            if (Objects.isNull(rowObject)) {
+                throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_EXPORT_ROW_NULL,
+                        sheetMeta.getActualExportSheetName(), String.valueOf(rowPosition)));
+            }
+        }
+
         if (isGrouping) {
             // Preserve order with a LinkedHashMap so that group sheets are created in data appearance (insertion) order.
             final Map<Object, List<Object>> groupMap = new LinkedHashMap<>();
-            for (final Object object : rowObjects) {
-                final Object key = Objects.isNull(object) ? null : PxlReflectionSupport.getFieldValue(groupingField, object);
-                groupMap.computeIfAbsent(key, k -> new ArrayList<>()).add(object);
+            for (final Object rowObject : rowObjects) {
+                final Object key = PxlReflectionSupport.getFieldValue(groupingField, rowObject);
+                groupMap.computeIfAbsent(key, k -> new ArrayList<>()).add(rowObject);
             }
 
             // A group export creates as many sheets as the groupMap size (there are no empty groups),
@@ -501,7 +511,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
             }
 
             for (Object key : groupMap.keySet()) {
-                // A null group key (value is null or reflection failed) is labeled with a placeholder ("(ungrouped)").
+                // A null group key (the grouping field's own value is null) is labeled with a placeholder ("(ungrouped)").
                 final Object keyLabel = Objects.isNull(key) ? "(ungrouped)" : key;
                 final String desiredSheetName = sheetMeta.getActualExportSheetName() + " - " + keyLabel;
                 // If different group keys collide on the same safe sheet name (invalid-char replacement / 31-char truncation), createSheet throws,
