@@ -4,6 +4,7 @@ import com.github.pjfanning.xlsx.impl.StreamingCell;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlCellCodecException;
 import io.github.hclimkr.pxl.exception.PxlReflectionException;
+import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlExportColumnMeta;
@@ -21,6 +22,7 @@ import java.math.BigInteger;
 import java.time.*;
 import java.util.Date;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Central type dispatcher for cell value conversion. Routes each column, based on its resolved
@@ -248,101 +250,125 @@ public final class PxlCellResolver {
     }
 
     /**
-     * Writes a value into a cell according to the column's declared type. Does nothing when the cell, {@code columnMeta},
-     * or resolved column class is {@code null}. A {@code null} value (or a blank {@link String}) writes the column's
-     * configured export-null string. Otherwise dispatches on {@code columnMeta.getColumnClass()} to the matching per-type codec.
+     * Writes a value into a cell according to the column's declared type and returns the string form of what was
+     * written. A {@code null} cell computes the string without writing anything, which is what
+     * {@link #buildDataString} uses to render a value for a format that has no cells. Answers {@code null} when
+     * {@code columnMeta} or the resolved column class is {@code null}. A {@code null} value (or a blank
+     * {@link String}) yields the column's configured export-null string. Otherwise dispatches on
+     * {@code columnMeta.getColumnClass()} to the matching per-type codec.
      *
-     * @param cell       the target cell (may be {@code null})
+     * @param cell       the target cell, or {@code null} to only compute the string
      * @param object     the source value
      * @param columnMeta resolved export metadata for the target column (may be {@code null})
+     * @return the string form of the written value, or {@code null} when there is no metadata to write by
      * @throws PxlCellCodecException  if the column class is not a supported cell value type or a delegated codec cannot encode the value
      * @throws PxlArgumentException   if a delegated codec is given an invalid converter, styler, or unsupported target
      * @throws PxlReflectionException if a delegated codec fails with a reflection error
      */
-    public static void buildDataCell(final Cell cell,
-                                     final Object object,
-                                     final PxlExportColumnMeta columnMeta)
+    public static String buildDataCell(@Nullable final Cell cell,
+                                       final Object object,
+                                       final PxlExportColumnMeta columnMeta)
             throws PxlCellCodecException, PxlArgumentException, PxlReflectionException {
 
-        if (Objects.isNull(cell) || Objects.isNull(columnMeta)) {
-            return;
+        if (Objects.isNull(columnMeta)) {
+            return null;
         }
 
         if (Objects.isNull(object) || ((object instanceof String) && StringUtils.isBlank((String) object))) {
             final String exportNullString = columnMeta.getExportNullString();
-            cell.setCellValue(exportNullString);
-            return;
+            Optional.ofNullable(cell).ifPresent(targetCell -> targetCell.setCellValue(exportNullString));
+            return exportNullString;
         }
 
         final Class<?> columnClass = columnMeta.getColumnClass();
 
         if (Objects.isNull(columnClass)) {
-            return;
+            return null;
         }
 
         if (columnClass == String.class) {
-            PxlStringCodec.buildStringCell(cell, object, columnMeta);
+            return PxlStringCodec.buildStringCell(cell, object, columnMeta);
         } else if (columnClass == byte.class) {
-            PxlPrimitiveByteCodec.buildPrimitiveByteCell(cell, object, columnMeta);
+            return PxlPrimitiveByteCodec.buildPrimitiveByteCell(cell, object, columnMeta);
         } else if (columnClass == Byte.class) {
-            PxlByteCodec.buildByteCell(cell, object, columnMeta);
+            return PxlByteCodec.buildByteCell(cell, object, columnMeta);
         } else if (columnClass == short.class) {
-            PxlPrimitiveShortCodec.buildPrimitiveShortCell(cell, object, columnMeta);
+            return PxlPrimitiveShortCodec.buildPrimitiveShortCell(cell, object, columnMeta);
         } else if (columnClass == Short.class) {
-            PxlShortCodec.buildShortCell(cell, object, columnMeta);
+            return PxlShortCodec.buildShortCell(cell, object, columnMeta);
         } else if (columnClass == int.class) {
-            PxlPrimitiveIntCodec.buildPrimitiveIntCell(cell, object, columnMeta);
+            return PxlPrimitiveIntCodec.buildPrimitiveIntCell(cell, object, columnMeta);
         } else if (columnClass == Integer.class) {
-            PxlIntegerCodec.buildIntegerCell(cell, object, columnMeta);
+            return PxlIntegerCodec.buildIntegerCell(cell, object, columnMeta);
         } else if (columnClass == long.class) {
-            PxlPrimitiveLongCodec.buildPrimitiveLongCell(cell, object, columnMeta);
+            return PxlPrimitiveLongCodec.buildPrimitiveLongCell(cell, object, columnMeta);
         } else if (columnClass == Long.class) {
-            PxlLongCodec.buildLongCell(cell, object, columnMeta);
+            return PxlLongCodec.buildLongCell(cell, object, columnMeta);
         } else if (columnClass == double.class) {
-            PxlPrimitiveDoubleCodec.buildPrimitiveDoubleCell(cell, object, columnMeta);
+            return PxlPrimitiveDoubleCodec.buildPrimitiveDoubleCell(cell, object, columnMeta);
         } else if (columnClass == Double.class) {
-            PxlDoubleCodec.buildDoubleCell(cell, object, columnMeta);
+            return PxlDoubleCodec.buildDoubleCell(cell, object, columnMeta);
         } else if (columnClass == float.class) {
-            PxlPrimitiveFloatCodec.buildPrimitiveFloatCell(cell, object, columnMeta);
+            return PxlPrimitiveFloatCodec.buildPrimitiveFloatCell(cell, object, columnMeta);
         } else if (columnClass == Float.class) {
-            PxlFloatCodec.buildFloatCell(cell, object, columnMeta);
+            return PxlFloatCodec.buildFloatCell(cell, object, columnMeta);
         } else if (columnClass == char.class) {
-            PxlPrimitiveCharCodec.buildPrimitiveCharCell(cell, object, columnMeta);
+            return PxlPrimitiveCharCodec.buildPrimitiveCharCell(cell, object, columnMeta);
         } else if (columnClass == Character.class) {
-            PxlCharacterCodec.buildCharacterCell(cell, object, columnMeta);
+            return PxlCharacterCodec.buildCharacterCell(cell, object, columnMeta);
         } else if (columnClass == boolean.class || columnClass == Boolean.class) {
-            PxlBooleanCodec.buildBooleanCell(cell, object, columnMeta);
+            return PxlBooleanCodec.buildBooleanCell(cell, object, columnMeta);
         } else if (columnClass == BigInteger.class) {
-            PxlBigIntegerCodec.buildBigIntegerCell(cell, object, columnMeta);
+            return PxlBigIntegerCodec.buildBigIntegerCell(cell, object, columnMeta);
         } else if (columnClass == BigDecimal.class) {
-            PxlBigDecimalCodec.buildBigDecimalCell(cell, object, columnMeta);
+            return PxlBigDecimalCodec.buildBigDecimalCell(cell, object, columnMeta);
         } else if (columnClass == Date.class) {
-            PxlJavaDateCodec.buildJavaDateCell(cell, object, columnMeta);
+            return PxlJavaDateCodec.buildJavaDateCell(cell, object, columnMeta);
         } else if (columnClass == LocalDate.class) {
-            PxlLocalDateCodec.buildLocalDateCell(cell, object, columnMeta);
+            return PxlLocalDateCodec.buildLocalDateCell(cell, object, columnMeta);
         } else if (columnClass == LocalTime.class) {
-            PxlLocalTimeCodec.buildLocalTimeCell(cell, object, columnMeta);
+            return PxlLocalTimeCodec.buildLocalTimeCell(cell, object, columnMeta);
         } else if (columnClass == LocalDateTime.class) {
-            PxlLocalDateTimeCodec.buildLocalDateTimeCell(cell, object, columnMeta);
+            return PxlLocalDateTimeCodec.buildLocalDateTimeCell(cell, object, columnMeta);
         } else if (columnClass == ZonedDateTime.class) {
-            PxlZonedDateTimeCodec.buildZonedDateTimeCell(cell, object, columnMeta);
+            return PxlZonedDateTimeCodec.buildZonedDateTimeCell(cell, object, columnMeta);
         } else if (columnClass == OffsetTime.class) {
-            PxlOffsetTimeCodec.buildOffsetTimeCell(cell, object, columnMeta);
+            return PxlOffsetTimeCodec.buildOffsetTimeCell(cell, object, columnMeta);
         } else if (columnClass == OffsetDateTime.class) {
-            PxlOffsetDateTimeCodec.buildOffsetDateTimeCell(cell, object, columnMeta);
+            return PxlOffsetDateTimeCodec.buildOffsetDateTimeCell(cell, object, columnMeta);
         } else if (columnClass == Duration.class) {
-            PxlDurationCodec.buildDurationCell(cell, object, columnMeta);
+            return PxlDurationCodec.buildDurationCell(cell, object, columnMeta);
         } else if (columnClass == Period.class) {
-            PxlPeriodCodec.buildPeriodCell(cell, object, columnMeta);
+            return PxlPeriodCodec.buildPeriodCell(cell, object, columnMeta);
         } else if (columnClass.isEnum()) {
-            PxlEnumCodec.buildEnumCell(cell, object, columnMeta);
+            return PxlEnumCodec.buildEnumCell(cell, object, columnMeta);
         } else if (PxlClassSupport.isCollectionClass(columnClass)) {
-            PxlCollectionCodec.buildCollectionCell(cell, object, columnMeta);
+            return PxlCollectionCodec.buildCollectionCell(cell, object, columnMeta);
         } else if (columnMeta.isExportCustomConvertable()) {
-            PxlObjectCodec.buildObjectCell(cell, object, columnMeta);
+            return PxlObjectCodec.buildObjectCell(cell, object, columnMeta);
         } else {
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_COLUMN_TYPE_UNSUPPORTED, String.valueOf(columnClass.getSimpleName())));
         }
+    }
+
+    /**
+     * Renders a value as the string an export would write, without a cell to write it into. This is
+     * {@link #buildDataCell} with a {@code null} cell: the same dispatch and the same per-column settings
+     * (pattern, masking, trim, export-null string, collection separator, custom converter) decide the result,
+     * so a cell-less format renders a value exactly as the cell-based one would.
+     *
+     * @param object     the source value
+     * @param columnMeta resolved export metadata for the target column (may be {@code null})
+     * @return the string form of the value, or {@code null} when there is no metadata to render by
+     * @throws PxlCellCodecException  if the column class is not a supported cell value type or a delegated codec cannot encode the value
+     * @throws PxlArgumentException   if a delegated codec is given an invalid converter, styler, or unsupported target
+     * @throws PxlReflectionException if a delegated codec fails with a reflection error
+     */
+    public static String buildDataString(final Object object,
+                                         final PxlExportColumnMeta columnMeta)
+            throws PxlCellCodecException, PxlArgumentException, PxlReflectionException {
+
+        return buildDataCell(null, object, columnMeta);
     }
 
 }

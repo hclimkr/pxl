@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `PxlCellResolver.buildDataCell` returns the string it wrote rather than `void`, and computes that string
+  without writing when given a `null` cell; `buildDataString(value, columnMeta)` exposes the cell-less call.
+  The Excel path is untouched — its two call sites ignore the return value, and all 30 codecs already
+  returned their string and guarded the cell. `internal/codec` is not public API.
 - Diagnostic message keys are now grouped by binding direction. A key thrown on only one side starts with
   that direction — `builder.export.*`, `core.import.*`, `meta.export.*`, `codec.import.*` — and the format,
   where there is one, follows it (`core.import.csv.fileNameCountMismatch`). Keys genuinely shared by both
