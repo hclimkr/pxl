@@ -3,11 +3,13 @@ package io.github.hclimkr.pxl;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlCellCodecException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
+import io.github.hclimkr.pxl.option.PxlExportSheetOption;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
 import io.github.hclimkr.pxl.type.PxlExcelEngine;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,10 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -459,5 +458,72 @@ public class PxlSampleExcelExportTests {
     public void exportSample_nullWorkbookClass_throws() {
         assertThrows(PxlNullPointerException.class, () -> pxl.exportSampleExcel()
                 .workbook(null));
+    }
+
+    // ------------------------------------------------------------------
+    // The sample row is always written, so exportLastDataRowIndex must not shrink the ranges around it
+    // ------------------------------------------------------------------
+
+    @Test
+    public void exportSample_lastDataRowIndexBeforeFirstDataRow_keepsFilterAndDropdownOverSampleRow() throws Exception {
+        // A sample sheet carries exactly one data row whatever the declared bound says. With the header on 0-based
+        // row 0 the sample lands on row 1, so a declared bound of 1 (1-based) points at the header row -- ahead of
+        // the row actually written. The auto-filter and the dropdown have to follow the written row regardless.
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportSheetOptions(Arrays.asList(PxlExportSheetOption.builder()
+                        .exportColumnFilter(true)
+                        .exportLastDataRowIndex(1)
+                        .build()))
+                .build();
+
+        final Workbook workbook = pxl.exportSampleExcel()
+                .sheet(SampleDropdownRow.class, "Sample")
+                .override(option)
+                .toWorkbook();
+        try {
+            final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("Sample");
+
+            // Two columns, header on row 1 and the sample on row 2 (1-based, as the reference writes it).
+            assertThat(sheet.getCTWorksheet().getAutoFilter().getRef())
+                    .as("the auto filter should span the header and the sample row")
+                    .isEqualTo("A1:B2");
+            assertThat(sheet.getDataValidations())
+                    .as("the dropdown should still be attached to the sample row")
+                    .hasSize(1);
+        } finally {
+            workbook.close();
+        }
+    }
+
+    @Test
+    public void exportSample_lastDataRowIndexBeforeHeaderRow_doesNotThrow() throws Exception {
+        // The header is pushed to 1-based row 3, so the sample lands on row 4 while the declared bound points at
+        // row 1. A range built from that bound would end before it starts, which POI rejects outright.
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportSheetOptions(Arrays.asList(PxlExportSheetOption.builder()
+                        .exportColumnFilter(true)
+                        .exportHeaderRowIndex(3)
+                        .exportLastDataRowIndex(1)
+                        .build()))
+                .build();
+
+        final Workbook workbook = pxl.exportSampleExcel()
+                .sheet(SampleDropdownRow.class, "Sample")
+                .override(option)
+                .toWorkbook();
+        try {
+            final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("Sample");
+
+            assertThat(sheet.getCTWorksheet().getAutoFilter().getRef())
+                    .as("the auto filter should span the header and the sample row")
+                    .isEqualTo("A3:B4");
+
+            // The workbook has to survive being written out, which is where an invalid range would surface.
+            final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            assertThat(outputStream.size()).isPositive();
+        } finally {
+            workbook.close();
+        }
     }
 }

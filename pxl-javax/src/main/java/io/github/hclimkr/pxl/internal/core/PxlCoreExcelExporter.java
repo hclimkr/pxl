@@ -441,9 +441,9 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         final int numOfSheets = workbookMeta.getWorkbook().getNumberOfSheets();
         final int maxNumOfSheets = workbookMeta.getExportFileFormat().getMaxExportSheets();
 
-        final int actualExportBoundDataRowIndex = resolveExportRowIndices(sheetMeta, numOfObjects);
-        final int actualExportHeaderRowIndex = sheetMeta.getActualExportHeaderRowIndex();
+        resolveExportRowIndices(sheetMeta, numOfObjects);
         final int actualExportOriginDataRowIndex = sheetMeta.getActualExportOriginDataRowIndex();
+        final int actualExportBoundDataRowIndex = sheetMeta.getActualExportBoundDataRowIndex();
 
         final int maxNumOfRows = workbookMeta.getExportFileFormat().getMaxExportRows();
         final Field groupingField = sheetMeta.getExportGroupingField();
@@ -594,8 +594,6 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         final int actualExportHeaderRowIndex = sheetMeta.getActualExportHeaderRowIndex();
         final int actualExportOriginDataRowIndex = sheetMeta.getActualExportOriginDataRowIndex();
 
-        sheetMeta.setActualExportBoundDataRowIndex(actualExportOriginDataRowIndex + 1); // exclusive
-
         // Get the column information.
         final List<PxlExportColumnMeta> columnMetas = PxlExportColumnMeta.makeExportColumnMetas(sheetMeta, true);
         sheetMeta.addExportColumnMetas(columnMetas);
@@ -615,6 +613,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
         buildSampleRow(sheet, columnMetas, actualExportOriginDataRowIndex);
 
+        sheetMeta.setActualExportBoundDataRowIndex(actualExportOriginDataRowIndex + 1); // exclusive
         postBuildRows(sheet, sheetMeta);
     }
 

@@ -52,12 +52,12 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
      * @param workbookMeta the resolved export metadata for the workbook
      * @param validator    optional bean validator applied when data validation is enabled (may be {@code null})
      * @param writer       the destination the records are printed to
-     * @throws PxlNullPointerException if {@code rowObjects}, {@code rowClass}, {@code workbookMeta}, or {@code writer} is {@code null}
-     * @throws PxlArgumentException    if {@code sheetName} is blank or the field delimiter cannot be used
+     * @throws PxlNullPointerException if {@code sheetName}, {@code rowObjects}, {@code rowClass}, {@code workbookMeta}, or {@code writer} is {@code null}
+     * @throws PxlArgumentException    if {@code sheetName} is blank, a configuration value is invalid, or the field delimiter cannot be used
      * @throws PxlValidationException  if a bean-validation constraint on a row object is violated
-     * @throws PxlDataException        if a limit is exceeded or there is no data to write
+     * @throws PxlDataException        if a row object is {@code null}, a limit is exceeded, or there is no data to write
      * @throws PxlCellCodecException   if a cell value cannot be encoded
-     * @throws PxlReflectionException  if instantiating a class or reading/writing a field fails
+     * @throws PxlReflectionException  if a column field's type cannot be resolved
      * @throws PxlIOException          if writing to the destination fails
      */
     public static void writeCsv(final String sheetName,
@@ -92,7 +92,11 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
         }
 
         final int numOfObjects = PxlCollectionUtils.size(rowObjects);
-        final int actualExportBoundDataRowIndex = resolveExportRowIndices(sheetMeta, numOfObjects);
+
+        resolveExportRowIndices(sheetMeta, numOfObjects);
+        final int actualExportHeaderRowIndex = sheetMeta.getActualExportHeaderRowIndex();
+        final int actualExportOriginDataRowIndex = sheetMeta.getActualExportOriginDataRowIndex();
+        final int actualExportBoundDataRowIndex = sheetMeta.getActualExportBoundDataRowIndex();
 
         final int maxNumOfRows = workbookMeta.getExportFileFormat().getMaxExportRows();
         if (actualExportBoundDataRowIndex > maxNumOfRows) {
@@ -117,16 +121,19 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
         }
 
         final CSVPrinter csvPrinter = makeCsvPrinter(sheetMeta, writer);
+        final int numOfFields = countFields(columnMetas);
 
         try {
-            writeLeadingAndHeaderRecords(csvPrinter, sheetMeta, columnMetas);
+            writePaddingRecords(csvPrinter, 0, actualExportHeaderRowIndex, numOfFields);
+            writeHeaderRecord(csvPrinter, columnMetas, numOfFields);
+            writePaddingRecords(csvPrinter, actualExportHeaderRowIndex + 1, actualExportOriginDataRowIndex, numOfFields);
 
-            int rowIndex = sheetMeta.getActualExportOriginDataRowIndex();
+            int rowIndex = actualExportOriginDataRowIndex;
             for (final Object rowObject : rowObjects) {
                 if (rowIndex >= actualExportBoundDataRowIndex) {
                     break;
                 }
-                csvPrinter.printRecord(makeDataRecord(sheetMeta, columnMetas, rowObject, rowIndex));
+                writeDataRecord(csvPrinter, sheetMeta, columnMetas, rowObject, rowIndex);
                 rowIndex++;
             }
 
@@ -146,11 +153,11 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
      * @param rowClass     the row class describing the column bindings
      * @param workbookMeta the resolved export metadata for the workbook
      * @param writer       the destination the records are printed to
-     * @throws PxlNullPointerException if {@code rowClass}, {@code workbookMeta}, or {@code writer} is {@code null}
-     * @throws PxlArgumentException    if {@code sheetName} is blank or the field delimiter cannot be used
+     * @throws PxlNullPointerException if {@code sheetName}, {@code rowClass}, {@code workbookMeta}, or {@code writer} is {@code null}
+     * @throws PxlArgumentException    if {@code sheetName} is blank, a configuration value is invalid, or the field delimiter cannot be used
      * @throws PxlDataException        if a limit is exceeded or there is no data to write
      * @throws PxlCellCodecException   if a sample value cannot be encoded
-     * @throws PxlReflectionException  if instantiating a class or reading/writing a field fails
+     * @throws PxlReflectionException  if a column field's type cannot be resolved
      * @throws PxlIOException          if writing to the destination fails
      */
     public static void writeSampleCsv(final String sheetName,
@@ -172,7 +179,8 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
 
         // A sample always carries exactly one data row, so the declared data bound plays no part.
         resolveExportRowIndices(sheetMeta, 1);
-        sheetMeta.setActualExportBoundDataRowIndex(sheetMeta.getActualExportOriginDataRowIndex() + 1);
+        final int actualExportHeaderRowIndex = sheetMeta.getActualExportHeaderRowIndex();
+        final int actualExportOriginDataRowIndex = sheetMeta.getActualExportOriginDataRowIndex();
 
         final List<PxlExportColumnMeta> columnMetas = PxlExportColumnMeta.makeExportColumnMetas(sheetMeta, true);
         sheetMeta.addExportColumnMetas(columnMetas);
@@ -182,16 +190,157 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
         }
 
         final CSVPrinter csvPrinter = makeCsvPrinter(sheetMeta, writer);
+        final int numOfFields = countFields(columnMetas);
 
         try {
-            writeLeadingAndHeaderRecords(csvPrinter, sheetMeta, columnMetas);
+            writePaddingRecords(csvPrinter, 0, actualExportHeaderRowIndex, numOfFields);
+            writeHeaderRecord(csvPrinter, columnMetas, numOfFields);
+            writePaddingRecords(csvPrinter, actualExportHeaderRowIndex + 1, actualExportOriginDataRowIndex, numOfFields);
 
-            csvPrinter.printRecord(makeSampleRecord(sheetMeta, columnMetas));
+            writeSampleRecord(csvPrinter, sheetMeta, columnMetas);
 
             csvPrinter.flush();
         } catch (IOException e) {
             throw new PxlIOException(e);
         }
+    }
+
+    /**
+     * Writes one empty record per row in the given range, standing in for the rows a sheet leaves blank above the
+     * header or between the header and the first data row.
+     *
+     * <p>Each such row is printed as a full record of empty fields rather than as an empty line. PXL's own CSV
+     * import ignores empty lines, so a blank line would vanish on the way back in and pull the header up - an
+     * empty-field record survives because its first field is quoted.</p>
+     *
+     * @param csvPrinter   the printer to write to
+     * @param fromRowIndex the first 0-based row index to fill, inclusive
+     * @param toRowIndex   the row index to stop before, exclusive
+     * @param numOfFields  the number of fields per record
+     * @throws IOException if writing fails
+     */
+    private static void writePaddingRecords(final CSVPrinter csvPrinter,
+                                            final int fromRowIndex,
+                                            final int toRowIndex,
+                                            final int numOfFields)
+            throws IOException {
+
+        for (int rowIndex = fromRowIndex; rowIndex < toRowIndex; rowIndex++) {
+            csvPrinter.printRecord(makeEmptyRecord(numOfFields));
+        }
+    }
+
+    /**
+     * Writes the header record, placing each mapped column's name in the field at that column's index and
+     * leaving every unmapped field empty.
+     *
+     * @param csvPrinter  the printer to write to
+     * @param columnMetas the per-column export metadata
+     * @param numOfFields the number of fields per record
+     * @throws IOException if writing fails
+     */
+    private static void writeHeaderRecord(final CSVPrinter csvPrinter,
+                                          final List<PxlExportColumnMeta> columnMetas,
+                                          final int numOfFields)
+            throws IOException {
+
+        final List<String> record = makeEmptyRecord(numOfFields);
+        for (final PxlExportColumnMeta columnMeta : columnMetas) {
+            final int exportColumnIndex = columnMeta.getActualExportColumnIndex();
+            if (exportColumnIndex < 0) {
+                continue;
+            }
+            record.set(exportColumnIndex, columnMeta.getActualExportColumnName());
+        }
+
+        csvPrinter.printRecord(record);
+    }
+
+    /**
+     * Writes one data record, reading each mapped field of the row object and encoding it into a string.
+     *
+     * <p>A mapped column always occupies a field, even when the codec answers {@code null}: dropping it would
+     * shift every later column of that record. {@code null} values are intentionally not skipped so that
+     * {@code exportNullString} can take effect.</p>
+     *
+     * @param csvPrinter  the printer to write to
+     * @param sheetMeta   the sheet meta, supplying the sheet name for error messages
+     * @param columnMetas the per-column export metadata
+     * @param rowObject   the row object whose field values are written
+     * @param rowIndex    the 0-based index of the record being written
+     * @throws IOException           if writing fails
+     * @throws PxlCellCodecException if a field value cannot be read or encoded
+     */
+    private static void writeDataRecord(final CSVPrinter csvPrinter,
+                                        final PxlExportSheetMeta sheetMeta,
+                                        final List<PxlExportColumnMeta> columnMetas,
+                                        final Object rowObject,
+                                        final int rowIndex)
+            throws IOException, PxlCellCodecException {
+
+        final String sheetName = sheetMeta.getActualExportSheetName();
+        final List<String> record = makeEmptyRecord(countFields(columnMetas));
+
+        for (final PxlExportColumnMeta columnMeta : columnMetas) {
+            final int exportColumnIndex = columnMeta.getActualExportColumnIndex();
+            if (exportColumnIndex < 0) {
+                continue;
+            }
+
+            final Field columnField = columnMeta.getColumnField();
+
+            final Object cellObject;
+            try {
+                cellObject = PxlReflectionSupport.getFieldValue(columnField, rowObject);
+            } catch (Exception e) {
+                throw new PxlCellCodecException(sheetName, rowIndex, columnMeta.getActualExportColumnName(), exportColumnIndex, e);
+            }
+
+            try {
+                record.set(exportColumnIndex, PxlCellResolver.buildDataString(cellObject, columnMeta));
+            } catch (Exception e) {
+                throw new PxlCellCodecException(sheetName, rowIndex, columnMeta.getActualExportColumnName(), exportColumnIndex, e);
+            }
+        }
+
+        csvPrinter.printRecord(record);
+    }
+
+    /**
+     * Writes the single sample record, holding each column's {@code exportSample} value.
+     *
+     * <p>A blank sample is passed through rather than skipped, so that {@code exportNullString} can take effect
+     * just as it does for a data record.</p>
+     *
+     * @param csvPrinter  the printer to write to
+     * @param sheetMeta   the sheet meta, supplying the sheet name and the record's row index for error messages
+     * @param columnMetas the per-column export metadata supplying the sample values
+     * @throws IOException           if writing fails
+     * @throws PxlCellCodecException if a sample value cannot be encoded
+     */
+    private static void writeSampleRecord(final CSVPrinter csvPrinter,
+                                          final PxlExportSheetMeta sheetMeta,
+                                          final List<PxlExportColumnMeta> columnMetas)
+            throws IOException, PxlCellCodecException {
+
+        final String sheetName = sheetMeta.getActualExportSheetName();
+        final int rowIndex = sheetMeta.getActualExportOriginDataRowIndex();
+        final List<String> record = makeEmptyRecord(countFields(columnMetas));
+
+        for (final PxlExportColumnMeta columnMeta : columnMetas) {
+            final int exportColumnIndex = columnMeta.getActualExportColumnIndex();
+            if (exportColumnIndex < 0) {
+                continue;
+            }
+
+            try {
+                record.set(exportColumnIndex, PxlCellResolver.buildDataString(columnMeta.getExportSample(), columnMeta));
+            } catch (Exception e) {
+                throw new PxlCellCodecException(sheetName, rowIndex, columnMeta.getActualExportColumnName(), exportColumnIndex, e);
+            }
+        }
+
+        csvPrinter.printRecord(record);
     }
 
     /**
@@ -203,8 +352,8 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
      * @param workbookMeta       the resolved export metadata for the workbook
      * @return the resolved sheet meta
      * @throws PxlNullPointerException if a required argument is null
-     * @throws PxlArgumentException    if a configuration value is invalid
-     * @throws PxlDataException        if the sheet name or collection type is invalid
+     * @throws PxlArgumentException    if {@code sheetName} is blank or a configuration value is invalid
+     * @throws PxlDataException        if {@code rowCollectionClass} is not a Collection type, or a row/column index is negative or inconsistent
      */
     private static PxlExportSheetMeta makeSheetMeta(final String sheetName,
                                                     @Nullable final Class<?> rowCollectionClass,
@@ -257,39 +406,8 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
     }
 
     /**
-     * Writes the records that precede the data: the ones standing in for the rows above the header, the header
-     * itself, and the ones between the header and the first data row.
-     *
-     * <p>Each leading record is printed as a full row of empty fields rather than as an empty line. PXL's own
-     * CSV import ignores empty lines, so a blank line would vanish on the way back in and pull the header up -
-     * an empty-field record survives because its first field is quoted.</p>
-     *
-     * @param csvPrinter  the printer to write to
-     * @param sheetMeta   the sheet meta carrying the resolved row coordinates
-     * @param columnMetas the per-column export metadata
-     * @throws IOException if writing fails
-     */
-    private static void writeLeadingAndHeaderRecords(final CSVPrinter csvPrinter,
-                                                     final PxlExportSheetMeta sheetMeta,
-                                                     final List<PxlExportColumnMeta> columnMetas)
-            throws IOException {
-
-        final int numOfFields = countFields(columnMetas);
-
-        for (int rowIndex = 0; rowIndex < sheetMeta.getActualExportHeaderRowIndex(); rowIndex++) {
-            csvPrinter.printRecord(makeEmptyRecord(numOfFields));
-        }
-
-        csvPrinter.printRecord(makeHeaderRecord(columnMetas, numOfFields));
-
-        for (int rowIndex = sheetMeta.getActualExportHeaderRowIndex() + 1; rowIndex < sheetMeta.getActualExportOriginDataRowIndex(); rowIndex++) {
-            csvPrinter.printRecord(makeEmptyRecord(numOfFields));
-        }
-    }
-
-    /**
-     * Returns how many fields a record holds: one per column index in use, counting from zero so that a first
-     * data column above zero leaves the leading fields empty.
+     * Returns how many fields a record holds: the highest column index in use plus one, so that a first data
+     * column above zero leaves the leading fields empty. Answers zero when no column is mapped.
      *
      * @param columnMetas the per-column export metadata
      * @return the number of fields per record
@@ -315,111 +433,6 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
         final List<String> record = new ArrayList<>(numOfFields);
         for (int index = 0; index < numOfFields; index++) {
             record.add("");
-        }
-
-        return record;
-    }
-
-    /**
-     * Creates the header record from the mapped columns' names.
-     *
-     * @param columnMetas the per-column export metadata
-     * @param numOfFields the number of fields per record
-     * @return the record values
-     */
-    private static List<String> makeHeaderRecord(final List<PxlExportColumnMeta> columnMetas,
-                                                 final int numOfFields) {
-
-        final List<String> record = makeEmptyRecord(numOfFields);
-        for (final PxlExportColumnMeta columnMeta : columnMetas) {
-            final int exportColumnIndex = columnMeta.getActualExportColumnIndex();
-            if (exportColumnIndex < 0) {
-                continue;
-            }
-            record.set(exportColumnIndex, columnMeta.getActualExportColumnName());
-        }
-
-        return record;
-    }
-
-    /**
-     * Creates one data record by reading each mapped field of the row object and encoding it into a string.
-     *
-     * <p>A mapped column always occupies a field, even when the codec answers {@code null}: dropping it would
-     * shift every later column of that record. {@code null} values are intentionally not skipped so that
-     * {@code exportNullString} can take effect.</p>
-     *
-     * @param sheetMeta   the sheet meta, supplying the sheet name for error messages
-     * @param columnMetas the per-column export metadata
-     * @param rowObject   the row object whose field values are written
-     * @param rowIndex    the 0-based index of the record being written
-     * @return the record values
-     * @throws PxlCellCodecException if a field value cannot be read or encoded
-     */
-    private static List<String> makeDataRecord(final PxlExportSheetMeta sheetMeta,
-                                               final List<PxlExportColumnMeta> columnMetas,
-                                               final Object rowObject,
-                                               final int rowIndex)
-            throws PxlCellCodecException {
-
-        final String sheetName = sheetMeta.getActualExportSheetName();
-        final List<String> record = makeEmptyRecord(countFields(columnMetas));
-
-        for (final PxlExportColumnMeta columnMeta : columnMetas) {
-            final int exportColumnIndex = columnMeta.getActualExportColumnIndex();
-            if (exportColumnIndex < 0) {
-                continue;
-            }
-
-            final Field columnField = columnMeta.getColumnField();
-
-            final Object cellObject;
-            try {
-                cellObject = PxlReflectionSupport.getFieldValue(columnField, rowObject);
-            } catch (Exception e) {
-                throw new PxlCellCodecException(sheetName, rowIndex, columnMeta.getActualExportColumnName(), exportColumnIndex, e);
-            }
-
-            try {
-                record.set(exportColumnIndex, PxlCellResolver.buildDataString(cellObject, columnMeta));
-            } catch (Exception e) {
-                throw new PxlCellCodecException(sheetName, rowIndex, columnMeta.getActualExportColumnName(), exportColumnIndex, e);
-            }
-        }
-
-        return record;
-    }
-
-    /**
-     * Creates the single sample record from each column's {@code exportSample} value.
-     *
-     * <p>A blank sample is passed through rather than skipped, so that {@code exportNullString} can take effect
-     * just as it does for a data record.</p>
-     *
-     * @param sheetMeta   the sheet meta, supplying the sheet name for error messages
-     * @param columnMetas the per-column export metadata supplying the sample values
-     * @return the record values
-     * @throws PxlCellCodecException if a sample value cannot be encoded
-     */
-    private static List<String> makeSampleRecord(final PxlExportSheetMeta sheetMeta,
-                                                 final List<PxlExportColumnMeta> columnMetas)
-            throws PxlCellCodecException {
-
-        final String sheetName = sheetMeta.getActualExportSheetName();
-        final int rowIndex = sheetMeta.getActualExportOriginDataRowIndex();
-        final List<String> record = makeEmptyRecord(countFields(columnMetas));
-
-        for (final PxlExportColumnMeta columnMeta : columnMetas) {
-            final int exportColumnIndex = columnMeta.getActualExportColumnIndex();
-            if (exportColumnIndex < 0) {
-                continue;
-            }
-
-            try {
-                record.set(exportColumnIndex, PxlCellResolver.buildDataString(columnMeta.getExportSample(), columnMeta));
-            } catch (Exception e) {
-                throw new PxlCellCodecException(sheetName, rowIndex, columnMeta.getActualExportColumnName(), exportColumnIndex, e);
-            }
         }
 
         return record;

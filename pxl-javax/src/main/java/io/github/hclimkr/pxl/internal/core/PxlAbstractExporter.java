@@ -18,14 +18,15 @@ abstract class PxlAbstractExporter extends PxlAbstractBinder {
      * reaches past the rows actually on hand.</p>
      *
      * <p>Shared by the Excel and CSV exporters, which differ in what they do with the coordinates rather than in
-     * how the coordinates are read.</p>
+     * how the coordinates are read. The sheet meta is the single place the results are kept, so a caller reads
+     * all three back with {@code getActualExportHeaderRowIndex()}, {@code getActualExportOriginDataRowIndex()}
+     * and {@code getActualExportBoundDataRowIndex()} rather than taking one of them from here.</p>
      *
      * @param sheetMeta    the sheet meta carrying the declared indices and receiving the resolved ones
      * @param numOfObjects the number of row objects available to write
-     * @return the resolved data bound (0-based, exclusive)
      */
-    protected static int resolveExportRowIndices(final PxlExportSheetMeta sheetMeta,
-                                                 final int numOfObjects) {
+    protected static void resolveExportRowIndices(final PxlExportSheetMeta sheetMeta,
+                                                  final int numOfObjects) {
 
         final int defaultHeaderRowIndex = 0;
 
@@ -57,8 +58,6 @@ abstract class PxlAbstractExporter extends PxlAbstractBinder {
         sheetMeta.setActualExportHeaderRowIndex(actualExportHeaderRowIndex);
         sheetMeta.setActualExportOriginDataRowIndex(actualExportOriginDataRowIndex);
         sheetMeta.setActualExportBoundDataRowIndex(actualExportBoundDataRowIndex);
-
-        return actualExportBoundDataRowIndex;
     }
 
 }

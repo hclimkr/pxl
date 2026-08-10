@@ -311,4 +311,32 @@ public class PxlSampleCsvExportTests {
                 .toStream(new ByteArrayOutputStream()));
     }
 
+    // ------------------------------------------------------------------
+    // The sample record is always written, whatever exportLastDataRowIndex declares
+    // ------------------------------------------------------------------
+
+    @Test
+    public void exportSampleCsv_lastDataRowIndexBeforeFirstDataRow_stillWritesSampleRecord() throws Exception {
+        // A sample carries exactly one data record whatever the declared bound says. With the header on 0-based
+        // row 0 the sample lands on row 1, so a declared bound of 1 (1-based) points at the header row -- ahead of
+        // the record actually written. The counterpart of the Excel test, which asserts the same on the ranges
+        // the bound feeds there.
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportSheetOptions(Arrays.asList(PxlExportSheetOption.builder()
+                        .exportLastDataRowIndex(1)
+                        .build()))
+                .build();
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        pxl.exportSampleCsv()
+                .sheet(SampleDropdownRow.class, "Sample")
+                .override(option)
+                .toStream(outputStream);
+
+        final List<String> lines = Arrays.asList(new String(outputStream.toByteArray(), StandardCharsets.UTF_8).split("\r\n", -1));
+
+        assertThat(lines.get(0)).isEqualTo("Name,Choice");
+        assertThat(lines.get(1)).as("the sample record must be written even so").isEqualTo("Alice,Red");
+    }
+
 }
