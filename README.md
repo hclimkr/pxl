@@ -18,6 +18,12 @@ built on top of Apache POI and Apache Commons CSV, and supports Java 8 and above
 
 For details such as supported variable types, the full set of options, and constraints, refer to [docs/reference.md](docs/reference.md).
 
+> [!WARNING]
+> **Pre-1.0: the public API is still moving.** Under Semantic Versioning a `0.y.z` release makes no compatibility
+> promise, and PXL uses that room: a minor release may rename, move or remove a public type or method without a
+> deprecation cycle — several already have. Pin an exact version rather than a range, and read the
+> [CHANGELOG](CHANGELOG.md) before upgrading; every such change is listed there and marked breaking.
+
 ## Table of Contents
 
 1. [Setup](#setup)

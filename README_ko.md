@@ -18,6 +18,12 @@ Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지
 
 지원 변수 타입 · 전체 옵션 · 제약 등 상세 내용은 [docs/reference_ko.md](docs/reference_ko.md)를 참고한다.
 
+> [!WARNING]
+> **1.0 이전이라 공개 API가 아직 확정되지 않았다.** 유의적 버전(SemVer)에서 `0.y.z`는 호환성을 약속하지 않으며,
+> PXL도 그 여지를 쓰고 있다 — 마이너 릴리스에서도 공개 타입·메서드가 deprecation 단계 없이 이름이 바뀌거나
+> 옮겨지거나 사라질 수 있고, 실제로 그런 변경이 여러 번 있었다. 버전 범위 대신 정확한 버전을 고정하고,
+> 올리기 전에 [CHANGELOG](CHANGELOG.md)를 확인한다. 해당 변경은 모두 거기에 breaking으로 표시되어 있다.
+
 ## 목차
 
 1. [구성](#구성)
