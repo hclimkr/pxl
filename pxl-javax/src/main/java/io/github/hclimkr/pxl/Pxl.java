@@ -15,9 +15,9 @@ import java.util.Locale;
  *
  * <p>All import/export operations are performed with fluent builders.</p>
  * <ul>
- *   <li>export: {@link #exportExcel()} / {@link #exportCsv()} — data → workbook/file/stream</li>
- *   <li>sample: {@link #exportSampleExcel()} / {@link #exportSampleCsv()} — class → template with one sample data row (each column's exportSample value)</li>
- *   <li>import: {@link #importExcel()} / {@link #importCsv()} — configure the target, then supply the source → object</li>
+ *   <li>export: {@link #exportExcel()} / {@link #exportCsv()} - data -> workbook/file/stream</li>
+ *   <li>sample: {@link #exportSampleExcel()} / {@link #exportSampleCsv()} - class -> template with one sample data row (each column's exportSample value)</li>
+ *   <li>import: {@link #importExcel()} / {@link #importCsv()} - configure the target, then supply the source -> object</li>
  * </ul>
  *
  * <p>Example:</p>
@@ -38,7 +38,7 @@ public final class Pxl {
      * by the import/export builders it creates.
      *
      * <p>Bean validation is <strong>optional</strong>: if no provider (e.g. hibernate-validator) or no EL
-     * implementation (e.g. jakarta.el) is on the classpath, initialization is skipped gracefully — a warning
+     * implementation (e.g. jakarta.el) is on the classpath, initialization is skipped gracefully - a warning
      * is logged and the {@link Validator} is left {@code null}, so import/export proceeds with bean validation
      * simply disabled (no exception is thrown). Add a provider and EL to enable it.</p>
      */

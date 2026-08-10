@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class PxlInternalTests {
 
     // ==================================================================
-    // internal/codec — PxlCellResolver: the export dispatcher's string form
+    // internal/codec - PxlCellResolver: the export dispatcher's string form
     // ==================================================================
 
     @Test
@@ -796,7 +796,7 @@ public class PxlInternalTests {
     @Test
     public void coreCsvExporter_invalidDelimiter_isNormalizedRatherThanLeakingFromCommonsCsv() throws Exception {
         // The builder rejects an unusable delimiter before the destination is opened, so this backstop is only
-        // reachable by calling the core directly — which the workbook form will do once it exists. Without it the
+        // reachable by calling the core directly - which the workbook form will do once it exists. Without it the
         // failure would surface as an unclassified system error naming nothing.
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
                 .exportCsvDelimiter('\n')

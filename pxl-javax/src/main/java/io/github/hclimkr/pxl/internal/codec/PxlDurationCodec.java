@@ -19,7 +19,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Duration} column values — parses cells/strings into {@link Duration} on
+ * Codec for {@link Duration} column values - parses cells/strings into {@link Duration} on
  * import and writes {@link Duration} into cells on export.
  *
  * <p>NUMERIC and BOOLEAN cells are interpreted as a number of seconds. Strings are parsed by the column's

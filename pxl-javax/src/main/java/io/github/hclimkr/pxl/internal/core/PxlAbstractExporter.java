@@ -14,7 +14,7 @@ abstract class PxlAbstractExporter extends PxlAbstractBinder {
      * <p>The three {@code export*RowIndex} values are declared 1-based and are converted to the 0-based indices the
      * writers work with: the header row, the first data row (inclusive) and the data bound (exclusive). A value
      * left unspecified falls back to the row that naturally follows, and a specified one is clamped so it cannot
-     * precede the level before it — the first data row never lands on or above the header, and the bound never
+     * precede the level before it - the first data row never lands on or above the header, and the bound never
      * reaches past the rows actually on hand.</p>
      *
      * <p>Shared by the Excel and CSV exporters, which differ in what they do with the coordinates rather than in

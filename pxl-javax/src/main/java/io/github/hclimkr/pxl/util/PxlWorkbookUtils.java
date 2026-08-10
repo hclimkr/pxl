@@ -58,7 +58,7 @@ public final class PxlWorkbookUtils {
      * @param password     the password for an encrypted workbook, or {@code null} if none
      * @param readOnly     whether to open the workbook in read-only mode
      * @return the opened workbook
-     * @throws PxlIOException          if the workbook cannot be opened — e.g. the password is wrong, the format
+     * @throws PxlIOException          if the workbook cannot be opened - e.g. the password is wrong, the format
      *                                 is unsupported, the file does not exist, or it cannot be read
      * @throws PxlNullPointerException if {@code workbookFile} is {@code null}
      */
@@ -94,7 +94,7 @@ public final class PxlWorkbookUtils {
      * @param inputStream the stream to read the workbook from
      * @param password    the password for an encrypted workbook, or {@code null} if none
      * @return the opened workbook
-     * @throws PxlIOException          if the workbook cannot be opened — e.g. the password is wrong, the format
+     * @throws PxlIOException          if the workbook cannot be opened - e.g. the password is wrong, the format
      *                                 is unsupported, or the stream cannot be read
      * @throws PxlNullPointerException if {@code inputStream} is {@code null}
      */

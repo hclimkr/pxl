@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Character} column values — parses cells/strings into {@link Character} on import and
+ * Codec for {@link Character} column values - parses cells/strings into {@link Character} on import and
  * writes {@link Character} into cells on export. The first character of the cell/string is taken; NUMERIC
  * cells are stringified via {@link NumberToTextConverter} and BOOLEAN cells map to {@code '1'}/{@code '0'}.
  */

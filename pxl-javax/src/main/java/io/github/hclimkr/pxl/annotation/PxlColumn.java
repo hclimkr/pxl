@@ -184,7 +184,7 @@ public @interface PxlColumn {
      * Sets the list of selectable options on export.
      * <p>
      * On a String column each item is also a content-i18n key, so the dropdown offers the same text the cells hold.
-     * A column of any other type writes its value in canonical form, so its items are used verbatim — translating
+     * A column of any other type writes its value in canonical form, so its items are used verbatim - translating
      * them would leave the written value outside the list it is validated against.
      *
      * @return the selectable dropdown option items offered on export; empty ({@code {}}) by default

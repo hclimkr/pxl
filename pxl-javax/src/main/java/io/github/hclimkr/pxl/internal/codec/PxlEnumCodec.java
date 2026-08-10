@@ -21,7 +21,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
- * Codec for Java {@code enum} column values — parses cells/strings into enum constants on import and
+ * Codec for Java {@code enum} column values - parses cells/strings into enum constants on import and
  * writes enum constants into cells on export.
  *
  * <p>Conversion honours any {@code @PxlImportConverter}/{@code @PxlExportConverter} method or a

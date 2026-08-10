@@ -182,11 +182,11 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
      * {@link PxlExcelImportBuilder}; the source-terminal methods {@link #fromFile(File)} / {@link #fromStream(InputStream)}
      * open the source, run the parse, and return the typed result {@code R}.
      *
-     * <p>Only obtained from {@code workbook(...)}/{@code sheet(...)} on the builder — hence a nested type.</p>
+     * <p>Only obtained from {@code workbook(...)}/{@code sheet(...)} on the builder - hence a nested type.</p>
      *
      * <p>The source-terminal methods are the <strong>normalization boundary</strong>: they declare
      * {@code throws PxlException}, but since that type is abstract what actually surfaces is always a concrete
-     * subtype — the matching one for a classified failure ({@link PxlIOException} when the workbook cannot be
+     * subtype - the matching one for a classified failure ({@link PxlIOException} when the workbook cannot be
      * opened, {@link PxlCellCodecException}, {@link PxlValidationException}, {@link PxlArgumentException}, ...),
      * and {@link PxlSystemException} (carrying the original as its cause) for anything else.</p>
      *
@@ -411,7 +411,7 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          * Resolves the workbook name bound to the {@code @PxlWorkbookName} field in the workbook form.
          *
          * <p>An explicitly configured name always wins. When none was configured and the source is a file, the file
-         * name without its extension stands in — the same rule CSV import uses to derive sheet names from file names.
+         * name without its extension stands in - the same rule CSV import uses to derive sheet names from file names.
          * A file that is nothing but an extension ({@code ".xlsx"}) yields an empty name, which is bound as is.
          * A stream source carries no file name, so the name stays {@code null} there.</p>
          *
@@ -435,7 +435,7 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
          * @param excelStream  the Excel input stream (used when {@code excelFile} is {@code null})
          * @return the opened workbook
          * @throws PxlIOException if the workbook cannot be opened (a missing file, an unreadable or
-         *                        password-protected container, an unsupported format, ...) — the underlying
+         *                        password-protected container, an unsupported format, ...) - the underlying
          *                        failure is wrapped as the cause
          */
         private Workbook openWorkbook(final PxlImportWorkbookMeta workbookMeta,

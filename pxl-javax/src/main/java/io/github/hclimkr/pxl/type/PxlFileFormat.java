@@ -12,7 +12,7 @@ import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
- * Physical spreadsheet file format — what the bytes are — each carrying its filename extension, MIME content
+ * Physical spreadsheet file format - what the bytes are - each carrying its filename extension, MIME content
  * type, and the maximum sheet/row/column counts applied on import and export.
  * <p>
  * This is the format axis, not the writer axis. Which POI implementation writes an Excel file is
@@ -20,7 +20,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  * {@link #XLSX}. A workbook class declares the engine through {@code @PxlWorkbook(exportExcelEngine = ...)},
  * which {@link PxlExcelEngine#fromWorkbookObject(Class)} reads back.
  * <p>
- * {@link #fromPoiWorkbook(Workbook)} recovers the format an open POI workbook holds. It is a plain lookup — it
+ * {@link #fromPoiWorkbook(Workbook)} recovers the format an open POI workbook holds. It is a plain lookup - it
  * throws nothing and never returns {@code null}, falling back to
  * {@link PxlConstants#DEFAULT_EXPORT_FILE_FORMAT}.
  */
@@ -49,7 +49,7 @@ public enum PxlFileFormat {
     // XML SpreadSheet Format (Excel 2007)
     /**
      * OOXML {@code .xlsx} format (Excel 2007), the default export format, bounded by the Excel 2007 sheet
-     * limits. Both {@link PxlExcelEngine#XSSF} and {@link PxlExcelEngine#SXSSF} write it — they differ in how
+     * limits. Both {@link PxlExcelEngine#XSSF} and {@link PxlExcelEngine#SXSSF} write it - they differ in how
      * much of the workbook they hold in memory, not in what they produce.
      */
     XLSX(
@@ -68,7 +68,7 @@ public enum PxlFileFormat {
     // Comma Separated Values
     /**
      * Comma-separated values ({@code .csv}) format, bounded by the dedicated CSV sheet/row/column limits.
-     * No {@link PxlExcelEngine} produces it — it is plain text rather than a POI workbook.
+     * No {@link PxlExcelEngine} produces it - it is plain text rather than a POI workbook.
      */
     CSV(
             PxlConstants.FILENAME_EXTENSION_CSV,
@@ -128,7 +128,7 @@ public enum PxlFileFormat {
      * {@link PxlExcelEngine#fromPoiWorkbook(Workbook)} answers. {@link #CSV} is never returned, as no POI
      * workbook represents it.
      * <p>
-     * This is a plain lookup: it throws nothing and never returns {@code null} — a {@code null} argument or an
+     * This is a plain lookup: it throws nothing and never returns {@code null} - a {@code null} argument or an
      * unrecognized workbook type falls back to {@link PxlConstants#DEFAULT_EXPORT_FILE_FORMAT}.
      *
      * @param poiWorkbook the open POI workbook to inspect (may be {@code null})

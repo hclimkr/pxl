@@ -20,7 +20,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link OffsetDateTime} column values — parses cells/strings into {@link OffsetDateTime}
+ * Codec for {@link OffsetDateTime} column values - parses cells/strings into {@link OffsetDateTime}
  * on import and writes {@link OffsetDateTime} into cells on export.
  *
  * <p>NUMERIC cells are read as Excel serials and given the system zone's offset for that date; a BOOLEAN

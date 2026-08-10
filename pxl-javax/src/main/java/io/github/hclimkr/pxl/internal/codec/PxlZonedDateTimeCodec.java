@@ -20,7 +20,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link ZonedDateTime} column values — parses cells/strings into {@link ZonedDateTime}
+ * Codec for {@link ZonedDateTime} column values - parses cells/strings into {@link ZonedDateTime}
  * on import and writes {@link ZonedDateTime} into cells on export.
  *
  * <p>NUMERIC cells are read as Excel serials and placed at the system default zone; a BOOLEAN cell is

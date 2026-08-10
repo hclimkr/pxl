@@ -14,7 +14,7 @@ import java.util.Objects;
  * POI's own measurement comes out too narrow for the fonts PXL exports with.
  * <p>
  * Auto-sizing measures every row of the column, so it is expensive on large sheets, and on a streaming (SXSSF)
- * sheet it only sees the rows still held in memory — the column must be tracked before those rows are flushed.
+ * sheet it only sees the rows still held in memory - the column must be tracked before those rows are flushed.
  */
 public final class PxlColumnUtils {
 

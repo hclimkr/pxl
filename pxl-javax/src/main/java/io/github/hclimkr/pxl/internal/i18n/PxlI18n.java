@@ -16,7 +16,7 @@ import java.util.*;
 
 /**
  * Shared UTF-8 resource-bundle loader: the low-level i18n mechanism reused by <strong>both</strong>
- * of the library's i18n channels — the content channel ({@link PxlI18nContent}, sheet/column name
+ * of the library's i18n channels - the content channel ({@link PxlI18nContent}, sheet/column name
  * translation) and the diagnostic-message channel ({@link PxlI18nDiagnostic}, the library's own
  * exception/log text). It only loads bundles and resolves keys; the channels layer their own semantics on top.
  * <p>

@@ -18,7 +18,7 @@ import java.util.Objects;
  * ({@link #toWorkbook()}), the creation result holder ({@link Built}), and the three write seams implemented
  * in terms of a POI workbook. Subclass builders implement only {@link #build()}.</p>
  *
- * <p>The workbook is created in {@link #prepare()} — that is, before the destination is opened — and released in
+ * <p>The workbook is created in {@link #prepare()} - that is, before the destination is opened - and released in
  * {@link #cleanup()}, so a workbook is never left open when opening the destination fails. It is built afresh on
  * every terminal call: running a terminal twice repeats the build rather than reusing the previous workbook.</p>
  *
@@ -38,7 +38,7 @@ abstract class PxlAbstractExcelExportBuilder extends PxlAbstractExportBuilder {
      * <p>The resolved {@code exportPassword} is <strong>not</strong> applied to the returned workbook: POI cannot carry
      * a document-open password on the workbook object itself (encryption happens at the file-container layer), so PXL
      * encrypts only while writing. Writing the returned workbook with {@code Workbook.write(...)} therefore produces an
-     * unencrypted file — write it with {@link PxlWorkbookUtils#writeToStream(Workbook, OutputStream, String)} to have
+     * unencrypted file - write it with {@link PxlWorkbookUtils#writeToStream(Workbook, OutputStream, String)} to have
      * the password applied, or use {@link #toFile(File)} / {@link #toStream(OutputStream)} instead.</p>
      *
      * @return the created workbook (the caller is responsible for closing it)
@@ -100,7 +100,7 @@ abstract class PxlAbstractExcelExportBuilder extends PxlAbstractExportBuilder {
             throws PxlException;
 
     /**
-     * The {@link #build()} result — the created workbook and (optional) password.
+     * The {@link #build()} result - the created workbook and (optional) password.
      */
     protected static final class Built {
 

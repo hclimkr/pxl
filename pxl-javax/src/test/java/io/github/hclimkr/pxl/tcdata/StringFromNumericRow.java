@@ -10,7 +10,7 @@ import org.apache.poi.ss.util.NumberToTextConverter;
  * DTO binding NUMERIC cells (a plain integer, a date-formatted cell, a large integer) to {@link String} fields.
  * <p>
  * Verifies that reading numeric cells into {@link String} via the streaming reader renders them with the cell's
- * display format through POI's {@link DataFormatter} — the same as non-streaming — now that the former
+ * display format through POI's {@link DataFormatter} - the same as non-streaming - now that the former
  * {@link StreamingCell}/{@link NumberToTextConverter} special-case has been removed from
  * {@code io.github.hclimkr.pxl.internal.codec.PxlStringCodec} (package-private, so it cannot be imported here).
  */

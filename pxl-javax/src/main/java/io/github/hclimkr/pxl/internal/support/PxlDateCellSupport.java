@@ -108,11 +108,11 @@ public final class PxlDateCellSupport {
         cell.setCellValue(value);
     }
 
-    // POI has no time-specific setCellValue overload, so write the value converted to a fraction of a day (0.0–1.0).
+    // POI has no time-specific setCellValue overload, so write the value converted to a fraction of a day (0.0-1.0).
 
     /**
      * Writes a {@link LocalTime} as a numeric cell, converting it to the Excel fraction-of-a-day representation
-     * (0.0–1.0), since POI has no time-specific {@code setCellValue} overload. Applies the date/time display-format style.
+     * (0.0-1.0), since POI has no time-specific {@code setCellValue} overload. Applies the date/time display-format style.
      *
      * @param cell            the target cell
      * @param value           the time value
@@ -132,7 +132,7 @@ public final class PxlDateCellSupport {
      * Reads a numeric cell as a {@link LocalDateTime}, rejecting a serial number that is no Excel date. (import)
      * <p>
      * A date-formatted cell is read through POI's own date conversion, any other numeric cell as a raw Excel date
-     * serial. POI answers {@code null} for a serial outside the Excel date range — a negative one, for instance —
+     * serial. POI answers {@code null} for a serial outside the Excel date range - a negative one, for instance -
      * so the value is checked here instead of being dereferenced by each caller, which would surface the failure as
      * a message-less {@link NullPointerException} that names neither the cell nor the value.
      *

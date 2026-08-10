@@ -233,7 +233,7 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Sheet form: all types — transport parity (FILE/STREAM/POI)
+    // Sheet form: all types - transport parity (FILE/STREAM/POI)
     // ------------------------------------------------------------------
 
     @ParameterizedTest
@@ -250,7 +250,7 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Workbook form: all types + workbook name — transport parity
+    // Workbook form: all types + workbook name - transport parity
     // ------------------------------------------------------------------
 
     @ParameterizedTest
@@ -269,7 +269,7 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Workbook form: two different sheet types (Employees / Departments) — transport parity
+    // Workbook form: two different sheet types (Employees / Departments) - transport parity
     // ------------------------------------------------------------------
 
     @ParameterizedTest
@@ -317,7 +317,7 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Multi-sheet (explicit list) form — transport parity
+    // Multi-sheet (explicit list) form - transport parity
     // ------------------------------------------------------------------
 
     @ParameterizedTest
@@ -345,7 +345,7 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Real .xls (HSSF) file round-trip (file-format axis — separate from transport parameterization)
+    // Real .xls (HSSF) file round-trip (file-format axis - separate from transport parameterization)
     // ------------------------------------------------------------------
 
     @Test

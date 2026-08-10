@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Per-type value conversion (codec) tests.
  * <p>
- * Round-trips each supported type through export→import with various values (boundary, negative, zero,
+ * Round-trips each supported type through export->import with various values (boundary, negative, zero,
  * null, empty, special characters, collection position fidelity), and also verifies the import-only
  * conversion behavior of reading a type from an external cell (NUMERIC/BOOLEAN).
  */
@@ -1289,7 +1289,7 @@ public class PxlTypeConversionTests {
         // With no column pattern, date/time strings parse via the fixed, locale-independent ISO read patterns
         // (or each codec's final ISO parser for the offset/zoned 'T' forms: ISO_OFFSET_* / ISO_ZONED for the
         // offset/zoned types). java.util.Date has no zone of its own, so its ISO 'T' read pattern
-        // (SimpleDateFormat) resolves in the JVM default zone — the expected Date below is built with
+        // (SimpleDateFormat) resolves in the JVM default zone - the expected Date below is built with
         // ZoneId.systemDefault() so the assertion stays zone-independent. DateTimeNumericRow carries no pattern
         // on any column, and the result does not depend on the JVM default locale.
         final byte[] bytes = stringSheet("ISO",

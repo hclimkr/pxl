@@ -16,7 +16,7 @@ import lombok.Getter;
 import java.util.*;
 
 /**
- * Workbook import option, for an Excel or a CSV source alike — the attributes an Excel import has no use for
+ * Workbook import option, for an Excel or a CSV source alike - the attributes an Excel import has no use for
  * (the CSV charset and delimiter) are ignored there rather than belonging to a separate option type.
  */
 @Getter
@@ -33,7 +33,7 @@ public final class PxlImportWorkbookOption {
     /**
      * Specifies whether to bean-validate the data to be imported.
      * <p>
-     * This is Bean Validation over the bound result, not Excel's "data validation" feature — the dropdown an
+     * This is Bean Validation over the bound result, not Excel's "data validation" feature - the dropdown an
      * Excel file carries is written from {@link PxlColumn#exportOptionItems()} instead.
      */
     @Builder.Default
@@ -90,7 +90,7 @@ public final class PxlImportWorkbookOption {
      * <p>
      * Takes precedence over {@link PxlWorkbook#importI18nBaseName()} and its language/country pair: given a bundle
      * here, PXL uses it and never loads the annotated one, so a base name that resolves to nothing cannot raise
-     * {@link PxlI18nException}. Use it when the bundle comes from somewhere an annotation cannot name — one the
+     * {@link PxlI18nException}. Use it when the bundle comes from somewhere an annotation cannot name - one the
      * application already resolved for the current request, say. Left {@code null}, the annotation decides.
      */
     @Builder.Default

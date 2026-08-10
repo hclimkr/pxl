@@ -12,7 +12,7 @@ import java.util.List;
  * <p>
  * Loading the annotated base name is a {@code PxlI18nException} on its own. A bundle supplied through the option's
  * {@code import/exportResourceBundle} is used in its place before the annotated one is ever loaded, so the same
- * workbook then binds without error — which is what makes the injected bundle's precedence observable.
+ * workbook then binds without error - which is what makes the injected bundle's precedence observable.
  */
 @Getter
 @Setter

@@ -18,7 +18,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for custom object column values — parses strings into objects on import and writes objects into
+ * Codec for custom object column values - parses strings into objects on import and writes objects into
  * cells on export, using the column's {@code @PxlImportConverter}/{@code @PxlExportConverter} method, a
  * {@link String} constructor, or a {@code toString} method. Blank values map to {@code null}.
  */

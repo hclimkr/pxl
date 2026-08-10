@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * POI implementation that writes an Excel workbook on export — the engine axis, as opposed to the physical
+ * POI implementation that writes an Excel workbook on export - the engine axis, as opposed to the physical
  * format axis of {@link PxlFileFormat}.
  * <p>
  * Each engine writes exactly one physical format, and two of them write the same one: {@link #HSSF} produces
@@ -60,7 +60,7 @@ public enum PxlExcelEngine {
      * Finds and returns the export engine declared by a workbook class through
      * {@link PxlWorkbook#exportExcelEngine()}.
      * <p>
-     * This is a plain lookup: it throws nothing and never returns {@code null} — a {@code null} class, a class
+     * This is a plain lookup: it throws nothing and never returns {@code null} - a {@code null} class, a class
      * without {@code @PxlWorkbook}, or an annotation left at its default all yield
      * {@link PxlConstants#DEFAULT_EXPORT_EXCEL_ENGINE}.
      *
@@ -83,12 +83,12 @@ public enum PxlExcelEngine {
     /**
      * Resolves the export engine of an open POI workbook from its implementation type.
      * <p>
-     * Only the three writer implementations map to an engine — {@link HSSFWorkbook} to {@link #HSSF},
+     * Only the three writer implementations map to an engine - {@link HSSFWorkbook} to {@link #HSSF},
      * {@link SXSSFWorkbook} to {@link #SXSSF}, and {@link XSSFWorkbook} to {@link #XSSF}. The streaming reader's
      * workbook is a reader, not a writer, and therefore has no engine; ask
      * {@link PxlFileFormat#fromPoiWorkbook(Workbook)} what format such a workbook holds instead.
      * <p>
-     * This is a plain lookup: it throws nothing and never returns {@code null} — a {@code null} argument or a
+     * This is a plain lookup: it throws nothing and never returns {@code null} - a {@code null} argument or a
      * workbook that is not one of the three writers falls back to {@link PxlConstants#DEFAULT_EXPORT_EXCEL_ENGINE}.
      *
      * @param poiWorkbook the open POI workbook to inspect (may be {@code null})

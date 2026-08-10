@@ -18,7 +18,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@link Long} column values — parses cells and strings into {@link Long} on import and writes {@link Long}
+ * Codec for {@link Long} column values - parses cells and strings into {@link Long} on import and writes {@link Long}
  * into cells on export. Numeric input is range-checked against the {@link Long} range (throwing on overflow) and truncated
  * to its integer part; note that a numeric cell is a {@code double}, so magnitudes beyond 2^53 lose precision. Boolean cells map to 1/0.
  */

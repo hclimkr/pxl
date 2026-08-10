@@ -1,7 +1,7 @@
 package io.github.hclimkr.pxl.exception;
 
 /**
- * Thrown when an i18n resource bundle cannot be found for a configured base name and locale — the bundle
+ * Thrown when an i18n resource bundle cannot be found for a configured base name and locale - the bundle
  * is absent from the resource path. Raised by the shared i18n loader while opening either a consumer
  * content bundle (sheet/column name translation) or the library's own {@code pxl-messages} diagnostic
  * bundle. A blank base name or {@code null} locale is treated as "i18n disabled" and does <em>not</em>

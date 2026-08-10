@@ -12,7 +12,7 @@ import java.lang.reflect.Method;
  * (They persist after the tests so a human can open them, and {@code mvn clean} deletes the whole
  * {@code target/} directory, so these artifacts are removed with it.)
  * <p>
- * export→import round-trip tests match the artifact file name to the <b>test method name</b>.
+ * export->import round-trip tests match the artifact file name to the <b>test method name</b>.
  * Passing the {@link TestInfo} injected in {@link org.junit.jupiter.api.BeforeEach}
  * returns a {@code <methodName>.xlsx} (or the given extension) file handle.
  */

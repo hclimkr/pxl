@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Boolean} column values — parses cells/strings into {@link Boolean} on import and
+ * Codec for {@link Boolean} column values - parses cells/strings into {@link Boolean} on import and
  * writes {@link Boolean} into cells on export.
  *
  * <p>NUMERIC cells are {@code true} when non-zero; STRING cells honour the column's import true/false

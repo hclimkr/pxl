@@ -79,8 +79,8 @@ public @interface PxlWorkbook {
     /**
      * Specifies the BaseName of the Resource Bundle for internationalization support on import.
      * <p>
-     * Once a base name is set, {@link PxlSheet#name()} and {@link PxlColumn#name()} — together with the sheet and
-     * column names an import option overrides them with — are read as keys of that bundle, and sheet/header matching
+     * Once a base name is set, {@link PxlSheet#name()} and {@link PxlColumn#name()} - together with the sheet and
+     * column names an import option overrides them with - are read as keys of that bundle, and sheet/header matching
      * runs against the translations. A key the bundle does not carry is matched as it stands.
      *
      * @return the resource-bundle base name for import i18n; defaults to {@link PxlConstants#DEFAULT_IMPORT_I18N_BASE_NAME} ({@code ""}, which disables i18n)
@@ -202,8 +202,8 @@ public @interface PxlWorkbook {
     /**
      * Specifies the BaseName of the Resource Bundle for internationalization support on export.
      * <p>
-     * Once a base name is set, {@link PxlSheet#name()} and {@link PxlColumn#name()} — together with the sheet and
-     * column names an export option overrides them with — are read as keys of that bundle and written as their
+     * Once a base name is set, {@link PxlSheet#name()} and {@link PxlColumn#name()} - together with the sheet and
+     * column names an export option overrides them with - are read as keys of that bundle and written as their
      * translations, as are the cell values described on {@link PxlColumn#exportSample()} and
      * {@link PxlColumn#exportOptionItems()}. A key the bundle does not carry is written as it stands.
      *

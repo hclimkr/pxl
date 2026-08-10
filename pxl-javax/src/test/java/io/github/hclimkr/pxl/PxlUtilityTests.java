@@ -49,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * PxlRowUtils, PxlCellUtils, PxlCollectionUtils) against a plain XSSF workbook, since those are consumer-facing
  * entry points, and closes with the public stylers and the {@code PxlFileFormat} / {@code PxlExcelEngine} lookups.
  * <p>
- * Tests that reach into {@code internal/} live in {@link PxlInternalTests} instead — everything here is public API.
+ * Tests that reach into {@code internal/} live in {@link PxlInternalTests} instead - everything here is public API.
  */
 public class PxlUtilityTests {
 
@@ -120,7 +120,7 @@ public class PxlUtilityTests {
     }
 
     // ------------------------------------------------------------------
-    // POI NumberToTextConverter (renders without scientific notation — the basis for PXL's number->string rendering)
+    // POI NumberToTextConverter (renders without scientific notation - the basis for PXL's number->string rendering)
     // ------------------------------------------------------------------
 
     @Test

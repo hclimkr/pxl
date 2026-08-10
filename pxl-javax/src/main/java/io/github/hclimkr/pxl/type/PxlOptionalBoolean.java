@@ -9,7 +9,7 @@ import io.github.hclimkr.pxl.annotation.PxlWorkbook;
  * <p>An annotation element cannot hold {@code null}, so a {@code boolean} one has no way to mean "not specified":
  * its {@code false} is indistinguishable from a deliberate {@code false}. That is only a problem where a setting
  * cascades through several annotation levels, because the inner level then has no way to leave the outer one
- * alone — and no way to turn it back off either, since {@code false} would be read as silence.</p>
+ * alone - and no way to turn it back off either, since {@code false} would be read as silence.</p>
  *
  * <p>Where a {@link String} element says "not specified" with an empty value and a {@code char} one with NUL, a
  * three-valued element says it with {@link #UNSPECIFIED}. Option classes keep using a boxed {@link Boolean} whose
@@ -49,7 +49,7 @@ public enum PxlOptionalBoolean {
      * Returns this value as a plain boolean.
      *
      * <p>{@link #UNSPECIFIED} answers {@code false}, so call {@link #isSpecified()} first wherever the difference
-     * between "not specified" and "specified as false" matters — which is everywhere the cascade is walked.</p>
+     * between "not specified" and "specified as false" matters - which is everywhere the cascade is walked.</p>
      *
      * @return {@code true} only for {@link #TRUE}
      */

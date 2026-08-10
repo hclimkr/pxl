@@ -20,12 +20,12 @@ import java.util.List;
 /**
  * Builder that exports data to a CSV file/stream. Created via {@link Pxl#exportCsv()}.
  *
- * <p>CSV is one file per sheet, so this builder has the sheet form only — there is no workbook form to call.
+ * <p>CSV is one file per sheet, so this builder has the sheet form only - there is no workbook form to call.
  * {@code sheet(...)} accumulates just as the Excel builder's does, but the terminals write a single sheet, so
  * configuring more than one fails there.</p>
  *
- * <p>Settings that only describe how a cell looks or what a workbook contains — stylers, column widths, row
- * heights, freeze panes, auto-filters, dropdowns, the engine and its streaming window — are ignored, since CSV has
+ * <p>Settings that only describe how a cell looks or what a workbook contains - stylers, column widths, row
+ * heights, freeze panes, auto-filters, dropdowns, the engine and its streaming window - are ignored, since CSV has
  * no way to carry them. Two of them are worth stating exactly, because the value still reaches the file:</p>
  * <ul>
  *   <li>{@code exportStringAsFormula}: nothing is evaluated, and the text is written as it stands, leading

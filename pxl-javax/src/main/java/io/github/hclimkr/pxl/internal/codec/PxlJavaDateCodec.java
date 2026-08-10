@@ -21,7 +21,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Date} column values — parses cells/strings into {@link Date} on import and
+ * Codec for {@link Date} column values - parses cells/strings into {@link Date} on import and
  * writes {@link Date} into cells on export.
  *
  * <p>Import reads date-formatted NUMERIC cells via POI, other numerics as Excel date

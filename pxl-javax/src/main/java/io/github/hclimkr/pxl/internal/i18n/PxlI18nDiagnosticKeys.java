@@ -18,7 +18,7 @@ public final class PxlI18nDiagnosticKeys {
         throw new AssertionError("no instances of this class");
     }
 
-    // Location tag builder (PxlException#buildTagMessage) — each takes a single positional argument,
+    // Location tag builder (PxlException#buildTagMessage) - each takes a single positional argument,
     // except TAG_JOIN which takes the joined tag and the message.
 
     /**

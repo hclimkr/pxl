@@ -6,7 +6,7 @@ import lombok.*;
 import java.util.List;
 
 /**
- * DTO for verifying custom Collection separator (collectionSeparator / import·exportCollectionSeparator) combinations.
+ * DTO for verifying custom Collection separator (collectionSeparator / import/exportCollectionSeparator) combinations.
  */
 @Getter
 @Setter

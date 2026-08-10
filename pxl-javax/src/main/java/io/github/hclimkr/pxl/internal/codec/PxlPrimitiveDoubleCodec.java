@@ -19,7 +19,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for primitive {@code double} column values — parses cells and strings into {@code double} on import and writes
+ * Codec for primitive {@code double} column values - parses cells and strings into {@code double} on import and writes
  * {@code double} into cells on export. Numeric cells are taken as-is (no range check); boolean cells map to 1.0/0.0.
  * Because {@code double} cannot be {@code null}, blank input parses to {@code 0.0}. Both import and export reject NaN and
  * Infinity, keeping the two directions symmetric, and export renders plain numeric text via {@link NumberToTextConverter}

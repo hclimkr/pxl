@@ -19,7 +19,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@link Float} column values — parses cells and strings into {@link Float} on import and writes {@link Float}
+ * Codec for {@link Float} column values - parses cells and strings into {@link Float} on import and writes {@link Float}
  * into cells on export. A numeric cell (a {@code double}) is narrowed to {@code float}; boolean cells map to 1.0/0.0.
  * Both import and export reject NaN and Infinity (import additionally rejects finite values that overflow the {@code float}
  * range and narrow to Infinity), keeping the two directions symmetric. To avoid float-to-double widening noise (e.g. 0.1f),

@@ -8,8 +8,8 @@ import lombok.*;
  * DTO for verifying the public constraint annotation @PxlByteSize.
  * <ul>
  *   <li>Code: max 5 bytes (UTF-8)</li>
- *   <li>Name: min 4 bytes (UTF-8) — for lower-bound verification</li>
- *   <li>Label: max 4 bytes (EUC-KR) — for verifying charset-based byte counting</li>
+ *   <li>Name: min 4 bytes (UTF-8) - for lower-bound verification</li>
+ *   <li>Label: max 4 bytes (EUC-KR) - for verifying charset-based byte counting</li>
  * </ul>
  * Each column is independent; if absent from the sheet or null, @PxlByteSize passes as valid (null allowed).
  */

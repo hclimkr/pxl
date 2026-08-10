@@ -31,7 +31,7 @@ import java.util.Objects;
  *   <li>Sheet form (multiple calls for multiple sheets): {@link #sheet(Class, Collection, String)}</li>
  * </ul>
  *
- * <p>The two forms are mutually exclusive — specifying both {@code workbook(...)} and {@code sheet(...)} throws an exception.</p>
+ * <p>The two forms are mutually exclusive - specifying both {@code workbook(...)} and {@code sheet(...)} throws an exception.</p>
  *
  * <p>The terminal methods (returning a workbook / file / stream) and resource handling are provided by
  * {@link PxlAbstractExcelExportBuilder} and its format-neutral base {@link PxlAbstractExportBuilder}.</p>

@@ -21,7 +21,7 @@ import java.time.*;
 import java.util.*;
 
 /**
- * Codec for {@link Collection} column values — splits a single cell into elements on import and joins
+ * Codec for {@link Collection} column values - splits a single cell into elements on import and joins
  * elements into one cell on export, delegating each element to the codec for the field's parameterized
  * type.
  *

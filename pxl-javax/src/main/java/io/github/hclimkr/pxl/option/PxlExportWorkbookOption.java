@@ -16,7 +16,7 @@ import lombok.Getter;
 import java.util.*;
 
 /**
- * Workbook export option, for an Excel or a CSV destination alike — the attributes one of them has no use for
+ * Workbook export option, for an Excel or a CSV destination alike - the attributes one of them has no use for
  * (the engine and the streaming window on one side, the CSV charset, delimiter and byte order mark on the other)
  * are ignored there rather than belonging to a separate option type.
  */
@@ -43,7 +43,7 @@ public final class PxlExportWorkbookOption {
     /**
      * Specifies whether to bean-validate the data to be exported.
      * <p>
-     * This is Bean Validation over the objects being written, not Excel's "data validation" feature — the
+     * This is Bean Validation over the objects being written, not Excel's "data validation" feature - the
      * dropdown written into the file comes from {@link PxlColumn#exportOptionItems()} instead.
      */
     @Builder.Default
@@ -112,7 +112,7 @@ public final class PxlExportWorkbookOption {
      * <p>
      * Takes precedence over {@link PxlWorkbook#exportI18nBaseName()} and its language/country pair: given a bundle
      * here, PXL uses it and never loads the annotated one, so a base name that resolves to nothing cannot raise
-     * {@link PxlI18nException}. Use it when the bundle comes from somewhere an annotation cannot name — one the
+     * {@link PxlI18nException}. Use it when the bundle comes from somewhere an annotation cannot name - one the
      * application already resolved for the current request, say. Left {@code null}, the annotation decides.
      */
     @Builder.Default

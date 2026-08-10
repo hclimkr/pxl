@@ -11,7 +11,7 @@ import java.lang.reflect.Type;
  * Super type token: captures a full generic type (for example {@code List<String>}), which a {@link Class} literal
  * cannot express because erasure leaves only {@code List.class} behind.
  * <p>
- * Instantiate it as an anonymous subclass — {@code new PxlTypeReference<List<String>>() {}} — so that the type
+ * Instantiate it as an anonymous subclass - {@code new PxlTypeReference<List<String>>() {}} - so that the type
  * argument survives in the class file as the generic superclass, from where the constructor reads it back.
  *
  * @param <T> the captured type

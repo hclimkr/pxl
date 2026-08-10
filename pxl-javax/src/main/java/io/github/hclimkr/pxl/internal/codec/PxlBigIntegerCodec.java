@@ -20,7 +20,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@link BigInteger} column values — parses cells and strings into {@link BigInteger} on import and writes
+ * Codec for {@link BigInteger} column values - parses cells and strings into {@link BigInteger} on import and writes
  * {@link BigInteger} into cells on export. A numeric cell is converted via {@code BigDecimal.valueOf(double)} and truncated
  * to its integer part (so its precision is limited by the underlying {@code double}); string input is parsed exactly via
  * {@code new BigInteger(String)}. Boolean cells map to 1/0. Export always writes the value as text

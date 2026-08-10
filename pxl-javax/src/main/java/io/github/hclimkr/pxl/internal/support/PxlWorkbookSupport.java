@@ -41,9 +41,9 @@ import java.util.stream.Collectors;
  * Workbook lifecycle and naming for the binder: creating an empty workbook for an export engine, opening a source
  * workbook for import, resolving the {@code @PxlWorkbookName} field, and making sheet/defined names unique.
  * <p>
- * {@code createWorkbook} maps {@link PxlExcelEngine} to the POI implementation — {@code HSSF} to an
+ * {@code createWorkbook} maps {@link PxlExcelEngine} to the POI implementation - {@code HSSF} to an
  * {@link HSSFWorkbook} (XLS), {@code XSSF} to an {@link XSSFWorkbook} (XLSX), {@code SXSSF} to an auto-flushing
- * {@link SXSSFWorkbook} (streaming XLSX) — and stamps the creator/application document properties.
+ * {@link SXSSFWorkbook} (streaming XLSX) - and stamps the creator/application document properties.
  * <p>
  * {@code openWorkbook} is where the reader is chosen. It sniffs the source's leading magic bytes rather than
  * trusting the file extension, and reads with the streaming reader only when the import metadata asks for it
@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
  * <p>
  * The naming helpers exist because Excel constrains both: a sheet name is limited to 31 characters and forbids
  * certain characters, and neither a sheet name nor a defined name may repeat within a workbook. Both helpers
- * sanitize first and then append a {@code " (2)"}, {@code " (3)"} … suffix until the name is free.
+ * sanitize first and then append a {@code " (2)"}, {@code " (3)"} ... suffix until the name is free.
  */
 public final class PxlWorkbookSupport {
 
@@ -114,7 +114,7 @@ public final class PxlWorkbookSupport {
      * auto-flushing {@link SXSSFWorkbook} (streaming XLSX) with the given row-access window size and temp-file compression off.
      * <p>
      * Every {@link PxlExcelEngine} constant is an Excel writer, so no argument can name an output this is unable
-     * to create — CSV, which has no POI workbook, is not an engine. There is consequently no unsupported-format
+     * to create - CSV, which has no POI workbook, is not an engine. There is consequently no unsupported-format
      * failure to report.
      *
      * @param exportExcelEngine              the target POI engine (HSSF, XSSF, or SXSSF)
@@ -341,7 +341,7 @@ public final class PxlWorkbookSupport {
      * Returns the sheet names that collide with an earlier name in the given sequence, so an export can reject them
      * before writing anything.
      *
-     * <p>Names are compared as the safe names they will become ({@link WorkbookUtil#createSafeSheetName(String)} —
+     * <p>Names are compared as the safe names they will become ({@link WorkbookUtil#createSafeSheetName(String)} -
      * invalid characters replaced, truncated to 31 chars), <strong>ignoring case</strong>: a workbook cannot hold two
      * sheets whose names differ only in case, which is also how a sheet name is matched on import. The comparison is
      * locale-independent. Sanitizing is idempotent, so a caller may pass names that are already safe.</p>
@@ -362,8 +362,8 @@ public final class PxlWorkbookSupport {
     }
 
     /**
-     * Creates a safe sheet name (≤31 chars, no invalid characters) that does not collide with any sheet name already present in the workbook.
-     * On a collision, appends a " (2)", " (3)" … suffix while staying within the 31-char limit. (POI's getSheet matches case-insensitively.)
+     * Creates a safe sheet name (<=31 chars, no invalid characters) that does not collide with any sheet name already present in the workbook.
+     * On a collision, appends a " (2)", " (3)" ... suffix while staying within the 31-char limit. (POI's getSheet matches case-insensitively.)
      *
      * @param workbook    the target workbook
      * @param desiredName the desired sheet name
@@ -390,7 +390,7 @@ public final class PxlWorkbookSupport {
 
     /**
      * Creates a unique name that does not collide with any defined name (Named Range) already present in the workbook.
-     * On a collision, appends a "_2", "_3" … suffix.
+     * On a collision, appends a "_2", "_3" ... suffix.
      *
      * @param workbook    the target workbook
      * @param desiredName the desired name

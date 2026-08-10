@@ -38,6 +38,13 @@ import java.util.Optional;
 abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
 
     /**
+     * The byte order mark, U+FEFF. Written as a code point rather than as the character itself, which is
+     * zero-width: a literal one is invisible in the source and does not survive a tool that reads or rewrites the
+     * file in a non-Unicode charset.
+     */
+    private static final char BOM = (char) 0xFEFF;
+
+    /**
      * Sheet names, in the order {@code sheet(...)} was called. CSV writes one file per sheet, so the terminals
      * accept exactly one; the check runs in {@link #prepare()} rather than in {@code sheet(...)} because it is the
      * terminal, not the builder, that cannot take more than one.
@@ -45,7 +52,7 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
     protected final List<String> sheetNames = new ArrayList<>();
 
     /**
-     * Row classes, aligned with {@link #sheetNames}.
+     * Row classes, aligned with {@code sheetNames}.
      */
     protected final List<Class<?>> rowClasses = new ArrayList<>();
 
@@ -86,7 +93,7 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
             final Writer writer = new OutputStreamWriter(rendered, charset);
 
             if (resolveCsvBom(workbookMeta) && writesBom(charset)) {
-                writer.write('﻿');
+                writer.write(BOM);
             }
 
             writeRecords(writer, workbookMeta);
@@ -197,7 +204,7 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
     }
 
     /**
-     * Resolves the sheet-level CSV charset the way the ad-hoc sheet meta does — the wildcard sheet option first,
+     * Resolves the sheet-level CSV charset the way the ad-hoc sheet meta does - the wildcard sheet option first,
      * then the workbook value. The builder needs it before the core builds the sheet meta, since it is the builder
      * that encodes.
      *

@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * Default date and time formatters and Excel display formats used by the date/time codecs.
  * <p>
  * The default patterns are fixed, locale-independent ISO-8601 patterns built with {@link Locale#ROOT}, so a
- * value handled without a column {@code pattern} is written and read the same way on every machine — nothing
+ * value handled without a column {@code pattern} is written and read the same way on every machine - nothing
  * here depends on the JVM default locale. Date-time write patterns use the ISO {@code 'T'} separator
  * ({@code yyyy-MM-dd'T'HH:mm:ss}, e.g. {@code 2026-07-23T08:45:58}); the read patterns are the padded shape
  * with lenient single-letter fields (accepting unpadded input) and accept both the {@code 'T'} separator and

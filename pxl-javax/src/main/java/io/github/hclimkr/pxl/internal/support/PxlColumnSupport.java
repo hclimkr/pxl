@@ -71,7 +71,7 @@ public final class PxlColumnSupport {
             final int columnIndex = columnMeta.getActualExportColumnIndex();
 
             // If the name were deterministic, reaching the same (sheet,column) twice in the same workbook would make
-            // createSheet/createName fail with IllegalArgumentException("already contains…"), so make a name unique within the workbook to avoid the collision.
+            // createSheet/createName fail with IllegalArgumentException("already contains..."), so make a name unique within the workbook to avoid the collision.
             final String desiredSheetName = "dropdown_sheet_s" + sheetIndex + "_c" + columnIndex;
             final String dropdownSheetName = PxlWorkbookSupport.makeUniqueSafeSheetName(workbook, desiredSheetName);
             final Sheet dropdownSheet = workbook.createSheet(dropdownSheetName);

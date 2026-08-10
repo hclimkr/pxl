@@ -146,7 +146,7 @@ public interface PxlConstants {
     PxlExcelEngine DEFAULT_EXPORT_EXCEL_ENGINE = PxlExcelEngine.XSSF;
 
     /**
-     * Default physical file format produced by export — the format
+     * Default physical file format produced by export - the format
      * {@link #DEFAULT_EXPORT_EXCEL_ENGINE} writes, and the fallback of the
      * {@link PxlFileFormat#fromPoiWorkbook(Workbook)} lookup.
      */
@@ -196,7 +196,7 @@ public interface PxlConstants {
      * Maximum number of columns allowed per CSV on import.
      * <p>
      * CSV itself bounds neither rows nor columns, so this is a defensive ceiling rather than a format rule. It
-     * matches {@link PxlFileFormat#XLSX}, which keeps a row class that exports to XLSX readable back from CSV —
+     * matches {@link PxlFileFormat#XLSX}, which keeps a row class that exports to XLSX readable back from CSV -
      * a lower cap would reject the very files PXL had written.
      */
     int IMPORT_MAX_NUMBER_OF_CSV_COLUMNS = 16_384;  // max number of columns in the CSV to import (= XLSX)
@@ -246,7 +246,7 @@ public interface PxlConstants {
     /**
      * Marks the CSV charset as not specified at an annotation level on import.
      * <p>
-     * A CSV workbook is read as one file per sheet, so the charset resolves through a cascade — sheet option,
+     * A CSV workbook is read as one file per sheet, so the charset resolves through a cascade - sheet option,
      * {@link PxlSheet#importCsvCharset()}, workbook option, {@link PxlWorkbook#importCsvCharset()}, and finally
      * {@link #DEFAULT_IMPORT_CSV_CHARSET}. An option level says "not specified" with {@code null}, which an annotation
      * element cannot hold, so the two annotation levels say it with this value instead. Any blank value counts.
@@ -302,7 +302,7 @@ public interface PxlConstants {
     /**
      * Marks the CSV charset as not specified at an annotation level on export.
      * <p>
-     * A CSV workbook is written as one file per sheet, so the charset resolves through a cascade — sheet option,
+     * A CSV workbook is written as one file per sheet, so the charset resolves through a cascade - sheet option,
      * {@link PxlSheet#exportCsvCharset()}, workbook option, {@link PxlWorkbook#exportCsvCharset()}, and finally
      * {@link #DEFAULT_EXPORT_CSV_CHARSET}. An option level says "not specified" with {@code null}, which an annotation
      * element cannot hold, so the two annotation levels say it with this value instead. Any blank value counts.

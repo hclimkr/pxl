@@ -379,7 +379,7 @@ public class PxlCsvExportTests {
                 .toFile(csvFile);
 
         // U+FEFF has no EUC-KR encoding and would become '?', corrupting the first header cell, so it is dropped
-        // silently — no exception, no log.
+        // silently - no exception, no log.
         assertThat(bytesOf(csvFile)[0]).isNotEqualTo((byte) '?');
         assertThat(linesOf(csvFile, Charset.forName("EUC-KR")).get(0)).isEqualTo("City");
 
@@ -404,7 +404,7 @@ public class PxlCsvExportTests {
                 .sheet(NullStringRow.class, Collections.singletonList(row), "Nulls")
                 .toFile(csvFile);
 
-        // The configured null string for the first column, the default empty string for the second — and both
+        // The configured null string for the first column, the default empty string for the second - and both
         // still occupy a field, so the record keeps the header's field count.
         assertThat(linesOf(csvFile).get(1)).isEqualTo("N/A,");
     }
@@ -466,8 +466,8 @@ public class PxlCsvExportTests {
                 .toFile(csvFile);
 
         final List<CSVRecord> records = recordsOf(csvFile);
-        // Every codec is reached with no cell to write into — the primitives among them are a path the Collection
-        // codec never covers — and each still occupies its own field.
+        // Every codec is reached with no cell to write into - the primitives among them are a path the Collection
+        // codec never covers - and each still occupies its own field.
         assertThat(records).hasSize(2);
         assertThat(records.get(1).size()).isEqualTo(records.get(0).size());
         assertThat(records.get(1).get(0)).isEqualTo("Hello, PXL");
@@ -531,7 +531,7 @@ public class PxlCsvExportTests {
         final ResourceBundle bundle = ResourceBundle.getBundle("messages", Locale.ENGLISH,
                 ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES));
 
-        // The sheet form reads no workbook annotation, so the bundle comes through the option — the one i18n path
+        // The sheet form reads no workbook annotation, so the bundle comes through the option - the one i18n path
         // a CSV export can actually take today.
         pxl.exportCsv()
                 .sheet(I18nRow.class, Collections.singletonList(row), "Staff")
@@ -622,7 +622,7 @@ public class PxlCsvExportTests {
                 .toFile(csvFile);
 
         // Excel writes a patternless date as a numeric serial carrying a display format; CSV has neither cell types
-        // nor styles, so what lands in the field is the codec's own string — which is why a date survives the CSV
+        // nor styles, so what lands in the field is the codec's own string - which is why a date survives the CSV
         // round trip more plainly than the Excel one.
         final int dateIndex = recordsOf(csvFile).get(0).toList().indexOf("LocalDate");
         assertThat(recordsOf(csvFile).get(1).get(dateIndex)).isEqualTo("2023-06-15");
@@ -850,7 +850,7 @@ public class PxlCsvExportTests {
         final File csvFile = csvFile();
 
         // The sheet form takes the row class as an argument, so there is no sheet field to switch off and the sheet
-        // meta hardcodes exportEnabled. The option therefore cannot suppress the sheet here — on the Excel sheet
+        // meta hardcodes exportEnabled. The option therefore cannot suppress the sheet here - on the Excel sheet
         // form it cannot either. It becomes meaningful only once a workbook form exists.
         pxl.exportCsv()
                 .sheet(Employee.class, twoEmployees(), "Employees")

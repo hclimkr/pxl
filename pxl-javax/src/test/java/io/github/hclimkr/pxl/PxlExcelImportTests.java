@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Excel/XLS import path tests — NUMERIC cells, merged regions, inherited sheets, sheet name mapping, external XLS, row index boundaries, streaming/formula import.
+ * Excel/XLS import path tests - NUMERIC cells, merged regions, inherited sheets, sheet name mapping, external XLS, row index boundaries, streaming/formula import.
  */
 public class PxlExcelImportTests {
 
@@ -484,7 +484,7 @@ public class PxlExcelImportTests {
     }
 
     // Reading NUMERIC cells (incl. a date-formatted one) into String via the stream reader must render them with
-    // the cell's display format through DataFormatter — identical to non-streaming — now that the StreamingCell
+    // the cell's display format through DataFormatter - identical to non-streaming - now that the StreamingCell
     // /NumberToTextConverter special-case has been removed from PxlStringCodec. (excel-streaming-reader reads
     // styles by default, so the StreamingCell carries its number format.)
     @Test
@@ -880,7 +880,7 @@ public class PxlExcelImportTests {
     }
 
     // ------------------------------------------------------------------
-    // Multi-sheet import in sheet form — sheet() returns a source step, so one builder is reused per sheet
+    // Multi-sheet import in sheet form - sheet() returns a source step, so one builder is reused per sheet
     // ------------------------------------------------------------------
 
     @Test
@@ -1003,7 +1003,7 @@ public class PxlExcelImportTests {
     }
 
     // ------------------------------------------------------------------
-    // Sheet-form import — specifying the return collection type (collectionClass)
+    // Sheet-form import - specifying the return collection type (collectionClass)
     // ------------------------------------------------------------------
 
     @Test

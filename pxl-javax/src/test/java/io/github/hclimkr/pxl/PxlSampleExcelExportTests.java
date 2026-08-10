@@ -240,7 +240,7 @@ public class PxlSampleExcelExportTests {
     }
 
     // ------------------------------------------------------------------
-    // Multi-sheet sample — calling sheet() multiple times (a different class per sheet)
+    // Multi-sheet sample - calling sheet() multiple times (a different class per sheet)
     // ------------------------------------------------------------------
 
     @Test

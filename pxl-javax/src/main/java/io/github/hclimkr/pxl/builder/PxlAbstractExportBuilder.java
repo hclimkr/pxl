@@ -16,10 +16,10 @@ import java.io.OutputStream;
  * <p>Holds the export option and the file/stream terminal methods, which own nothing but resource handling
  * and exception normalization. What is actually written is left to three seams the subclass fills in:</p>
  * <ol>
- *   <li>{@link #prepare()} — runs <strong>before</strong> the destination is opened, so a failure here leaves
+ *   <li>{@link #prepare()} - runs <strong>before</strong> the destination is opened, so a failure here leaves
  *       no file behind</li>
- *   <li>{@link #writeTo(OutputStream)} — writes the result to the destination</li>
- *   <li>{@link #cleanup()} — releases whatever {@code prepare()} acquired, exactly once, on success and failure alike</li>
+ *   <li>{@link #writeTo(OutputStream)} - writes the result to the destination</li>
+ *   <li>{@link #cleanup()} - releases whatever {@code prepare()} acquired, exactly once, on success and failure alike</li>
  * </ol>
  *
  * <p>The order matters: preparing after the destination was opened would leave an empty file whenever the
@@ -28,7 +28,7 @@ import java.io.OutputStream;
  *
  * <p>The terminal methods are the <strong>normalization boundary</strong>: they declare
  * {@code throws PxlException}, but since that type is abstract what actually surfaces is always a concrete
- * subtype — the matching one for a classified failure ({@link PxlArgumentException},
+ * subtype - the matching one for a classified failure ({@link PxlArgumentException},
  * {@link PxlCellCodecException},
  * {@link PxlValidationException}, ...), and
  * {@link PxlSystemException} (carrying the original as its cause) for anything else, including checked I/O failures
@@ -108,7 +108,7 @@ abstract class PxlAbstractExportBuilder {
     /**
      * Prepares the result to be written, before the destination is opened.
      *
-     * <p>Implementations must prepare afresh on every call — a terminal method run twice repeats the work
+     * <p>Implementations must prepare afresh on every call - a terminal method run twice repeats the work
      * rather than handing out a cached result. A format with nothing to prepare implements this as an empty
      * body; it is left abstract so that every format has to state its preparation explicitly rather than
      * inherit silence (a skipped validation would otherwise pass unnoticed).</p>
@@ -133,7 +133,7 @@ abstract class PxlAbstractExportBuilder {
      * so it runs on success and failure alike, and must not throw.
      *
      * <p>A format that acquires nothing implements this as an empty body; it is left abstract because it pairs
-     * with {@link #prepare()} — whoever acquires a resource there has to say here how it is released.</p>
+     * with {@link #prepare()} - whoever acquires a resource there has to say here how it is released.</p>
      */
     protected abstract void cleanup();
 

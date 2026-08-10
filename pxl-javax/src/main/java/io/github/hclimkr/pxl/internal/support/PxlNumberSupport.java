@@ -53,8 +53,8 @@ public final class PxlNumberSupport {
     }
 
     /**
-     * Avoids the widening noise produced when a float is widened to a double (e.g. 0.1f → 0.10000000149011612).
-     * Returns the double corresponding to the float's short decimal representation ({@link Float#toString}). (0.1f → 0.1)
+     * Avoids the widening noise produced when a float is widened to a double (e.g. 0.1f -> 0.10000000149011612).
+     * Returns the double corresponding to the float's short decimal representation ({@link Float#toString}). (0.1f -> 0.1)
      *
      * @param value the float value to convert
      * @return the double matching the float's short decimal representation
@@ -119,8 +119,8 @@ public final class PxlNumberSupport {
 
     /**
      * Validates a numeric-cell {@code double} against an integer range. Rejects non-finite values (NaN/Infinity) up front
-     * — symmetric with the {@code float}/{@code double} import guard and preventing the bare {@link NumberFormatException}
-     * that {@link BigDecimal#valueOf(double)} would otherwise throw — then enforces [minInclusive, maxInclusive] using exact
+     * - symmetric with the {@code float}/{@code double} import guard and preventing the bare {@link NumberFormatException}
+     * that {@link BigDecimal#valueOf(double)} would otherwise throw - then enforces [minInclusive, maxInclusive] using exact
      * {@link BigDecimal} comparison (needed because bounds such as {@code Long.MAX_VALUE} are not exactly representable as a
      * {@code double}). Converting the {@code double} inside this method keeps {@link BigDecimal#valueOf(double)} off the call
      * sites, so a non-finite value can never leak an unchecked exception past this guard.

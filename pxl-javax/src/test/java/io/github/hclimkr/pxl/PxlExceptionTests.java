@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Exception scenario tests — file/validation/special double/duplicate sheet/password/stream-reader formula, plus type parsing failures (bool/bigdecimal/biginteger/localdate/duration/period), integer/byte out-of-range, ERROR cell, no default constructor, RowIndex type/unsupported type/grouping field typo.
+ * Exception scenario tests - file/validation/special double/duplicate sheet/password/stream-reader formula, plus type parsing failures (bool/bigdecimal/biginteger/localdate/duration/period), integer/byte out-of-range, ERROR cell, no default constructor, RowIndex type/unsupported type/grouping field typo.
  */
 public class PxlExceptionTests {
 

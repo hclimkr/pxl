@@ -18,7 +18,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for primitive {@code short} column values — parses cells and strings into {@code short} on import and writes
+ * Codec for primitive {@code short} column values - parses cells and strings into {@code short} on import and writes
  * {@code short} into cells on export. Numeric input is range-checked against the {@code short} range (throwing on overflow)
  * and truncated to its integer part; boolean cells map to 1/0. Because {@code short} cannot be {@code null}, blank input
  * parses to {@code 0}.

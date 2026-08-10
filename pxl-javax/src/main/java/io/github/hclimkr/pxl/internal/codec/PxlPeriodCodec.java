@@ -21,7 +21,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Period} column values — parses cells/strings into {@link Period} on import
+ * Codec for {@link Period} column values - parses cells/strings into {@link Period} on import
  * and writes {@link Period} into cells on export.
  *
  * <p>NUMERIC and BOOLEAN cells are interpreted as a number of days. Strings are parsed by the column's

@@ -260,8 +260,8 @@ public @interface PxlSheet {
      * Specifies whether a byte order mark is written ahead of this sheet's CSV.
      * Ignored for an Excel destination.
      * <p>
-     * A byte order mark belongs to the file even more plainly than the charset does — the same UTF-8 output is
-     * wanted with one by some readers and without it by others — so a sheet may depart from the workbook here.
+     * A byte order mark belongs to the file even more plainly than the charset does - the same UTF-8 output is
+     * wanted with one by some readers and without it by others - so a sheet may depart from the workbook here.
      * Left {@link PxlOptionalBoolean#UNSPECIFIED}, the sheet falls back to the workbook's {@code exportCsvBom}; a runtime sheet
      * option overrides both. {@link PxlOptionalBoolean#FALSE} turns off a mark the workbook asked for, which a plain
      * {@code boolean} element could not express.

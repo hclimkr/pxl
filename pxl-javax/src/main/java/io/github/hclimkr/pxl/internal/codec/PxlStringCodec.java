@@ -18,11 +18,11 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@link String} column values — reads a cell (or CSV token) into a {@link String} on import
+ * Codec for {@link String} column values - reads a cell (or CSV token) into a {@link String} on import
  * and writes a {@link String} into a cell on export.
  *
  * <p>On import, NUMERIC cells are rendered via the workbook's cached {@link DataFormatter} (built with
- * {@code Locale.ROOT} so decimal/grouping symbols are locale-independent; streaming cells included — the
+ * {@code Locale.ROOT} so decimal/grouping symbols are locale-independent; streaming cells included - the
  * streaming reader reads styles by default, so the cell carries its number format), BOOLEAN cells via the
  * column's import true/false strings, and BLANK cells map to {@code null}. On export, a leading
  * {@code '='} is written as a formula (or a quote-prefixed literal), pictures are embedded when requested,
@@ -40,7 +40,7 @@ final class PxlStringCodec {
 
     /**
      * Parses the given cell into a {@link String}. NUMERIC cells are formatted with the workbook's cached
-     * {@link DataFormatter} (streaming cells included — the streaming reader reads styles by default, so the
+     * {@link DataFormatter} (streaming cells included - the streaming reader reads styles by default, so the
      * cell carries its number format); STRING cells are normalized per the column's {@code importTrim}
      * option; BOOLEAN cells are rendered with the column's import true/false strings; BLANK cells yield
      * {@code null}.

@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Excel export path tests — masking/trimming/grouping/password/export engine (SXSSF, HSSF), literal formulas, column inheritance, sheet name normalization, lastColumnIndex boundary.
+ * Excel export path tests - masking/trimming/grouping/password/export engine (SXSSF, HSSF), literal formulas, column inheritance, sheet name normalization, lastColumnIndex boundary.
  */
 public class PxlExcelExportTests {
 
@@ -73,7 +73,7 @@ public class PxlExcelExportTests {
     }
 
     // ------------------------------------------------------------------
-    // Builder reuse — running the same builder again with the same configuration
+    // Builder reuse - running the same builder again with the same configuration
     // ------------------------------------------------------------------
 
     @Test
@@ -111,7 +111,7 @@ public class PxlExcelExportTests {
     }
 
     // ------------------------------------------------------------------
-    // Terminal failure — the workbook is built before the destination is opened,
+    // Terminal failure - the workbook is built before the destination is opened,
     // so a destination that cannot be opened must not leave a file behind or a workbook unreleased
     // ------------------------------------------------------------------
 
@@ -130,7 +130,7 @@ public class PxlExcelExportTests {
         final File unopenable = unopenableFile();
         // Opening the file fails with an IOException, which the terminal normalizes.
         assertThrows(PxlSystemException.class, () -> builder.toFile(unopenable));
-        // Nothing may be left at the destination — the write never started.
+        // Nothing may be left at the destination - the write never started.
         assertThat(unopenable).doesNotExist();
 
         // The workbook built for the failed run was released and the configuration is untouched,
@@ -169,7 +169,7 @@ public class PxlExcelExportTests {
     }
 
     // ------------------------------------------------------------------
-    // Multiple sheets — a different rowClass per sheet
+    // Multiple sheets - a different rowClass per sheet
     // ------------------------------------------------------------------
 
     @Test
@@ -192,7 +192,7 @@ public class PxlExcelExportTests {
                 .sheet(AllTypesRow.class, Arrays.asList("AllTypes"))
                 .fromFile(excelFile);
 
-        // Verify each sheet is bound with its own rowClass — different classes are applied per sheet.
+        // Verify each sheet is bound with its own rowClass - different classes are applied per sheet.
         assertThat(importedEmployees).extracting(Employee::getName).containsExactly("Alice", "Bob");
         assertThat(importedAllTypes).hasSize(1);
         assertThat(importedAllTypes.get(0).getText()).isEqualTo("Hello, PXL");
@@ -873,17 +873,17 @@ public class PxlExcelExportTests {
                 .override(noValidationOption())
                 .toFile(excelFile);
 
-        // Open with raw POI but do not evaluate here — getNumericCellValue() returns the cached value left by export.
+        // Open with raw POI but do not evaluate here - getNumericCellValue() returns the cached value left by export.
         try (Workbook workbook = WorkbookFactory.create(excelFile)) {
             final Cell cell = firstDataCell(workbook, "Formula", "Formula");
             assertThat(cell.getCellType()).isEqualTo(CellType.FORMULA);
             assertThat(cell.getCellFormula()).isEqualTo("2+3");
-            // If export had not computed it, the cached value would be 0.0 — 5.0 means it was computed at export time.
+            // If export had not computed it, the cached value would be 0.0 - 5.0 means it was computed at export time.
             assertThat(cell.getNumericCellValue()).isEqualTo(5.0);
         }
     }
 
-    // A cell-reference formula (=A2*B2) is also computed at export time — the cached value of Qty(A) * Price(B) is written.
+    // A cell-reference formula (=A2*B2) is also computed at export time - the cached value of Qty(A) * Price(B) is written.
     @Test
     public void exportFormula_cellReference_computedAtExport() throws Exception {
         final FormulaRefRow row = new FormulaRefRow();
@@ -905,7 +905,7 @@ public class PxlExcelExportTests {
         }
     }
 
-    // Streaming (SXSSF): delegates computation to Excel — only sets the recalc flag and leaves no cached value.
+    // Streaming (SXSSF): delegates computation to Excel - only sets the recalc flag and leaves no cached value.
     @Test
     public void exportFormula_sxssf_delegatesRecalcWithoutCaching() throws Exception {
         final FormulaRow row = new FormulaRow();
@@ -937,7 +937,7 @@ public class PxlExcelExportTests {
 
     // ------------------------------------------------------------------
     // Null field export: the default exportNullString("") produces an empty-string STRING cell, not a blank cell
-    // (type-independent — buildDataCell's null gate applies exportNullString before type dispatch)
+    // (type-independent - buildDataCell's null gate applies exportNullString before type dispatch)
     // ------------------------------------------------------------------
 
     // A null Double is written as a STRING cell containing an empty string, neither numeric 0 nor blank (default exportNullString="").

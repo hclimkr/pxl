@@ -19,7 +19,7 @@ import java.util.ResourceBundle;
  * unmatched locale falls back to the English base.</p>
  *
  * <p>Resolution is <strong>fail-safe</strong>: {@link #get(String, Object...)} never throws, so building an
- * exception message can never itself fail and mask the original error — on any lookup failure it returns the
+ * exception message can never itself fail and mask the original error - on any lookup failure it returns the
  * key unchanged (matching {@link PxlI18n#getMessage}'s lenient behavior for missing keys).</p>
  */
 public final class PxlI18nDiagnostic {

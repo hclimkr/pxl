@@ -25,11 +25,11 @@ import java.util.function.Supplier;
  *
  * <p>Each {@code notNull}/{@code notEmpty}/{@code notBlank} method comes in three forms: a no-argument form that
  * uses a generic default message; a form that takes the checked argument's <em>parameter name</em> (Java cannot
- * capture the caller's variable name automatically) and assembles a standard message from it — e.g.
+ * capture the caller's variable name automatically) and assembles a standard message from it - e.g.
  * {@code notNull(rowClass, "rowClass")} fails with {@code "argument 'rowClass' is null."} (the message is
- * localized; English is the default and Korean is available — see {@link PxlI18nDiagnostic}); and a form that takes a
- * {@link Supplier} of the exception to throw as-is on failure — e.g.
- * {@code notEmpty(tags, () -> new IllegalArgumentException("at least one tag is required"))} — letting the caller
+ * localized; English is the default and Korean is available - see {@link PxlI18nDiagnostic}); and a form that takes a
+ * {@link Supplier} of the exception to throw as-is on failure - e.g.
+ * {@code notEmpty(tags, () -> new IllegalArgumentException("at least one tag is required"))} - letting the caller
  * raise a non-Pxl exception of their own choosing. {@code isTrue} validates a condition rather than a named argument,
  * so its second form takes a message.</p>
  */

@@ -17,7 +17,7 @@ import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Cell style / column width tests — header fill and font color, data alignment/wrap/border, fixed column width,
+ * Cell style / column width tests - header fill and font color, data alignment/wrap/border, fixed column width,
  * and workbook/sheet/column-level header and data styler cascade.
  */
 public class PxlStyleTests {

@@ -10,7 +10,7 @@ import java.util.List;
  * A CSV workbook whose two sheets are split on different delimiters.
  * <p>
  * The workbook names the tab, so "Tabbed" inherits it. "Comma" names the comma, which happens to be the built-in
- * default — the delimiter counterpart of what {@link MixedCharsetWorkbook} does for the charset.
+ * default - the delimiter counterpart of what {@link MixedCharsetWorkbook} does for the charset.
  */
 @Getter
 @Setter

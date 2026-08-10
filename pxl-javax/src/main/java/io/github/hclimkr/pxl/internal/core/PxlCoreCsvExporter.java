@@ -44,7 +44,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
     /**
      * Writes one sheet of row objects as CSV. (export)
      *
-     * <p>The writer is flushed but never closed — it belongs to the caller.</p>
+     * <p>The writer is flushed but never closed - it belongs to the caller.</p>
      *
      * @param sheetName    the sheet name, used for the sheet meta and in error messages
      * @param rowObjects   the row objects written as data records
@@ -140,7 +140,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
      * Writes one sample (template) sheet as CSV: a header record and a single record of the columns'
      * {@code exportSample} values. (export)
      *
-     * <p>The writer is flushed but never closed — it belongs to the caller.</p>
+     * <p>The writer is flushed but never closed - it belongs to the caller.</p>
      *
      * @param sheetName    the sheet name, used for the sheet meta and in error messages
      * @param rowClass     the row class describing the column bindings
@@ -261,7 +261,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
      * itself, and the ones between the header and the first data row.
      *
      * <p>Each leading record is printed as a full row of empty fields rather than as an empty line. PXL's own
-     * CSV import ignores empty lines, so a blank line would vanish on the way back in and pull the header up —
+     * CSV import ignores empty lines, so a blank line would vanish on the way back in and pull the header up -
      * an empty-field record survives because its first field is quoted.</p>
      *
      * @param csvPrinter  the printer to write to

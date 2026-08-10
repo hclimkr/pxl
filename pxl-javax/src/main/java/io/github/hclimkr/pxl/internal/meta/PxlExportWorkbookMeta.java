@@ -176,7 +176,7 @@ public final class PxlExportWorkbookMeta {
      * no POI workbook is created.
      *
      * <p>CSV has no POI writer, so the engine is left {@code null} and the file format is fixed to
-     * {@link PxlFileFormat#CSV} — which is what makes the binder enforce the CSV sheet/row/column limits.
+     * {@link PxlFileFormat#CSV} - which is what makes the binder enforce the CSV sheet/row/column limits.
      * This is a complete state rather than a deficient one: {@code getWorkbook()} and
      * {@code getFormulaEvaluator()} simply answer {@code null} on this path.</p>
      *

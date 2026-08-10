@@ -7,7 +7,7 @@ import javax.validation.constraints.NotEmpty;
 import java.util.List;
 
 /**
- * Row DTO with a {@code @NotEmpty} collection field. Verifies empty cell → {@code null} collection → {@code @NotEmpty} violation.
+ * Row DTO with a {@code @NotEmpty} collection field. Verifies empty cell -> {@code null} collection -> {@code @NotEmpty} violation.
  * An unconstrained {@code name} field is included alongside to avoid empty-row skipping ({@code isIgnorableRow}).
  */
 @Getter

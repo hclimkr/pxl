@@ -11,15 +11,15 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 
 /**
- * Row-level POI helpers: blank-row detection, fetching a row (optionally creating it), copying a row — once, over a
- * destination range, or a number of times — and removing rows by range or count.
+ * Row-level POI helpers: blank-row detection, fetching a row (optionally creating it), copying a row - once, over a
+ * destination range, or a number of times - and removing rows by range or count.
  * <p>
  * A copy carries the source row's height, row style, every cell (through {@link PxlCellUtils#copyCell}) and the
  * merged regions anchored on it, shifting existing rows down when the destination is occupied. A removal closes the
  * gap by shifting the rows below up, dropping the merged regions contained in the removed range first, so the sheet
  * stays contiguous.
  * <p>
- * All of it rewrites sheet structure, which a streaming sheet ({@link StreamingSheet}) cannot do — every method
+ * All of it rewrites sheet structure, which a streaming sheet ({@link StreamingSheet}) cannot do - every method
  * no-ops there, as it does on a {@code null} sheet or a missing source row.
  */
 public final class PxlRowUtils {

@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for primitive {@code char} column values — parses cells and strings into {@code char} on import and writes {@code char}
+ * Codec for primitive {@code char} column values - parses cells and strings into {@code char} on import and writes {@code char}
  * into cells on export. The character is taken as the first character of the cell's text (numeric cells are first rendered via
  * {@link NumberToTextConverter}); boolean cells map to {@code '1'}/{@code '0'}. Because {@code char} cannot be {@code null},
  * empty/blank input parses to a space {@code ' '}. Export always writes the character as a text cell (no numeric formatting or masking).

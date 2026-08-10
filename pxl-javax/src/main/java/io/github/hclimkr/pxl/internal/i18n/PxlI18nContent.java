@@ -10,8 +10,8 @@ import java.util.ResourceBundle;
  * ({@code importI18n*}/{@code exportI18n*}).
  *
  * <p>This is one of the library's two independent i18n channels. It is a thin, content-semantic facade over
- * the shared {@link PxlI18n} loader (UTF-8 bundle loading + key resolution); the other channel — the
- * library's own diagnostic/exception messages — is handled by {@link PxlI18nDiagnostic}. Keeping the content
+ * the shared {@link PxlI18n} loader (UTF-8 bundle loading + key resolution); the other channel - the
+ * library's own diagnostic/exception messages - is handled by {@link PxlI18nDiagnostic}. Keeping the content
  * channel separate from the loader makes the two concerns explicit: <em>consumer content translation</em>
  * (here) versus the <em>generic bundle mechanism</em> ({@link PxlI18n}) that both channels reuse.</p>
  *

@@ -21,7 +21,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link OffsetTime} column values — parses cells/strings into {@link OffsetTime} on
+ * Codec for {@link OffsetTime} column values - parses cells/strings into {@link OffsetTime} on
  * import and writes {@link OffsetTime} into cells on export.
  *
  * <p>NUMERIC cells are read as Excel time fractions and given the current system offset; a BOOLEAN cell is

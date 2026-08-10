@@ -19,7 +19,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link LocalDateTime} column values — parses cells/strings into {@link LocalDateTime}
+ * Codec for {@link LocalDateTime} column values - parses cells/strings into {@link LocalDateTime}
  * on import and writes {@link LocalDateTime} into cells on export.
  *
  * <p>Import reads date-formatted NUMERIC cells via POI (other numerics as Excel

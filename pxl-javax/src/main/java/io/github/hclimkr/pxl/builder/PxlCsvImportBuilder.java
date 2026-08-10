@@ -46,7 +46,7 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
     /**
      * Specifies the workbook name. (For setting the name field in the workbook form; optional)
      *
-     * <p>CSV import has no file-name fallback for it — a CSV file name names its <em>sheet</em> — so left unset, the
+     * <p>CSV import has no file-name fallback for it - a CSV file name names its <em>sheet</em> - so left unset, the
      * {@code @PxlWorkbookName} field stays untouched.</p>
      *
      * @param workbookName the workbook name, or {@code null} to leave the name field untouched
@@ -131,11 +131,11 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
      * and return the typed result {@code R}.
      *
      * <p>The workbook form parses multiple CSVs (files/streams) grouped by sheet; the sheet form supports a single CSV
-     * only. Only obtained from {@code workbook(...)}/{@code sheet(...)} on the builder — hence a nested type.</p>
+     * only. Only obtained from {@code workbook(...)}/{@code sheet(...)} on the builder - hence a nested type.</p>
      *
      * <p>The source-terminal methods are the <strong>normalization boundary</strong>: they declare
      * {@code throws PxlException}, but since that type is abstract what actually surfaces is always a concrete
-     * subtype — the matching one for a classified failure ({@link PxlArgumentException},
+     * subtype - the matching one for a classified failure ({@link PxlArgumentException},
      * {@link PxlCellCodecException},
      * {@link PxlValidationException}, ...), and {@link PxlSystemException}
      * (carrying the original as its cause) for anything else, such as a CSV file that cannot be opened or read.</p>

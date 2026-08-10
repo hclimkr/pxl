@@ -19,7 +19,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link LocalTime} column values — parses cells/strings into {@link LocalTime} on
+ * Codec for {@link LocalTime} column values - parses cells/strings into {@link LocalTime} on
  * import and writes {@link LocalTime} into cells on export.
  *
  * <p>Import reads NUMERIC cells as Excel time fractions and strings via the column's cached

@@ -64,7 +64,7 @@ abstract class PxlAbstractImporter extends PxlAbstractBinder {
      * Returns whether the sheet name read from the source matches any of the candidate names, ignoring case.
      *
      * <p>A sheet name is not always typed by hand where the binding is declared: a CSV sheet is named after its
-     * file, and file names carry the casing the file system happens to hold — Windows does not distinguish it at
+     * file, and file names carry the casing the file system happens to hold - Windows does not distinguish it at
      * all, so {@code Employees.csv} and {@code employees.csv} name the same sheet. Excel sheets match the same way
      * so that the rule does not depend on the source format. Comparison is locale-independent.</p>
      *

@@ -7,8 +7,8 @@ import lombok.*;
  * DTO for verifying per-column import/export enable toggles.
  * <ul>
  *   <li>always: both enabled (default)</li>
- *   <li>exportOff: exportEnabled=false → the column itself is not created on export</li>
- *   <li>importOff: importEnabled=false → not imported even if the header exists (always null)</li>
+ *   <li>exportOff: exportEnabled=false -> the column itself is not created on export</li>
+ *   <li>importOff: importEnabled=false -> not imported even if the header exists (always null)</li>
  * </ul>
  */
 @Getter
