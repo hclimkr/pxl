@@ -1,8 +1,6 @@
 package io.github.hclimkr.pxl.internal.meta;
 
 import io.github.hclimkr.pxl.PxlConstants;
-import io.github.hclimkr.pxl.PxlExcelEngine;
-import io.github.hclimkr.pxl.PxlFileFormat;
 import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.exception.PxlI18nException;
@@ -15,6 +13,9 @@ import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
 import io.github.hclimkr.pxl.option.PxlExportSheetOption;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 import io.github.hclimkr.pxl.styler.PxlStyler;
+import io.github.hclimkr.pxl.type.PxlExcelEngine;
+import io.github.hclimkr.pxl.type.PxlFileFormat;
+import io.github.hclimkr.pxl.type.PxlOptionalBoolean;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import io.github.hclimkr.pxl.util.PxlMiscUtils;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
@@ -30,15 +31,20 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 /**
- * Excel workbook export metadata.
+ * Workbook export metadata, resolved for an Excel or a CSV destination alike; which one it is shows in
+ * {@code exportFileFormat}, and a CSV destination is the one that carries no POI workbook.
  */
 @Getter
 public final class PxlExportWorkbookMeta {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PxlExportWorkbookMeta.class);
 
+    // null on the CSV export path, which writes no POI workbook at all.
+    @Nullable
     private final Workbook workbook;
 
+    // null on the CSV export path, for the same reason as the workbook above.
+    @Nullable
     private final FormulaEvaluator formulaEvaluator;
 
     // Map for reusing stylers
@@ -68,6 +74,15 @@ public final class PxlExportWorkbookMeta {
 
     private final int exportSXSSFRowAccessWindowSize;
 
+    // CSV only; the sheet meta resolves its own value against this one.
+    private final String exportCsvCharset;
+
+    // CSV only; resolved the same way as the charset above.
+    private final char exportCsvDelimiter;
+
+    // CSV only; whether a byte order mark precedes the output.
+    private final boolean exportCsvBom;
+
     private final Class<? extends PxlStyler> exportWorkbookRequiredHeaderCellStyler;
 
     private final Class<? extends PxlStyler> exportWorkbookOptionalHeaderCellStyler;
@@ -84,13 +99,16 @@ public final class PxlExportWorkbookMeta {
      * Creates the resolved export metadata for a workbook, storing the given POI workbook and formula evaluator,
      * the merged option/annotation values, and initializing the cell-style reuse caches.
      *
-     * @param workbook                               the newly created POI workbook
-     * @param formulaEvaluator                       the formula evaluator for the workbook
-     * @param exportExcelEngine                      the resolved POI engine writing the workbook
+     * @param workbook                               the newly created POI workbook; {@code null} on the CSV export path
+     * @param formulaEvaluator                       the formula evaluator for the workbook; {@code null} on the CSV export path
+     * @param exportExcelEngine                      the resolved POI engine writing the workbook; {@code null} on the CSV export path
      * @param exportFileFormat                       the physical output file format the engine produces
      * @param exportPassword                         the password for encrypted output; may be {@code null}
      * @param exportDataValidation                   whether bean validation is applied
      * @param exportSXSSFRowAccessWindowSize         the SXSSF streaming row access window size
+     * @param exportCsvCharset                       the resolved workbook-level CSV charset (CSV destinations only)
+     * @param exportCsvDelimiter                     the resolved workbook-level CSV field delimiter (CSV destinations only)
+     * @param exportCsvBom                           whether a byte order mark precedes the CSV output
      * @param exportWorkbookRequiredHeaderCellStyler the workbook-level header cell styler for required columns
      * @param exportWorkbookOptionalHeaderCellStyler the workbook-level header cell styler for optional columns
      * @param exportWorkbookDataCellStyler           the workbook-level data cell styler
@@ -105,6 +123,9 @@ public final class PxlExportWorkbookMeta {
                                   final String exportPassword,
                                   final boolean exportDataValidation,
                                   final int exportSXSSFRowAccessWindowSize,
+                                  final String exportCsvCharset,
+                                  final char exportCsvDelimiter,
+                                  final boolean exportCsvBom,
                                   final Class<? extends PxlStyler> exportWorkbookRequiredHeaderCellStyler,
                                   final Class<? extends PxlStyler> exportWorkbookOptionalHeaderCellStyler,
                                   final Class<? extends PxlStyler> exportWorkbookDataCellStyler,
@@ -121,6 +142,9 @@ public final class PxlExportWorkbookMeta {
         this.exportPassword = exportPassword;
         this.exportDataValidation = exportDataValidation;
         this.exportSXSSFRowAccessWindowSize = exportSXSSFRowAccessWindowSize;
+        this.exportCsvCharset = exportCsvCharset;
+        this.exportCsvDelimiter = exportCsvDelimiter;
+        this.exportCsvBom = exportCsvBom;
         this.exportWorkbookRequiredHeaderCellStyler = exportWorkbookRequiredHeaderCellStyler;
         this.exportWorkbookOptionalHeaderCellStyler = exportWorkbookOptionalHeaderCellStyler;
         this.exportWorkbookDataCellStyler = exportWorkbookDataCellStyler;
@@ -144,20 +168,62 @@ public final class PxlExportWorkbookMeta {
                                                                @Nullable final PxlExportWorkbookOption workbookOption)
             throws PxlDataException, PxlI18nException {
 
+        return makeExportWorkbookMetaInternally(workbookClass, workbookOption, false);
+    }
+
+    /**
+     * On CSV export, collects the workbook metadata the same way {@link #makeExportWorkbookMeta} does, except that
+     * no POI workbook is created.
+     *
+     * <p>CSV has no POI writer, so the engine is left {@code null} and the file format is fixed to
+     * {@link PxlFileFormat#CSV} — which is what makes the binder enforce the CSV sheet/row/column limits.
+     * This is a complete state rather than a deficient one: {@code getWorkbook()} and
+     * {@code getFormulaEvaluator()} simply answer {@code null} on this path.</p>
+     *
+     * @param workbookClass  the {@link PxlWorkbook}-annotated workbook class supplying annotation defaults; may be {@code null}
+     * @param workbookOption runtime overrides taking precedence over the class annotation; may be {@code null}
+     * @return the assembled export workbook metadata, carrying no POI workbook and the CSV file format
+     * @throws PxlDataException if the workbook name field type is invalid
+     * @throws PxlI18nException if the export content i18n bundle cannot be found for the configured base name and locale
+     */
+    public static PxlExportWorkbookMeta makeExportWorkbookMetaForCsv(@Nullable final Class<?> workbookClass,
+                                                                     @Nullable final PxlExportWorkbookOption workbookOption)
+            throws PxlDataException, PxlI18nException {
+
+        return makeExportWorkbookMetaInternally(workbookClass, workbookOption, true);
+    }
+
+    /**
+     * Merges the option and annotation values into the workbook metadata, creating the POI workbook only for an
+     * Excel destination.
+     *
+     * @param workbookClass  the {@link PxlWorkbook}-annotated workbook class supplying annotation defaults; may be {@code null}
+     * @param workbookOption runtime overrides taking precedence over the class annotation; may be {@code null}
+     * @param forCsv         {@code true} to assemble metadata for a CSV destination (no POI workbook, CSV file format)
+     * @return the assembled export workbook metadata
+     * @throws PxlDataException if the workbook name field type is invalid
+     * @throws PxlI18nException if the export content i18n bundle cannot be found for the configured base name and locale
+     */
+    private static PxlExportWorkbookMeta makeExportWorkbookMetaInternally(@Nullable final Class<?> workbookClass,
+                                                                          @Nullable final PxlExportWorkbookOption workbookOption,
+                                                                          final boolean forCsv)
+            throws PxlDataException, PxlI18nException {
+
         PxlWorkbookSupport.validateWorkbookNameFieldType(workbookClass);
 
         final PxlWorkbook workbookAnnotation = Optional.ofNullable(workbookClass)
                 .map(c -> c.getAnnotation(PxlWorkbook.class))
                 .orElse(null);
 
-        final PxlExcelEngine exportExcelEngine = Optional.ofNullable(workbookOption)
+        // CSV has no POI writer, so the engine stays null there and the format is stated directly instead.
+        final PxlExcelEngine exportExcelEngine = forCsv ? null : Optional.ofNullable(workbookOption)
                 .flatMap(option -> Optional.ofNullable(option.getExportExcelEngine()))
                 .orElseGet(() -> Optional.ofNullable(workbookAnnotation)
                         .map(PxlWorkbook::exportExcelEngine)
                         .orElse(PxlConstants.DEFAULT_EXPORT_EXCEL_ENGINE));
 
-        // The physical format is not declared separately: it is whatever the chosen engine writes.
-        final PxlFileFormat exportFileFormat = exportExcelEngine.getFileFormat();
+        // For Excel the physical format is not declared separately: it is whatever the chosen engine writes.
+        final PxlFileFormat exportFileFormat = forCsv ? PxlFileFormat.CSV : exportExcelEngine.getFileFormat();
 
         final String exportPassword = Optional.ofNullable(workbookOption)
                 .flatMap(option -> Optional.ofNullable(option.getExportPassword()))
@@ -176,6 +242,30 @@ public final class PxlExportWorkbookMeta {
                 .orElseGet(() -> Optional.ofNullable(workbookAnnotation)
                         .map(PxlWorkbook::exportSXSSFRowAccessWindowSize)
                         .orElse(PxlConstants.DEFAULT_EXPORT_SXSSF_ROW_ACCESS_WINDOW_SIZE));
+
+        final String exportCsvCharset = Optional.ofNullable(workbookOption)
+                .flatMap(option -> Optional.ofNullable(option.getExportCsvCharset()))
+                .filter(StringUtils::isNotBlank)
+                .orElseGet(() -> Optional.ofNullable(workbookAnnotation)
+                        .map(PxlWorkbook::exportCsvCharset)
+                        .filter(StringUtils::isNotBlank)
+                        .orElse(PxlConstants.DEFAULT_EXPORT_CSV_CHARSET));
+
+        final char exportCsvDelimiter = Optional.ofNullable(workbookOption)
+                .flatMap(option -> Optional.ofNullable(option.getExportCsvDelimiter()))
+                .filter(delimiter -> delimiter != PxlConstants.UNSPECIFIED_EXPORT_CSV_DELIMITER)
+                .orElseGet(() -> Optional.ofNullable(workbookAnnotation)
+                        .map(PxlWorkbook::exportCsvDelimiter)
+                        .filter(delimiter -> delimiter != PxlConstants.UNSPECIFIED_EXPORT_CSV_DELIMITER)
+                        .orElse(PxlConstants.DEFAULT_EXPORT_CSV_DELIMITER));
+
+        final boolean exportCsvBom = Optional.ofNullable(workbookOption)
+                .flatMap(option -> Optional.ofNullable(option.getExportCsvBom()))
+                .orElseGet(() -> Optional.ofNullable(workbookAnnotation)
+                        .map(PxlWorkbook::exportCsvBom)
+                        .filter(PxlOptionalBoolean::isSpecified)
+                        .map(PxlOptionalBoolean::toBoolean)
+                        .orElse(PxlConstants.DEFAULT_EXPORT_CSV_BOM));
 
         Class<? extends PxlStyler> exportWorkbookRequiredHeaderCellStyler = null;
         if (Objects.nonNull(workbookOption) && Objects.nonNull(workbookOption.getExportWorkbookRequiredHeaderCellStyler())) {
@@ -221,9 +311,10 @@ public final class PxlExportWorkbookMeta {
 
         final List<PxlExportSheetMeta> exportSheetMetas = new ArrayList<>();
 
-        final Workbook workbook = PxlWorkbookSupport.createWorkbook(exportExcelEngine, exportSXSSFRowAccessWindowSize);
+        // A CSV destination writes no POI workbook, so neither it nor its formula evaluator is created.
+        final Workbook workbook = forCsv ? null : PxlWorkbookSupport.createWorkbook(exportExcelEngine, exportSXSSFRowAccessWindowSize);
 
-        final FormulaEvaluator formulaEvaluator = PxlWorkbookUtils.createFormulaEvaluator(workbook);
+        final FormulaEvaluator formulaEvaluator = forCsv ? null : PxlWorkbookUtils.createFormulaEvaluator(workbook);
 
         return new PxlExportWorkbookMeta(
                 workbook,
@@ -233,6 +324,9 @@ public final class PxlExportWorkbookMeta {
                 exportPassword,
                 exportDataValidation,
                 exportSXSSFRowAccessWindowSize,
+                exportCsvCharset,
+                exportCsvDelimiter,
+                exportCsvBom,
                 exportWorkbookRequiredHeaderCellStyler,
                 exportWorkbookOptionalHeaderCellStyler,
                 exportWorkbookDataCellStyler,

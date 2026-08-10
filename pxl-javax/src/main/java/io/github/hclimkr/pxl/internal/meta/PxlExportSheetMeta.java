@@ -30,7 +30,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Excel sheet export metadata.
+ * Sheet export metadata, resolved for an Excel or a CSV destination alike. For a CSV the sheet is a whole file,
+ * which is why {@code exportCsvCharset}/{@code exportCsvDelimiter} are resolved here rather than on the workbook
+ * meta.
  */
 @Getter
 public final class PxlExportSheetMeta {
@@ -72,6 +74,12 @@ public final class PxlExportSheetMeta {
     private final boolean exportIfEmpty;
 
     private final boolean exportColumnFilter;
+
+    private final String exportCsvCharset;          // CSV only; resolved against the workbook charset
+
+    private final char exportCsvDelimiter;          // CSV only; resolved against the workbook delimiter
+
+    private final boolean exportCsvBom;             // CSV only; resolved against the workbook setting
 
     private final Class<? extends PxlStyler> exportSheetRequiredHeaderCellStyler;
 
@@ -128,6 +136,9 @@ public final class PxlExportSheetMeta {
      * @param exportIfNull                        whether a sheet is created when the row collection is {@code null}
      * @param exportIfEmpty                       whether a sheet is created when the row collection is empty
      * @param exportColumnFilter                  whether an auto-filter is applied
+     * @param exportCsvCharset                    the resolved CSV charset for this sheet (CSV destinations only)
+     * @param exportCsvDelimiter                  the resolved CSV field delimiter for this sheet (CSV destinations only)
+     * @param exportCsvBom                        whether a byte order mark precedes this sheet's CSV (CSV destinations only)
      * @param exportSheetRequiredHeaderCellStyler the header cell styler for required columns
      * @param exportSheetOptionalHeaderCellStyler the header cell styler for optional columns
      * @param exportSheetDataCellStyler           the data cell styler
@@ -153,6 +164,9 @@ public final class PxlExportSheetMeta {
                                final boolean exportIfNull,
                                final boolean exportIfEmpty,
                                final boolean exportColumnFilter,
+                               final String exportCsvCharset,
+                               final char exportCsvDelimiter,
+                               final boolean exportCsvBom,
                                final Class<? extends PxlStyler> exportSheetRequiredHeaderCellStyler,
                                final Class<? extends PxlStyler> exportSheetOptionalHeaderCellStyler,
                                final Class<? extends PxlStyler> exportSheetDataCellStyler,
@@ -179,6 +193,9 @@ public final class PxlExportSheetMeta {
         this.exportIfNull = exportIfNull;
         this.exportIfEmpty = exportIfEmpty;
         this.exportColumnFilter = exportColumnFilter;
+        this.exportCsvCharset = exportCsvCharset;
+        this.exportCsvDelimiter = exportCsvDelimiter;
+        this.exportCsvBom = exportCsvBom;
         this.exportSheetRequiredHeaderCellStyler = exportSheetRequiredHeaderCellStyler;
         this.exportSheetOptionalHeaderCellStyler = exportSheetOptionalHeaderCellStyler;
         this.exportSheetDataCellStyler = exportSheetDataCellStyler;
@@ -373,6 +390,26 @@ public final class PxlExportSheetMeta {
                     .flatMap(option -> Optional.ofNullable(option.getExportColumnFilter()))
                     .orElseGet(sheetAnnotation::exportColumnFilter);
 
+            final String exportCsvCharset = Optional.ofNullable(sheetOption)
+                    .flatMap(option -> Optional.ofNullable(option.getExportCsvCharset()))
+                    .filter(StringUtils::isNotBlank)
+                    .orElseGet(() -> StringUtils.isNotBlank(sheetAnnotation.exportCsvCharset()) ?
+                            sheetAnnotation.exportCsvCharset() :
+                            workbookMeta.getExportCsvCharset());
+
+            final char exportCsvDelimiter = Optional.ofNullable(sheetOption)
+                    .flatMap(option -> Optional.ofNullable(option.getExportCsvDelimiter()))
+                    .filter(delimiter -> delimiter != PxlConstants.UNSPECIFIED_EXPORT_CSV_DELIMITER)
+                    .orElseGet(() -> sheetAnnotation.exportCsvDelimiter() != PxlConstants.UNSPECIFIED_EXPORT_CSV_DELIMITER ?
+                            sheetAnnotation.exportCsvDelimiter() :
+                            workbookMeta.getExportCsvDelimiter());
+
+            final boolean exportCsvBom = Optional.ofNullable(sheetOption)
+                    .flatMap(option -> Optional.ofNullable(option.getExportCsvBom()))
+                    .orElseGet(() -> sheetAnnotation.exportCsvBom().isSpecified() ?
+                            sheetAnnotation.exportCsvBom().toBoolean() :
+                            workbookMeta.isExportCsvBom());
+
             Class<? extends PxlStyler> exportSheetRequiredHeaderCellStyler =
                     Objects.nonNull(sheetOption) && Objects.nonNull(sheetOption.getExportSheetRequiredHeaderCellStyler())
                             ? sheetOption.getExportSheetRequiredHeaderCellStyler()
@@ -425,6 +462,9 @@ public final class PxlExportSheetMeta {
                             exportIfNull,                   // exportIfNull
                             exportIfEmpty,                  // exportIfEmpty
                             exportColumnFilter,             // exportColumnFilter
+                            exportCsvCharset,               // exportCsvCharset
+                            exportCsvDelimiter,             // exportCsvDelimiter
+                            exportCsvBom,                   // exportCsvBom
                             exportSheetRequiredHeaderCellStyler,  // exportSheetRequiredHeaderCellStyler
                             exportSheetOptionalHeaderCellStyler,   // exportSheetOptionalHeaderCellStyler
                             exportSheetDataCellStyler,            // exportSheetDataCellStyler
@@ -595,6 +635,20 @@ public final class PxlExportSheetMeta {
                 .flatMap(option -> Optional.ofNullable(option.getExportColumnFilter()))
                 .orElse(PxlConstants.DEFAULT_EXPORT_COLUMN_FILTER);
 
+        final String exportCsvCharset = Optional.ofNullable(sheetOption)
+                .flatMap(option -> Optional.ofNullable(option.getExportCsvCharset()))
+                .filter(StringUtils::isNotBlank)
+                .orElseGet(workbookMeta::getExportCsvCharset);
+
+        final char exportCsvDelimiter = Optional.ofNullable(sheetOption)
+                .flatMap(option -> Optional.ofNullable(option.getExportCsvDelimiter()))
+                .filter(delimiter -> delimiter != PxlConstants.UNSPECIFIED_EXPORT_CSV_DELIMITER)
+                .orElseGet(workbookMeta::getExportCsvDelimiter);
+
+        final boolean exportCsvBom = Optional.ofNullable(sheetOption)
+                .flatMap(option -> Optional.ofNullable(option.getExportCsvBom()))
+                .orElseGet(workbookMeta::isExportCsvBom);
+
         Class<? extends PxlStyler> exportSheetRequiredHeaderCellStyler =
                 Objects.nonNull(sheetOption) && Objects.nonNull(sheetOption.getExportSheetRequiredHeaderCellStyler())
                         ? sheetOption.getExportSheetRequiredHeaderCellStyler()
@@ -645,6 +699,9 @@ public final class PxlExportSheetMeta {
                 exportIfNull,                   // exportIfNull
                 exportIfEmpty,                  // exportIfEmpty
                 exportColumnFilter,             // exportColumnFilter
+                exportCsvCharset,               // exportCsvCharset
+                exportCsvDelimiter,             // exportCsvDelimiter
+                exportCsvBom,                   // exportCsvBom
                 exportSheetRequiredHeaderCellStyler,  // exportSheetRequiredHeaderCellStyler
                 exportSheetOptionalHeaderCellStyler,   // exportSheetOptionalHeaderCellStyler
                 exportSheetDataCellStyler,            // exportSheetDataCellStyler

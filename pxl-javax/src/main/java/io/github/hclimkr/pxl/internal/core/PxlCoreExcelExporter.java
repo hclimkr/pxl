@@ -436,36 +436,14 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
         final PxlExportWorkbookMeta workbookMeta = sheetMeta.getWorkbookMeta();
 
-        final int defaultHeaderRowIndex = 0;
         final int numOfObjects = PxlCollectionUtils.size(rowObjects);
 
         final int numOfSheets = workbookMeta.getWorkbook().getNumberOfSheets();
         final int maxNumOfSheets = workbookMeta.getExportFileFormat().getMaxExportSheets();
 
-        int actualExportHeaderRowIndex = sheetMeta.getExportHeaderRowIndex();
-        if (actualExportHeaderRowIndex == PxlConstants.DEFAULT_EXPORT_HEADER_ROW_INDEX) {
-            actualExportHeaderRowIndex = defaultHeaderRowIndex;
-        } else {
-            actualExportHeaderRowIndex -= 1;  // Specified as 1-based, so convert to 0-based.
-            actualExportHeaderRowIndex = Math.max(actualExportHeaderRowIndex, defaultHeaderRowIndex);
-        }
-
-        int actualExportOriginDataRowIndex = sheetMeta.getExportFirstDataRowIndex();
-        if (actualExportOriginDataRowIndex == PxlConstants.DEFAULT_EXPORT_FIRST_DATA_ROW_INDEX) {
-            actualExportOriginDataRowIndex = actualExportHeaderRowIndex + 1;
-        } else {
-            actualExportOriginDataRowIndex -= 1;  // Specified as 1-based, so convert to 0-based.
-            actualExportOriginDataRowIndex = Math.max(actualExportOriginDataRowIndex, actualExportHeaderRowIndex + 1);
-        }
-
-        int actualExportBoundDataRowIndex = sheetMeta.getExportLastDataRowIndex();
-        if (actualExportBoundDataRowIndex == PxlConstants.DEFAULT_EXPORT_LAST_DATA_ROW_INDEX) {
-            actualExportBoundDataRowIndex = actualExportOriginDataRowIndex + numOfObjects;
-        } else {
-            actualExportBoundDataRowIndex -= 1;  // Specified as 1-based, so convert to 0-based.
-            actualExportBoundDataRowIndex += 1;  // Add 1 to use it as an exclusive bound.
-            actualExportBoundDataRowIndex = Math.min(actualExportBoundDataRowIndex, actualExportOriginDataRowIndex + numOfObjects);
-        }
+        final int actualExportBoundDataRowIndex = resolveExportRowIndices(sheetMeta, numOfObjects);
+        final int actualExportHeaderRowIndex = sheetMeta.getActualExportHeaderRowIndex();
+        final int actualExportOriginDataRowIndex = sheetMeta.getActualExportOriginDataRowIndex();
 
         final int maxNumOfRows = workbookMeta.getExportFileFormat().getMaxExportRows();
         final Field groupingField = sheetMeta.getExportGroupingField();
@@ -473,10 +451,6 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         if (!isGrouping && actualExportBoundDataRowIndex > maxNumOfRows) {
             throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_EXPORT_SHEET_ROW_COUNT_EXCEEDED, sheetMeta.getActualExportSheetName(), String.valueOf(maxNumOfRows)));
         }
-
-        sheetMeta.setActualExportHeaderRowIndex(actualExportHeaderRowIndex);
-        sheetMeta.setActualExportOriginDataRowIndex(actualExportOriginDataRowIndex);
-        sheetMeta.setActualExportBoundDataRowIndex(actualExportBoundDataRowIndex);
 
         // Get the column information.
         final List<PxlExportColumnMeta> columnMetas = PxlExportColumnMeta.makeExportColumnMetas(sheetMeta, false);
@@ -615,29 +589,12 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
         final PxlExportWorkbookMeta workbookMeta = sheetMeta.getWorkbookMeta();
 
-        final int defaultHeaderRowIndex = 0;
+        // A sample sheet always carries exactly one data row, so the declared data bound plays no part here.
+        resolveExportRowIndices(sheetMeta, 1);
+        final int actualExportHeaderRowIndex = sheetMeta.getActualExportHeaderRowIndex();
+        final int actualExportOriginDataRowIndex = sheetMeta.getActualExportOriginDataRowIndex();
 
-        int actualExportHeaderRowIndex = sheetMeta.getExportHeaderRowIndex();
-        if (actualExportHeaderRowIndex == PxlConstants.DEFAULT_EXPORT_HEADER_ROW_INDEX) {
-            actualExportHeaderRowIndex = defaultHeaderRowIndex;
-        } else {
-            actualExportHeaderRowIndex -= 1;  // Specified as 1-based, so convert to 0-based.
-            actualExportHeaderRowIndex = Math.max(actualExportHeaderRowIndex, defaultHeaderRowIndex);
-        }
-
-        int actualExportOriginDataRowIndex = sheetMeta.getExportFirstDataRowIndex();
-        if (actualExportOriginDataRowIndex == PxlConstants.DEFAULT_EXPORT_FIRST_DATA_ROW_INDEX) {
-            actualExportOriginDataRowIndex = actualExportHeaderRowIndex + 1;
-        } else {
-            actualExportOriginDataRowIndex -= 1;  // Specified as 1-based, so convert to 0-based.
-            actualExportOriginDataRowIndex = Math.max(actualExportOriginDataRowIndex, actualExportHeaderRowIndex + 1);
-        }
-
-        int actualExportBoundDataRowIndex = actualExportOriginDataRowIndex + 1;    // sample 1 row
-
-        sheetMeta.setActualExportHeaderRowIndex(actualExportHeaderRowIndex);
-        sheetMeta.setActualExportOriginDataRowIndex(actualExportOriginDataRowIndex);
-        sheetMeta.setActualExportBoundDataRowIndex(actualExportBoundDataRowIndex); // exclusive
+        sheetMeta.setActualExportBoundDataRowIndex(actualExportOriginDataRowIndex + 1); // exclusive
 
         // Get the column information.
         final List<PxlExportColumnMeta> columnMetas = PxlExportColumnMeta.makeExportColumnMetas(sheetMeta, true);

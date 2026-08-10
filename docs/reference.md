@@ -196,10 +196,13 @@ The direction (export/import) and format (excel/csv) are embedded in the start m
 |-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Excel export    | `pxl.exportExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)` / `.toWorkbook()`                                                                     |
 | Sample Excel export | `pxl.exportSampleExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)` / `.toWorkbook()`                                                           |
+| CSV export      | `pxl.exportCsv()`<br/>→ `.sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)`                                                                                                          |
+| Sample CSV export | `pxl.exportSampleCsv()`<br/>→ `.sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)`                                                                                                  |
 | Excel import    | `pxl.importExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromStream(InputStream)`                                                                                    |
 | CSV import      | `pxl.importCsv()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromFiles(List<File>)` / `.fromStream(String, InputStream)` / `.fromStreams(List<String>, List<InputStream>)` |
 
 - The configuration steps `.workbook(...)` and `.sheet(...)` are mutually exclusive — specifying both in one chain throws `PxlArgumentException` (as does omitting both).
+- The two CSV export chains have no `.workbook(...)` at all: a CSV file holds one sheet, so there is no workbook form to call. `.sheet(...)` accumulates as it does for Excel, but the final method writes a single sheet, so configuring more than one throws `PxlArgumentException` there (`builder.export.csv.singleSheetOnly`) rather than at the configuration step.
 - For export, calling `.sheet(...)` multiple times creates multiple sheets — the call order becomes the sheet order within the workbook, and each sheet may take a different row class. A duplicated sheet name (compared after normalization to a safe name, ignoring case) throws `PxlDataException` naming the offender — a workbook cannot hold two sheets whose names differ only in case.
 - For import, `.sheet(...)` cannot be chained consecutively — there are two ways to read multiple sheets.
     - All at once, in workbook form: passing a `@PxlWorkbook` class to `.workbook(...)` binds multiple sheets at once, one per `@PxlSheet` field.  
@@ -220,6 +223,10 @@ The direction (export/import) and format (excel/csv) are embedded in the start m
 | import<br/>`fromFile(File)`<br/>`fromFiles(List<File>)` (CSV)                             | Caller's `File`         | Opens the file's stream internally and closes it directly |
 | import<br/>`fromStream(InputStream)` (Excel)<br/>`fromStream(String, InputStream)`·`fromStreams(List<String>, List<InputStream>)` (CSV) | Caller's `InputStream`  | Does not close it. The caller must close it |
 
+A CSV export builds its whole output in memory before the destination is touched, so `toFile(...)` creates no file
+when the export fails and `toStream(...)` writes to the caller's stream once, in a single pass. The trade is that
+the memory a CSV export needs grows with the size of its output; see [Limitation](#limitation).
+
 ### Builder Lifecycle and Thread Safety
 
 `Pxl` itself is stateless and thread-safe. The builders it hands out are the opposite: each carries the configuration collected so far, so they are not thread-safe.
@@ -228,6 +235,7 @@ The direction (export/import) and format (excel/csv) are embedded in the start m
 |---------------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------------------|
 | `Pxl`                                                   | Reuse it                  | Stateless and thread-safe; `new Pxl()` pays a validation-bootstrap cost, so keep it as a singleton |
 | Export builders<br/>(`exportExcel()`·`exportSampleExcel()`) | Re-runnable, not re-configurable | The configuration stays on the builder: running a final (execute) method again repeats it, but adding more sheets accumulates on top of it |
+| CSV export builders<br/>(`exportCsv()`·`exportSampleCsv()`) | Re-runnable, not re-configurable | Same as above, and `sheet(...)` accumulates the same way — but since a CSV terminal writes one sheet, a second sheet makes the terminal, not the configuration step, fail |
 | Import builders<br/>(`importExcel()`·`importCsv()`)     | Reusable                  | The source step copies the settings it needs, so the same builder may be run once per sheet         |
 
 An export builder keeps every sheet added to it, and no final (execute) method clears them.
@@ -273,6 +281,10 @@ Two enums sit on separate axes, and neither stands in for the other.
 `@PxlWorkbook(exportExcelEngine = ...)` and `PxlExportWorkbookOption.exportExcelEngine` take the engine, so a format
 no engine writes — CSV — cannot be declared there at all. Each engine knows the format it produces, and the
 sheet/row/column limits belong to that format rather than to the engine, which is why `XSSF` and `SXSSF` share them.
+
+Writing CSV is therefore chosen by the start method, not by an engine: `exportCsv()` / `exportSampleCsv()` take
+a path of their own that produces no POI workbook, and the CSV limits apply because that path fixes the format to
+`PxlFileFormat.CSV`. Anything an engine would have decided — the streaming window included — has no meaning there.
 
 `PxlFileFormat` is the type to reach for when serving a download, as it carries the filename extension and the MIME
 content type.
@@ -333,6 +345,11 @@ Fields of an unsupported variable type fail with `PxlArgumentException` while th
 
 ### Per-Type Behavior Summary — Export
 
+> The table describes an Excel export, where a cell has a type of its own. A CSV file has none, so what lands
+> in the field is always the string the codec computed: a numeric or date value with no `pattern` is written as
+> that codec's own text (`2023-06-15` for a `LocalDate`) rather than as a serial number carrying a display format,
+> and the quote-prefix column below has no counterpart.
+
 | Type                                            | Export behavior / notes and limits                                                                                                                                                                                        |
 |-------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `byte`·`short`·`int` + wrapper classes          | Written as a numeric cell (safe because the representable range is under 2^53)                                                                                                                                            |
@@ -377,9 +394,12 @@ When you pass an option object to the `.override()` step to provide runtime valu
 | `importCsvDelimiter`                                              | `'\0'`→`','` | CSV only. Delimiter of the CSV to import, for every sheet of the workbook (`char`). A single sheet may depart from it with `@PxlSheet(importCsvDelimiter)`                                   |
 | `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on import                                                                                                       |
 | `exportExcelEngine`                                               | `XSSF`     | POI engine that writes the workbook (`PxlExcelEngine`): `XSSF`=XLSX (default), `HSSF`=XLS, `SXSSF`=streaming XLSX.<br/>It selects the writer, not the format — `XSSF` and `SXSSF` both produce `.xlsx`. CSV is not an engine and cannot be named here. |
-| `exportPassword`                                                  | `""`       | Document protection password to set on export.<br/>Applies to `toFile(...)`/`toStream(...)` only, not to `toWorkbook()`.                                                          |
+| `exportPassword`                                                  | `""`       | Document protection password to set on export.<br/>Applies to `toFile(...)`/`toStream(...)` only, not to `toWorkbook()`.<br/>A CSV export **rejects** it (`PxlArgumentException`) rather than writing plaintext. |
 | `exportDataValidation`                                            | `true`     | Whether to run Bean Validation over the objects being written.<br/>Nothing to do with Excel's "data validation" feature — see `importDataValidation` above |
 | `exportSXSSFRowAccessWindowSize`                                  | `100`      | rowAccessWindowSize on SXSSF export                                                                                                                                               |
+| `exportCsvCharset`                                                | `""`→`"UTF-8"` | CSV only. Character encoding of the CSV to write, for every sheet of the workbook. A single sheet may depart from it with `@PxlSheet(exportCsvCharset)`                            |
+| `exportCsvDelimiter`                                              | `'\0'`→`','` | CSV only. Delimiter of the CSV to write, for every sheet of the workbook (`char`). A single sheet may depart from it with `@PxlSheet(exportCsvDelimiter)`                         |
+| `exportCsvBom`                                                    | `UNSPECIFIED`→`false` | CSV only. Whether a byte order mark precedes the output (`PxlOptionalBoolean`). A single sheet may depart from it with `@PxlSheet(exportCsvBom)`.<br/>Honored for UTF-8/UTF-16LE/UTF-16BE only; any other charset drops it silently (↓ *Limitation*) |
 | `exportWorkbookRequiredHeaderCellStyler`                          | (unspecified) | Required header cell style (uses `PxlHeaderRequiredStyler` when unspecified/not applicable)                                                                                       |
 | `exportWorkbookOptionalHeaderCellStyler`                          | (unspecified) | Optional header cell style (uses `PxlHeaderOptionalStyler` when unspecified/not applicable)                                                                                       |
 | `exportWorkbookDataCellStyler`                                    | (unspecified) | Data cell style (uses `PxlDataVerticalCenterTextStyler` when unspecified/not applicable)                                                                                          |
@@ -419,6 +439,9 @@ The default value `0` of an index attribute means "auto" (first row/column autom
 | `exportIfNull`                                                                                              | `false` | Whether to create the sheet when the field is null      |
 | `exportIfEmpty`                                                                                             | `true`  | Whether to create the sheet when the field is empty     |
 | `exportColumnFilter`                                                                                        | `false` | Whether to apply a filter                               |
+| `exportCsvCharset`                                                                                          | (inherit) | CSV only. Character encoding used to write this sheet's CSV. Blank (`""`) inherits the workbook value |
+| `exportCsvDelimiter`                                                                                        | (inherit) | CSV only. Delimiter used to write this sheet's CSV (`char`). NUL (`'\0'`) inherits the workbook value |
+| `exportCsvBom`                                                                                              | (inherit) | CSV only. Whether a byte order mark precedes this sheet's CSV (`PxlOptionalBoolean`). `UNSPECIFIED` inherits the workbook value, and `FALSE` turns off a mark the workbook asked for — which a plain `boolean` could not express |
 | `exportSheetRequiredHeaderCellStyler` / `exportSheetOptionalHeaderCellStyler` / `exportSheetDataCellStyler` | (unspecified) | Sheet-level cell style (delegates to the Workbook level when unspecified) |
 
 ### `@PxlRowIndex` (targets a field)
@@ -769,6 +792,12 @@ and the default value `0` means auto (first/last automatic).
 > Validation on export:  
 > - If the column range specified by `exportLastDataColumnIndex` is smaller than the number of columns to export (some columns missing), an exception is raised.
 > - If there are duplicate column names within the same sheet, an exception is raised.
+
+> A CSV export honors all five the same way an Excel export does, since the coordinates are resolved in the shared
+> metadata. What a coordinate looks like in a text file is worth knowing, though: a row that precedes the header,
+> or a column before `FirstDataColumnIndex`, is written as an empty field rather than as a blank line — a
+> record of empty fields (`"",,,`) instead of nothing at all. That is deliberate. PXL's CSV import ignores blank
+> lines, so writing them would pull the header up on the way back in and break the round trip.
   
 > Empty data range behavior on import:  
 > - With a configuration where the data row range does not overlap the actual data or becomes empty (e.g., specifying `importFirstDataRowIndex` at a row larger than the actual data),
@@ -1101,7 +1130,57 @@ Resolution runs top to bottom, and the first level that names a value wins:
 | built-in default                                               | `"UTF-8"` / `','` |
 
 > Because "not specified" is a sentinel rather than the effective default, a sheet can name `"UTF-8"` or `','` explicitly to return to the default against a workbook that names something else.  
-> In the sheet form (`sheet(...)`) there is no field to carry `@PxlSheet`, so a wildcard `PxlImportSheetOption` is the only sheet-level route — see *Option Structure*.
+> In the sheet form (`sheet(...)`) there is no field to carry `@PxlSheet`, so a wildcard `PxlImportSheetOption` is the only sheet-level route — see *Option Structure*.  
+> The same holds one level up: the sheet form builds its workbook metadata without a workbook class, so `@PxlWorkbook` is not read there either. In that form both annotation levels are inert and the options are what take effect.
+
+### Sheet: CSV Encoding, Delimiter and BOM Export
+
+The writing side mirrors the reading side, with a byte order mark added — a CSV file is written one per sheet, so
+all three belong to the file rather than to the schema.
+
+```java
+import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
+
+pxl.exportCsv()
+   .sheet(Employee.class, employees, "Employees")
+   .override(PxlExportWorkbookOption.builder()
+                                    .exportCsvCharset("MS949")   // default is "UTF-8"
+                                    .exportCsvDelimiter('\t')    // char (e.g., TSV). default ','
+                                    .exportCsvBom(true)          // Boolean here; PxlOptionalBoolean on the annotations
+                                    .build())
+   .toFile(csvFile);
+```
+
+```java
+@PxlWorkbook(exportCsvCharset = "MS949", exportCsvBom = PxlOptionalBoolean.TRUE)
+public class CompanyWorkbook {
+
+    @PxlSheet(name = "Legacy")                                    // inherits MS949 and the mark
+    private List<CharsetRow> legacy;
+
+    @PxlSheet(name = "Modern",
+              exportCsvCharset = "UTF-8",
+              exportCsvBom = PxlOptionalBoolean.FALSE)            // writes this one file without a mark
+    private List<CharsetRow> modern;
+}
+```
+
+Resolution runs the same five levels as the import side:
+
+| Level | "not specified" is |
+|-------|--------------------|
+| `PxlExportSheetOption.exportCsvCharset` / `exportCsvDelimiter` / `exportCsvBom` | `null`, and `""` / `'\0'` too |
+| `@PxlSheet(exportCsvCharset)` / `(exportCsvDelimiter)` / `(exportCsvBom)`       | `""` / `'\0'` / `UNSPECIFIED` |
+| `PxlExportWorkbookOption.exportCsvCharset` / `exportCsvDelimiter` / `exportCsvBom` | `null`, and `""` / `'\0'` too |
+| `@PxlWorkbook(exportCsvCharset)` / `(exportCsvDelimiter)` / `(exportCsvBom)`    | `""` / `'\0'` / `UNSPECIFIED` |
+| built-in default                                                                | `"UTF-8"` / `','` / `false`  |
+
+> `exportCsvBom` is the one that cannot use a plain `boolean` on the annotations. A `boolean` has no value left over
+> to mean "not specified", so its `false` would be indistinguishable from silence and a sheet could never turn off a
+> mark its workbook asked for. `PxlOptionalBoolean` (`UNSPECIFIED` · `TRUE` · `FALSE`) is what supplies the missing
+> third value; the option classes keep a boxed `Boolean`, whose `null` already says it.  
+> The mark itself is written only for UTF-8, UTF-16LE and UTF-16BE — see [Limitation](#limitation).  
+> As with the import side, the sheet form (`sheet(...)`) reads neither annotation level, so the options are the route there.
 
 ### Workbook: Encrypt with Password Export
 
@@ -1146,7 +1225,7 @@ List<Employee> rows = pxl.importExcel()
 |--------|------------|------------|-------------|--------------------------------------------------------------|
 | XLSX   | 100        | 1,048,576  | 16,384      | Can be read with the Streaming Reader without memory issues (GC overhead) |
 | XLS    | 100        | 65,536     | 256         | The Streaming Reader is not supported, but non-streaming also has no memory issues |
-| CSV    | 100        | 100,000    | 16,384      | Import only. One file is one sheet, so "sheets" counts the files passed to `fromFiles(...)`/`fromStreams(...)`.<br/>The column cap matches XLSX so that a row class exporting to XLSX stays readable from CSV; the row cap is lower because a CSV is parsed into memory whole |
+| CSV    | 100        | 100,000    | 16,384      | One file is one sheet, so "sheets" counts the files passed to `fromFiles(...)`/`fromStreams(...)` — a CSV export writes a single sheet, so only the row/column caps apply there.<br/>The column cap matches XLSX so that a row class exporting to XLSX stays readable from CSV; the row cap is lower because a CSV is held in memory whole |
 
 > These are the limits `PxlFileFormat` carries (`getMaxExportRows()` and its siblings), so an engine is bound by the
 > limits of the format it writes — `XSSF` and `SXSSF` alike.  
@@ -1164,6 +1243,16 @@ List<Employee> rows = pxl.importExcel()
   It applies to XLSX only — it has no effect on the `HSSF` engine (`.xls`).  
   Note that a column left at automatic width must be tracked in order to be measured, and a tracked column stays in memory, which eats into the saving. Pair `SXSSF` with a fixed `exportColumnWidth`.
 
+- CSV export builds its output in memory  
+  A CSV export renders the whole file before the destination is opened, which is what makes a failure leave no file behind and lets `toStream(...)` write in one pass. The memory it needs therefore grows with the size of the output, and the row cap above is not a bound on it — neither the column count nor the length of a field is capped in practice. Treat CSV as having the same memory profile as a non-streaming Excel export rather than as a lightweight path for very large data.
+
+- Settings a CSV export ignores  
+  Everything that only describes how a cell looks or what a workbook contains: `@PxlColumn(exportColumn*Styler, exportColumnWidth, exportOptionItems, exportEnumDropDownListStyle)`, `@PxlSheet(exportSheet*Styler, exportRowHeightInPoints, exportColumnFilter, exportGroupingFieldName)`, `@PxlWorkbook(exportWorkbook*Styler, exportExcelEngine, exportSXSSFRowAccessWindowSize)`, and the header freeze pane. Grouping being ignored means the rows are written in the order given, not gathered per group.  
+  Two attributes still put their value in the file rather than dropping it: `exportStringAsFormula` writes the text as it stands, leading `=` and all (nothing is evaluated), and `exportStringAsPicture` writes the image location instead of embedding a picture — so a path or URL you expected to disappear is disclosed.  
+
+- CSV byte order mark  
+  `exportCsvBom` is honored for UTF-8, UTF-16LE and UTF-16BE only. Any other charset writes no mark even when it is asked for, with neither an exception nor a warning: `UTF-16` has its encoder emit one already, and a non-Unicode charset such as EUC-KR cannot encode U+FEFF and would replace it with `?`, corrupting the first header field. Since there is no way to notice this at runtime, check the charset here before concluding a mark went missing.
+
 ---
 
 ## Common Pitfalls Checklist
@@ -1179,8 +1268,10 @@ List<Employee> rows = pxl.importExcel()
   `importHeaderRowIndex`, `exportFirstDataColumnIndex`, etc., are all 1-based.  
   The value received by `@PxlRowIndex` is likewise 1-based — the spreadsheet row number of the imported row.
 - ✅ **The default CSV encoding is `UTF-8`**  
-  Specify other encodings (`US-ASCII`·`MS949`·`EUC-KR`, etc.) with `importCsvCharset(...)`.
-  In the workbook form each sheet is its own file, so a sheet that differs from the rest can name its own `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)` instead of forcing the whole workbook onto one setting.
+  Specify other encodings (`US-ASCII`·`MS949`·`EUC-KR`, etc.) with `importCsvCharset(...)`, or `exportCsvCharset(...)` when writing.
+  In the workbook form each sheet is its own file, so a sheet that differs from the rest can name its own `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)` — and, on the writing side, `(exportCsvCharset)` / `(exportCsvDelimiter)` / `(exportCsvBom)` — instead of forcing the whole workbook onto one setting.
+- ✅ **A CSV export quotes only what needs quoting**  
+  A value such as `"010"` or `"1E+10"` is written unquoted, so Excel reads it back as the number `10` or `1e10`. PXL reads it back as the string it was; the loss happens in the spreadsheet application, not in the file. There is no quoting-policy setting yet — write such values with a `pattern` if the display matters.
 - ✅ **`long` / `BigInteger` / `BigDecimal` precision**  
   Large numbers may lose precision in a numeric cell (double, 2^53 limit). To preserve them exactly, output as a string cell with a `pattern` or use `BigInteger`/`BigDecimal`.
 - ✅ **Reuse `Pxl`.**  

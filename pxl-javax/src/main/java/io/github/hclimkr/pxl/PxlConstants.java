@@ -7,6 +7,8 @@ import io.github.hclimkr.pxl.styler.PxlStyler;
 import io.github.hclimkr.pxl.styler.data.PxlDataVerticalCenterTextStyler;
 import io.github.hclimkr.pxl.styler.header.PxlHeaderOptionalStyler;
 import io.github.hclimkr.pxl.styler.header.PxlHeaderRequiredStyler;
+import io.github.hclimkr.pxl.type.PxlExcelEngine;
+import io.github.hclimkr.pxl.type.PxlFileFormat;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.poi.ss.usermodel.FillPatternType;
@@ -259,6 +261,62 @@ public interface PxlConstants {
      * anyone writes.
      */
     char UNSPECIFIED_IMPORT_CSV_DELIMITER = '\0';
+
+    /**
+     * Default Commons-CSV print format used for export (Excel dialect, quoted).
+     * <p>
+     * A header is deliberately not set on this format: a {@code CSVPrinter} built from a format carrying one
+     * writes that header itself on construction, and PXL writes the header from the column metadata, so the
+     * file would carry two header lines.
+     */
+    CSVFormat DEFAULT_EXPORT_CSV_FORMAT = CSVFormat
+            .EXCEL
+            .builder()
+            .setQuote('"')
+            .build();
+
+    /**
+     * Charset used to encode CSV output when no level of the cascade specifies one.
+     *
+     * @see #UNSPECIFIED_EXPORT_CSV_CHARSET
+     * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
+     */
+    String DEFAULT_EXPORT_CSV_CHARSET = "UTF-8";
+
+    /**
+     * CSV field delimiter used when no level of the cascade specifies one.
+     *
+     * @see #UNSPECIFIED_EXPORT_CSV_DELIMITER
+     */
+    char DEFAULT_EXPORT_CSV_DELIMITER = ',';
+
+    /**
+     * Whether a byte order mark is written ahead of CSV output when nothing specifies otherwise.
+     * <p>
+     * A BOM is only ever written for UTF-8, UTF-16LE and UTF-16BE. Any other charset leaves it out, including
+     * the endian-detecting UTF-16 (whose encoder writes one itself) and the non-Unicode charsets (which cannot
+     * encode U+FEFF and would corrupt the first field).
+     */
+    boolean DEFAULT_EXPORT_CSV_BOM = false;
+
+    /**
+     * Marks the CSV charset as not specified at an annotation level on export.
+     * <p>
+     * A CSV workbook is written as one file per sheet, so the charset resolves through a cascade — sheet option,
+     * {@link PxlSheet#exportCsvCharset()}, workbook option, {@link PxlWorkbook#exportCsvCharset()}, and finally
+     * {@link #DEFAULT_EXPORT_CSV_CHARSET}. An option level says "not specified" with {@code null}, which an annotation
+     * element cannot hold, so the two annotation levels say it with this value instead. Any blank value counts.
+     */
+    String UNSPECIFIED_EXPORT_CSV_CHARSET = "";
+
+    /**
+     * Marks the CSV field delimiter as not specified at an annotation level on export.
+     * <p>
+     * Resolves through the same cascade as {@link #UNSPECIFIED_EXPORT_CSV_CHARSET}, ending at
+     * {@link #DEFAULT_EXPORT_CSV_DELIMITER}. NUL stands in for "not specified" because it is not a delimiter
+     * anyone writes.
+     */
+    char UNSPECIFIED_EXPORT_CSV_DELIMITER = '\0';
 
     // BASE_NAME: "messages" if the messages_xx_XX.properties files are in src/main/resources
     //            "messages.messages" if the messages_xx_XX.properties files are in src/main/resources/messages

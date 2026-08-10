@@ -1,8 +1,9 @@
 package io.github.hclimkr.pxl.annotation;
 
 import io.github.hclimkr.pxl.PxlConstants;
-import io.github.hclimkr.pxl.PxlExcelEngine;
 import io.github.hclimkr.pxl.styler.PxlStyler;
+import io.github.hclimkr.pxl.type.PxlExcelEngine;
+import io.github.hclimkr.pxl.type.PxlOptionalBoolean;
 
 import java.lang.annotation.*;
 
@@ -113,6 +114,9 @@ public @interface PxlWorkbook {
 
     /**
      * Specifies the Password used to protect the document on export.
+     * <p>
+     * A CSV destination cannot honor it and <strong>rejects</strong> it rather than writing plaintext, so leave it
+     * unset when exporting to CSV.
      *
      * @return the password used to encrypt/protect the document on export; defaults to {@link PxlConstants#DEFAULT_EXPORT_PASSWORD} ({@code ""}, no protection)
      */
@@ -131,6 +135,48 @@ public @interface PxlWorkbook {
      * @return the SXSSF row-access window size (rows kept in memory) used on export; defaults to {@link PxlConstants#DEFAULT_EXPORT_SXSSF_ROW_ACCESS_WINDOW_SIZE}
      */
     int exportSXSSFRowAccessWindowSize() default PxlConstants.DEFAULT_EXPORT_SXSSF_ROW_ACCESS_WINDOW_SIZE;
+
+    /**
+     * Specifies the Character Encoding Set of the CSV to export, for every sheet of the workbook.
+     * Ignored for an Excel destination, which is one file whose encoding the format itself carries.
+     * <p>
+     * A sheet may depart from it with {@link PxlSheet#exportCsvCharset()}, since a CSV workbook is written as one file
+     * per sheet. Left blank, the workbook falls back to {@link PxlConstants#DEFAULT_EXPORT_CSV_CHARSET}
+     * ({@code "UTF-8"}); a runtime workbook option overrides it.
+     *
+     * @return the character encoding used to write a CSV; defaults to {@link PxlConstants#UNSPECIFIED_EXPORT_CSV_CHARSET} ({@code ""}, i.e. fall back to {@code "UTF-8"})
+     * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
+     */
+    String exportCsvCharset() default PxlConstants.UNSPECIFIED_EXPORT_CSV_CHARSET;
+
+    /**
+     * Specifies the Delimiter of the CSV to export, for every sheet of the workbook.
+     * Ignored for an Excel destination, which has no delimiter.
+     * <p>
+     * A sheet may depart from it with {@link PxlSheet#exportCsvDelimiter()}, since a CSV workbook is written as one file
+     * per sheet. Left at NUL, the workbook falls back to {@link PxlConstants#DEFAULT_EXPORT_CSV_DELIMITER}
+     * ({@code ','}); a runtime workbook option overrides it.
+     *
+     * @return the CSV field delimiter on export; defaults to {@link PxlConstants#UNSPECIFIED_EXPORT_CSV_DELIMITER} ({@code '\0'}, i.e. fall back to {@code ','})
+     */
+    char exportCsvDelimiter() default PxlConstants.UNSPECIFIED_EXPORT_CSV_DELIMITER;
+
+    /**
+     * Specifies whether a byte order mark is written ahead of the CSV to export, for every sheet of the workbook.
+     * Ignored for an Excel destination.
+     * <p>
+     * A sheet may depart from it with {@link PxlSheet#exportCsvBom()}, since a CSV workbook is written as one file
+     * per sheet. Left {@link PxlOptionalBoolean#UNSPECIFIED}, the workbook falls back to
+     * {@link PxlConstants#DEFAULT_EXPORT_CSV_BOM} ({@code false}); a runtime workbook option overrides it.
+     * <p>
+     * Honored only for UTF-8, UTF-16LE and UTF-16BE. Any other charset writes no mark even when this says
+     * {@link PxlOptionalBoolean#TRUE}: the endian-detecting UTF-16 has its encoder write one already, and a non-Unicode
+     * charset such as EUC-KR cannot encode U+FEFF and would corrupt the first field. The mark is dropped silently,
+     * since leaving it out loses nothing whereas writing it would.
+     *
+     * @return whether to write a byte order mark; defaults to {@link PxlOptionalBoolean#UNSPECIFIED} (i.e. fall back to {@code false})
+     */
+    PxlOptionalBoolean exportCsvBom() default PxlOptionalBoolean.UNSPECIFIED;
 
     /**
      * Specifies the style to apply to a required header cell on export.

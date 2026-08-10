@@ -1,5 +1,6 @@
-package io.github.hclimkr.pxl;
+package io.github.hclimkr.pxl.type;
 
+import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import lombok.AllArgsConstructor;

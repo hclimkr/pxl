@@ -6,11 +6,17 @@ import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.codec.PxlCellResolver;
 import io.github.hclimkr.pxl.internal.constraint.PxlByteSizeValidator;
 import io.github.hclimkr.pxl.internal.core.PxlContentsHandler;
+import io.github.hclimkr.pxl.internal.core.PxlCoreCsvExporter;
 import io.github.hclimkr.pxl.internal.core.PxlCoreExcelExporter;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18n;
 import io.github.hclimkr.pxl.internal.meta.*;
 import io.github.hclimkr.pxl.internal.support.*;
+import io.github.hclimkr.pxl.option.PxlExportSheetOption;
+import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
+import io.github.hclimkr.pxl.type.PxlExcelEngine;
+import io.github.hclimkr.pxl.type.PxlFileFormat;
+import io.github.hclimkr.pxl.type.PxlOptionalBoolean;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
@@ -18,6 +24,7 @@ import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
@@ -626,6 +633,193 @@ public class PxlInternalTests {
         assertThrows(IllegalArgumentException.class,
                 () -> validator.initialize(PxlReflectionSupport.withAnnotationValue(
                         PxlReflectionSupport.withAnnotationValue(annotation, "min", 10), "max", 3)));
+    }
+
+    // ------------------------------------------------------------------
+    // internal/meta - CSV export metadata
+    //
+    // CSV export has the sheet form only, which builds its metadata with no workbook class and so reads no
+    // annotation. The annotation cascade is therefore unreachable from exportCsv(), and these tests are the only
+    // thing holding it up until the workbook form arrives.
+    // ------------------------------------------------------------------
+
+    @Test
+    public void makeExportWorkbookMetaForCsv_withoutClassOrOption_holdsNoWorkbookAndTheCsvFormat() throws Exception {
+        final PxlExportWorkbookMeta workbookMeta = PxlExportWorkbookMeta.makeExportWorkbookMetaForCsv(null, null);
+
+        // No POI workbook is created on this path, and neither is a formula evaluator. That is a complete state,
+        // not a deficient one, which is what lets the CSV core share the metadata layer with the Excel core.
+        assertThat(workbookMeta.getWorkbook()).isNull();
+        assertThat(workbookMeta.getFormulaEvaluator()).isNull();
+        assertThat(workbookMeta.getExportExcelEngine()).isNull();
+
+        // The format is stated directly rather than derived from an engine, and it is what brings the CSV limits.
+        assertThat(workbookMeta.getExportFileFormat()).isEqualTo(PxlFileFormat.CSV);
+        assertThat(workbookMeta.getExportFileFormat().getMaxExportRows()).isEqualTo(PxlConstants.EXPORT_MAX_NUMBER_OF_CSV_ROWS);
+        assertThat(workbookMeta.getExportFileFormat().getMaxExportColumns()).isEqualTo(PxlConstants.EXPORT_MAX_NUMBER_OF_CSV_COLUMNS);
+
+        assertThat(workbookMeta.getExportCsvCharset()).isEqualTo(PxlConstants.DEFAULT_EXPORT_CSV_CHARSET);
+        assertThat(workbookMeta.getExportCsvDelimiter()).isEqualTo(PxlConstants.DEFAULT_EXPORT_CSV_DELIMITER);
+        assertThat(workbookMeta.isExportCsvBom()).isEqualTo(PxlConstants.DEFAULT_EXPORT_CSV_BOM);
+    }
+
+    @Test
+    public void makeExportWorkbookMetaForCsv_annotatedClass_readsTheDeclaredCsvValues() throws Exception {
+        final PxlExportWorkbookMeta workbookMeta =
+                PxlExportWorkbookMeta.makeExportWorkbookMetaForCsv(CsvExportWorkbook.class, null);
+
+        assertThat(workbookMeta.getExportCsvCharset()).isEqualTo("EUC-KR");
+        assertThat(workbookMeta.getExportCsvDelimiter()).isEqualTo(';');
+        assertThat(workbookMeta.isExportCsvBom()).isTrue();
+    }
+
+    @Test
+    public void makeExportWorkbookMetaForCsv_unspecifiedAnnotation_fallsBackToTheDefaults() throws Exception {
+        // Both annotation elements hold the sentinel, which must not be handed on as a usable value: an empty
+        // charset name would reach Charset.forName, and NUL would reach the delimiter.
+        final PxlExportWorkbookMeta workbookMeta =
+                PxlExportWorkbookMeta.makeExportWorkbookMetaForCsv(DefaultCsvWorkbook.class, null);
+
+        assertThat(workbookMeta.getExportCsvCharset()).isEqualTo(PxlConstants.DEFAULT_EXPORT_CSV_CHARSET);
+        assertThat(workbookMeta.getExportCsvDelimiter()).isEqualTo(PxlConstants.DEFAULT_EXPORT_CSV_DELIMITER);
+    }
+
+    @Test
+    public void makeExportWorkbookMetaForCsv_option_beatsTheAnnotation() throws Exception {
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportCsvCharset("UTF-16BE")
+                .exportCsvDelimiter('|')
+                .exportCsvBom(false)
+                .build();
+
+        final PxlExportWorkbookMeta workbookMeta =
+                PxlExportWorkbookMeta.makeExportWorkbookMetaForCsv(CsvExportWorkbook.class, option);
+
+        assertThat(workbookMeta.getExportCsvCharset()).isEqualTo("UTF-16BE");
+        assertThat(workbookMeta.getExportCsvDelimiter()).isEqualTo('|');
+        assertThat(workbookMeta.isExportCsvBom()).isFalse();
+    }
+
+    @Test
+    public void makeExportSheetMetas_csvValues_cascadeFromTheSheetAnnotationToTheWorkbook() throws Exception {
+        final PxlExportWorkbookMeta workbookMeta =
+                PxlExportWorkbookMeta.makeExportWorkbookMetaForCsv(CsvExportWorkbook.class, null);
+
+        final List<PxlExportSheetMeta> sheetMetas =
+                PxlExportSheetMeta.makeExportSheetMetas(CsvExportWorkbook.class, workbookMeta, null, false);
+
+        final PxlExportSheetMeta cities = sheetMetaNamed(sheetMetas, "Cities");
+        final PxlExportSheetMeta departments = sheetMetaNamed(sheetMetas, "Departments");
+
+        // A CSV workbook is written as one file per sheet, so a sheet may depart from the workbook's charset.
+        assertThat(cities.getExportCsvCharset()).isEqualTo("UTF-16LE");
+        assertThat(cities.getExportCsvDelimiter()).isEqualTo('\t');
+
+        // A sheet that states none of them inherits the workbook's values rather than the built-in defaults.
+        assertThat(departments.getExportCsvCharset()).isEqualTo("EUC-KR");
+        assertThat(departments.getExportCsvDelimiter()).isEqualTo(';');
+    }
+
+    @Test
+    public void makeExportSheetMetas_csvBom_lettingASheetTurnOffWhatTheWorkbookAskedFor() throws Exception {
+        final PxlExportWorkbookMeta workbookMeta =
+                PxlExportWorkbookMeta.makeExportWorkbookMetaForCsv(CsvExportWorkbook.class, null);
+        assertThat(workbookMeta.isExportCsvBom()).isTrue();
+
+        final List<PxlExportSheetMeta> sheetMetas =
+                PxlExportSheetMeta.makeExportSheetMetas(CsvExportWorkbook.class, workbookMeta, null, false);
+
+        // This is the whole reason the annotation element is three-valued: a boolean one could not tell "turn the
+        // workbook's mark off" apart from "say nothing", so the sheet could never get back to false.
+        assertThat(sheetMetaNamed(sheetMetas, "Cities").isExportCsvBom()).isFalse();
+        assertThat(sheetMetaNamed(sheetMetas, "Departments").isExportCsvBom()).isTrue();
+    }
+
+    @Test
+    public void makeExportSheetMetas_csvBomSheetOption_beatsTheSheetAnnotation() throws Exception {
+        final PxlExportWorkbookMeta workbookMeta =
+                PxlExportWorkbookMeta.makeExportWorkbookMetaForCsv(CsvExportWorkbook.class, null);
+
+        final PxlExportSheetOption sheetOption = PxlExportSheetOption.builder()
+                .fieldName("cities")
+                .exportCsvBom(true)     // the annotation says FALSE
+                .build();
+
+        final List<PxlExportSheetMeta> sheetMetas = PxlExportSheetMeta.makeExportSheetMetas(
+                CsvExportWorkbook.class, workbookMeta, Arrays.asList(sheetOption), false);
+
+        assertThat(sheetMetaNamed(sheetMetas, "Cities").isExportCsvBom()).isTrue();
+    }
+
+    @Test
+    public void triState_unsetTellsNothingApartFromFalse() {
+        assertThat(PxlOptionalBoolean.UNSPECIFIED.isSpecified()).isFalse();
+        assertThat(PxlOptionalBoolean.TRUE.isSpecified()).isTrue();
+        assertThat(PxlOptionalBoolean.FALSE.isSpecified()).isTrue();
+
+        // UNSPECIFIED answers false too, which is exactly why isSpecified() has to be consulted first.
+        assertThat(PxlOptionalBoolean.UNSPECIFIED.toBoolean()).isFalse();
+        assertThat(PxlOptionalBoolean.TRUE.toBoolean()).isTrue();
+        assertThat(PxlOptionalBoolean.FALSE.toBoolean()).isFalse();
+    }
+
+    @Test
+    public void makeExportSheetMetas_csvSheetOption_beatsTheSheetAnnotation() throws Exception {
+        final PxlExportWorkbookMeta workbookMeta =
+                PxlExportWorkbookMeta.makeExportWorkbookMetaForCsv(CsvExportWorkbook.class, null);
+
+        final PxlExportSheetOption sheetOption = PxlExportSheetOption.builder()
+                .fieldName("cities")
+                .exportCsvCharset("UTF-8")
+                .exportCsvDelimiter('|')
+                .build();
+
+        final List<PxlExportSheetMeta> sheetMetas = PxlExportSheetMeta.makeExportSheetMetas(
+                CsvExportWorkbook.class, workbookMeta, Arrays.asList(sheetOption), false);
+
+        final PxlExportSheetMeta cities = sheetMetaNamed(sheetMetas, "Cities");
+        assertThat(cities.getExportCsvCharset()).isEqualTo("UTF-8");
+        assertThat(cities.getExportCsvDelimiter()).isEqualTo('|');
+    }
+
+    private static PxlExportSheetMeta sheetMetaNamed(final List<PxlExportSheetMeta> sheetMetas, final String name) {
+        return sheetMetas.stream()
+                .filter(sheetMeta -> name.equals(sheetMeta.getActualExportSheetName()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("no sheet meta named " + name));
+    }
+
+    // ------------------------------------------------------------------
+    // internal/core - CSV exporter
+    // ------------------------------------------------------------------
+
+    @Test
+    public void coreCsvExporter_invalidDelimiter_isNormalizedRatherThanLeakingFromCommonsCsv() throws Exception {
+        // The builder rejects an unusable delimiter before the destination is opened, so this backstop is only
+        // reachable by calling the core directly — which the workbook form will do once it exists. Without it the
+        // failure would surface as an unclassified system error naming nothing.
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportCsvDelimiter('\n')
+                .build();
+        final PxlExportWorkbookMeta workbookMeta = PxlExportWorkbookMeta.makeExportWorkbookMetaForCsv(null, option);
+
+        assertThrows(PxlArgumentException.class, () -> PxlCoreCsvExporter.writeCsv(
+                "Employees", Arrays.asList(new Employee()), Employee.class, workbookMeta, null, new StringWriter()));
+    }
+
+    @Test
+    public void coreCsvExporter_missingArguments_areRejected() throws Exception {
+        final PxlExportWorkbookMeta workbookMeta = PxlExportWorkbookMeta.makeExportWorkbookMetaForCsv(null, null);
+        final List<Employee> rows = Arrays.asList(new Employee());
+
+        assertThrows(PxlArgumentException.class, () -> PxlCoreCsvExporter.writeCsv(
+                " ", rows, Employee.class, workbookMeta, null, new StringWriter()));
+        assertThrows(PxlNullPointerException.class, () -> PxlCoreCsvExporter.writeCsv(
+                "S", null, Employee.class, workbookMeta, null, new StringWriter()));
+        assertThrows(PxlNullPointerException.class, () -> PxlCoreCsvExporter.writeCsv(
+                "S", rows, Employee.class, workbookMeta, null, null));
+        assertThrows(PxlNullPointerException.class, () -> PxlCoreCsvExporter.writeSampleCsv(
+                "S", null, workbookMeta, new StringWriter()));
     }
 
 }

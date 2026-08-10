@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Excel column export metadata.
+ * Column export metadata, resolved for an Excel or a CSV destination alike.
  */
 @Getter
 public final class PxlExportColumnMeta {

@@ -13,7 +13,7 @@ PXL is an **annotation-driven, bidirectional binding between spreadsheets and Ja
 built on top of Apache POI and Apache Commons CSV, and supports Java 8 and above.
 
 - Import: XLSX · XLS · CSV → Java objects
-- Export: Java objects → XLSX · XLS · streaming XLSX
+- Export: Java objects → XLSX · XLS · streaming XLSX · CSV
 - Only fields/classes marked with the dedicated annotations are bound.
 
 For details such as supported variable types, the full set of options, and constraints, refer to [docs/reference.md](docs/reference.md).
@@ -25,10 +25,12 @@ For details such as supported variable types, the full set of options, and const
 3. [Usage at a Glance](#usage-at-a-glance)
 4. [Export (Objects → Excel)](#export-objects--excel)
 5. [Export Sample (Class → Sample Excel)](#export-sample-class--sample-excel)
-6. [Import (Excel → Objects)](#import-excel--objects)
-7. [Import (CSV → Objects)](#import-csv--objects)
-8. [Build & Contributing](#build--contributing)
-9. [License](#license)
+6. [Export (Objects → CSV)](#export-objects--csv)
+7. [Export Sample (Class → Sample CSV)](#export-sample-class--sample-csv)
+8. [Import (Excel → Objects)](#import-excel--objects)
+9. [Import (CSV → Objects)](#import-csv--objects)
+10. [Build & Contributing](#build--contributing)
+11. [License](#license)
 
 ---
 
@@ -266,6 +268,8 @@ Every operation is handled through a single method chain like the examples above
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Excel export      | `pxl.exportExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)` / `.toWorkbook()`                                                                     |
 | Sample Excel export | `pxl.exportSampleExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)` / `.toWorkbook()`                                                               |
+| CSV export        | `pxl.exportCsv()`<br/>→ `.sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)`                                                                                                          |
+| Sample CSV export | `pxl.exportSampleCsv()`<br/>→ `.sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)`                                                                                                    |
 | Excel import      | `pxl.importExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromStream(InputStream)`                                                                                    |
 | CSV import        | `pxl.importCsv()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromFiles(List<File>)` / `.fromStream(String, InputStream)` / `.fromStreams(List<String>, List<InputStream>)` |
 
@@ -397,6 +401,93 @@ Creating `exportSampleExcel().sheet(Employee.class, "Employees")` with the `Empl
 | **2** | John Doe | 25  | 45000  | true   | 2024-03-01 | C     |
 
 - For multiple sheets (`Company` or `.sheet(...).sheet(...)`), each sheet gets a header row plus one sample data row in the same manner.
+
+---
+
+## Export (Objects → CSV)
+
+A CSV file holds one sheet, so this builder has the sheet form only — there is no `workbook(...)` — and the final
+method writes that one sheet. Everything about the values themselves is shared with the Excel export: the same
+annotations, the same converters, the same column order.
+
+```java
+pxl.exportCsv()
+   .sheet(Employee.class, employees, "Employees")
+   .toFile(new File("employees.csv"));
+```
+
+```csv
+Name,Age,Salary,Active,HireDate,Grade
+Alice,30,50000,true,2020-01-15,A
+Bob,42,72000,false,2018-06-01,B
+```
+
+### Encoding, Delimiter and Byte Order Mark
+
+A CSV workbook is one file per sheet, so these belong to the file rather than to the schema and are settled at the
+sheet level. The sheet form binds no `@PxlSheet` field, so a wildcard `PxlExportSheetOption` is the sheet-level
+route; a workbook-level option covers every sheet at once.
+
+```java
+PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+        .exportCsvCharset("EUC-KR")
+        .exportCsvDelimiter('\t')
+        .exportCsvBom(true)
+        .build();
+
+pxl.exportCsv()
+   .sheet(Employee.class, employees, "Employees")
+   .override(option)
+   .toFile(new File("employees.csv"));
+```
+
+- A byte order mark is written only for UTF-8, UTF-16LE and UTF-16BE. Any other charset leaves it out silently —
+  UTF-16 has its encoder write one already, and a non-Unicode charset such as EUC-KR cannot encode it at all and
+  would corrupt the first field.
+- The header line is always written; there is no switch to turn it off.
+
+### What CSV Does Not Carry
+
+Settings that describe how a cell looks or what a workbook contains are ignored: stylers, column widths, row
+heights, freeze panes, auto-filters, dropdowns, the engine and its streaming window, and `exportGroupingFieldName`
+(the rows stay in the order given). Two of them still put their value in the file — `exportStringAsFormula` writes
+the text as it stands, leading `=` and all, and `exportStringAsPicture` writes the image location instead of
+embedding a picture.
+
+`exportPassword` is the one that is refused rather than ignored: CSV cannot be encrypted, and writing plaintext
+instead would be a leak.
+
+---
+
+## Export Sample (Class → Sample CSV)
+
+From a class alone, this creates a sample template with a header line plus one data line filled with each column's
+example value (`exportSample`) — the CSV counterpart of
+[Export Sample (Class → Sample Excel)](#export-sample-class--sample-excel).
+A CSV file holds one sheet, so this builder too has the sheet form only, and the final method is
+`toFile`/`toStream` (there is no `toWorkbook`).
+
+```java
+pxl.exportSampleCsv()
+   .sheet(Employee.class, "Employees")
+   .toFile(new File("employees-template.csv"));
+```
+
+### Export Sample Result CSV Layout
+
+Creating `exportSampleCsv().sheet(Employee.class, "Employees")` with the `Employee` above produces the following file.
+
+```csv
+Name,Age,Salary,Active,HireDate,Grade
+John Doe,25,45000,true,2024-03-01,C
+```
+
+- A column without `exportSample` gets `exportNullString` (default `""`), so its field is left empty.
+- `importCsv()` reads this file straight back, which makes it a form to hand out and collect filled in.
+- A CSV file carries no sheet name of its own, so the name given here only picks the matching sheet-level option
+  and labels error messages.
+- Encoding, delimiter and byte order mark are settled exactly as in
+  [Export (Objects → CSV)](#export-objects--csv), and the same settings are ignored or refused there.
 
 ---
 

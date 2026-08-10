@@ -4,6 +4,7 @@ import io.github.hclimkr.pxl.builder.PxlExcelExportBuilder;
 import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
+import io.github.hclimkr.pxl.type.PxlExcelEngine;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.jupiter.api.BeforeAll;
@@ -368,6 +369,41 @@ public class PxlRoundTripTests {
 
         assertThat(rows).hasSize(1);
         Fixtures.assertSampleAllTypesRow(rows.get(0));
+    }
+
+    // ------------------------------------------------------------------
+    // CSV round trip (exportCsv -> importCsv)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void csvRoundTrip_sheetForm_preservesValues() throws Exception {
+        final File csvFile = TestPaths.exportFile(testInfo, ".csv");
+
+        final Employee alice = new Employee();
+        alice.setName("Alice");
+        alice.setAge(30);
+        alice.setSalary(new java.math.BigDecimal("50000.50"));
+        alice.setActive(Boolean.TRUE);
+        alice.setHireDate(LocalDate.of(2020, 1, 15));
+        alice.setGrade(Grade.A);
+        alice.setDepartment("Engineering");
+
+        pxl.exportCsv()
+                .sheet(Employee.class, Arrays.asList(alice), "Employees")
+                .toFile(csvFile);
+
+        final List<Employee> rows = pxl.importCsv()
+                .sheet(Employee.class)
+                .fromFile(csvFile);
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getName()).isEqualTo("Alice");
+        assertThat(rows.get(0).getAge()).isEqualTo(30);
+        assertThat(rows.get(0).getSalary()).isEqualByComparingTo(new java.math.BigDecimal("50000.50"));
+        assertThat(rows.get(0).getActive()).isTrue();
+        assertThat(rows.get(0).getHireDate()).isEqualTo(LocalDate.of(2020, 1, 15));
+        assertThat(rows.get(0).getGrade()).isEqualTo(Grade.A);
+        assertThat(rows.get(0).getDepartment()).isEqualTo("Engineering");
     }
 
     // ------------------------------------------------------------------

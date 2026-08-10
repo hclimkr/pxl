@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Excel import common routine
+ * Format-neutral import common routine
  */
 abstract class PxlAbstractImporter extends PxlAbstractBinder {
 

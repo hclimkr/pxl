@@ -2,6 +2,7 @@ package io.github.hclimkr.pxl.annotation;
 
 import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.styler.PxlStyler;
+import io.github.hclimkr.pxl.type.PxlOptionalBoolean;
 
 import java.lang.annotation.*;
 
@@ -230,6 +231,48 @@ public @interface PxlSheet {
      * @return {@code true} to apply an auto-filter to the columns on export; defaults to {@link PxlConstants#DEFAULT_EXPORT_COLUMN_FILTER} ({@code false})
      */
     boolean exportColumnFilter() default PxlConstants.DEFAULT_EXPORT_COLUMN_FILTER;
+
+    /**
+     * Specifies the Character Encoding Set of the CSV to export for this sheet.
+     * Ignored for an Excel destination, which is one file whose encoding the format itself carries.
+     * <p>
+     * A CSV workbook is written as one file per sheet, so the charset belongs to the file rather than the schema.
+     * Left blank, the sheet falls back to the workbook's {@code exportCsvCharset}; a runtime sheet option overrides both.
+     *
+     * @return the character encoding used to write this sheet's CSV; defaults to {@link PxlConstants#UNSPECIFIED_EXPORT_CSV_CHARSET} ({@code ""}, i.e. inherit from the workbook)
+     * @see PxlWorkbook#exportCsvCharset()
+     */
+    String exportCsvCharset() default PxlConstants.UNSPECIFIED_EXPORT_CSV_CHARSET;
+
+    /**
+     * Specifies the Delimiter of the CSV to export for this sheet.
+     * Ignored for an Excel destination, which has no delimiter.
+     * <p>
+     * Left at NUL, the sheet falls back to the workbook's {@code exportCsvDelimiter}; a runtime sheet option
+     * overrides both.
+     *
+     * @return the CSV field delimiter used to write this sheet; defaults to {@link PxlConstants#UNSPECIFIED_EXPORT_CSV_DELIMITER} ({@code '\0'}, i.e. inherit from the workbook)
+     * @see PxlWorkbook#exportCsvDelimiter()
+     */
+    char exportCsvDelimiter() default PxlConstants.UNSPECIFIED_EXPORT_CSV_DELIMITER;
+
+    /**
+     * Specifies whether a byte order mark is written ahead of this sheet's CSV.
+     * Ignored for an Excel destination.
+     * <p>
+     * A byte order mark belongs to the file even more plainly than the charset does — the same UTF-8 output is
+     * wanted with one by some readers and without it by others — so a sheet may depart from the workbook here.
+     * Left {@link PxlOptionalBoolean#UNSPECIFIED}, the sheet falls back to the workbook's {@code exportCsvBom}; a runtime sheet
+     * option overrides both. {@link PxlOptionalBoolean#FALSE} turns off a mark the workbook asked for, which a plain
+     * {@code boolean} element could not express.
+     * <p>
+     * Honored only for UTF-8, UTF-16LE and UTF-16BE; any other charset drops the mark silently
+     * (see {@link PxlWorkbook#exportCsvBom()}).
+     *
+     * @return whether to write a byte order mark for this sheet; defaults to {@link PxlOptionalBoolean#UNSPECIFIED} (i.e. inherit from the workbook)
+     * @see PxlWorkbook#exportCsvBom()
+     */
+    PxlOptionalBoolean exportCsvBom() default PxlOptionalBoolean.UNSPECIFIED;
 
     /**
      * Specifies the style to apply to a required header cell on export.

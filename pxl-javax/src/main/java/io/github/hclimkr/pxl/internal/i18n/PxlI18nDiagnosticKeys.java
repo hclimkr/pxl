@@ -472,6 +472,22 @@ public final class PxlI18nDiagnosticKeys {
      */
     public static final String BUILDER_EXPORT_WORKBOOK_SHEET_REQUIRED = "builder.export.workbookSheetRequired";
     /**
+     * A CSV terminal writes a single sheet only.
+     */
+    public static final String BUILDER_EXPORT_CSV_SINGLE_SHEET_ONLY = "builder.export.csv.singleSheetOnly";
+    /**
+     * CSV output cannot be encrypted, so a password must not be requested.
+     */
+    public static final String BUILDER_EXPORT_CSV_PASSWORD_UNSUPPORTED = "builder.export.csv.passwordUnsupported";
+    /**
+     * The CSV charset is not a supported encoding name; {@code {0}}=sheet name, {@code {1}}=charset.
+     */
+    public static final String BUILDER_EXPORT_CSV_CHARSET_INVALID = "builder.export.csv.charsetInvalid";
+    /**
+     * The CSV field delimiter cannot be used; {@code {0}}=sheet name, {@code {1}}=delimiter.
+     */
+    public static final String BUILDER_EXPORT_CSV_DELIMITER_INVALID = "builder.export.csv.delimiterInvalid";
+    /**
      * No import source was supplied.
      */
     public static final String BUILDER_IMPORT_SOURCE_MISSING = "builder.import.sourceMissing";

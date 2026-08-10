@@ -1,6 +1,5 @@
 package io.github.hclimkr.pxl.option;
 
-import io.github.hclimkr.pxl.PxlExcelEngine;
 import io.github.hclimkr.pxl.annotation.PxlColumn;
 import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.exception.PxlI18nException;
@@ -8,6 +7,7 @@ import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.styler.PxlStyler;
+import io.github.hclimkr.pxl.type.PxlExcelEngine;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,7 +16,9 @@ import lombok.Getter;
 import java.util.*;
 
 /**
- * Excel workbook export option
+ * Workbook export option, for an Excel or a CSV destination alike — the attributes one of them has no use for
+ * (the engine and the streaming window on one side, the CSV charset, delimiter and byte order mark on the other)
+ * are ignored there rather than belonging to a separate option type.
  */
 @Getter
 @AllArgsConstructor
@@ -31,6 +33,9 @@ public final class PxlExportWorkbookOption {
 
     /**
      * Specifies the password used to protect the document on export.
+     * <p>
+     * A CSV destination cannot honor it and <strong>rejects</strong> it rather than writing plaintext, so leave it
+     * unset when exporting to CSV.
      */
     @Builder.Default
     private final String exportPassword = null;
@@ -49,6 +54,40 @@ public final class PxlExportWorkbookOption {
      */
     @Builder.Default
     private final Integer exportSXSSFRowAccessWindowSize = null;
+
+    /**
+     * Specifies the character encoding used to write a CSV, for every sheet of the workbook.
+     * <p>
+     * Overrides {@link PxlWorkbook#exportCsvCharset()} but not {@link PxlSheet#exportCsvCharset()}, since a CSV
+     * workbook is written as one file per sheet and the sheet level is the more specific one.
+     * The per-sheet counterpart is {@code PxlExportSheetOption.exportCsvCharset}.
+     * <p>
+     * Ignored for an Excel destination. Left {@code null}, the annotation decides.
+     */
+    @Builder.Default
+    private final String exportCsvCharset = null;
+
+    /**
+     * Specifies the field delimiter used to write a CSV, for every sheet of the workbook.
+     * <p>
+     * Overrides {@link PxlWorkbook#exportCsvDelimiter()} but not {@link PxlSheet#exportCsvDelimiter()}, since a CSV
+     * workbook is written as one file per sheet.
+     * The per-sheet counterpart is {@code PxlExportSheetOption.exportCsvDelimiter}.
+     * <p>
+     * Ignored for an Excel destination. Left {@code null}, the annotation decides.
+     */
+    @Builder.Default
+    private final Character exportCsvDelimiter = null;
+
+    /**
+     * Specifies whether a byte order mark is written ahead of the CSV output.
+     * <p>
+     * Honored only for UTF-8, UTF-16LE and UTF-16BE; any other charset drops the mark silently
+     * (see {@link PxlWorkbook#exportCsvBom()}). Ignored for an Excel destination.
+     * Left {@code null}, the annotation decides.
+     */
+    @Builder.Default
+    private final Boolean exportCsvBom = null;
 
     /**
      * Specifies the style applied to required header cells on export.

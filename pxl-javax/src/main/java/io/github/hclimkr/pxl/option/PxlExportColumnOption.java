@@ -14,7 +14,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Excel column export option
+ * Column export option, for an Excel or a CSV destination alike. The attributes that shape the value itself apply
+ * to both; the ones that only describe how a cell looks (stylers, width, dropdown) are ignored by a CSV export.
  */
 @Getter
 @AllArgsConstructor

@@ -196,10 +196,13 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 |--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 엑셀 export    | `pxl.exportExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)` / `.toWorkbook()`                                                                     |
 | 샘플 엑셀 export | `pxl.exportSampleExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)` / `.toWorkbook()`                                                               |
+| CSV export   | `pxl.exportCsv()`<br/>→ `.sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)`                                                                                                          |
+| 샘플 CSV export | `pxl.exportSampleCsv()`<br/>→ `.sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)`                                                                                                    |
 | 엑셀 import    | `pxl.importExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromStream(InputStream)`                                                                                    |
 | CSV import   | `pxl.importCsv()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromFiles(List<File>)` / `.fromStream(String, InputStream)` / `.fromStreams(List<String>, List<InputStream>)` |
 
 - 구성 단계의 `.workbook(...)`과 `.sheet(...)`은 서로 배타적이다 — 한 체인에서 둘을 함께 지정하면 `PxlArgumentException`이 발생한다(둘 다 생략해도 같다).
+- CSV export 체인 2종에는 `.workbook(...)` 자체가 없다 — CSV 파일 하나에는 시트 하나가 담기므로 워크북 형태를 호출할 자리가 없다. `.sheet(...)`은 엑셀과 마찬가지로 누적되지만 마지막 메서드가 시트 하나를 쓰므로, 시트를 둘 이상 구성하면 구성 단계가 아니라 마지막 메서드에서 `PxlArgumentException`(`builder.export.csv.singleSheetOnly`)이 발생한다.
 - export는 `.sheet(...)`를 여러 번 호출해 여러 시트를 만든다 — 호출 순서가 그대로 워크북 내 시트 순서가 되며, 시트마다 다른 행 클래스를 줄 수 있다. 시트 이름이 중복되면(안전한 이름으로 정규화한 뒤 대소문자를 무시하고 비교) 겹친 이름을 담은 `PxlDataException`이 발생한다 — 대소문자만 다른 두 시트는 한 워크북에 공존할 수 없다.
 - import는 `.sheet(...)`를 연달아 체인할 수 없다 — 여러 시트를 읽는 방법은 두 가지다.
     - 워크북 형태로 한 번에: `@PxlWorkbook` 클래스를 `.workbook(...)`에 주면 `@PxlSheet` 필드별로 여러 시트가 한 번에 바인딩된다.  
@@ -220,6 +223,10 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 | import<br/>`fromFile(File)`<br/>`fromFiles(List<File>)` (CSV)                                   | 호출자의 `File`                  | 내부에서 파일의 스트림을 열고 직접 닫는다      |
 | import<br/>`fromStream(InputStream)` (Excel)<br/>`fromStream(String, InputStream)`·`fromStreams(List<String>, List<InputStream>)` (CSV) | 호출자의 `InputStream`  | 닫지 않는다. 호출자가 닫아야 한다          |
 
+CSV export는 목적지를 열기 전에 출력물 전체를 메모리에 만든다. 그래서 export가 실패하면 `toFile(...)`은 파일을 아예 만들지 않고,
+`toStream(...)`은 호출자의 스트림에 한 번에 쓴다. 대가는 CSV export가 필요로 하는 메모리가 출력 크기에 비례한다는 점이다 —
+[제한사항](#제한사항) 참조.
+
 ### 빌더 수명과 스레드 안전성
 
 `Pxl` 자체는 상태가 없고 스레드에 안전하다. 반면 `Pxl`이 만들어 주는 빌더는 그때까지 모은 구성을 들고 있으므로 스레드에 안전하지 않다.
@@ -228,6 +235,7 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 |-------------------------------------------------|----------------|-----------------------------------------------------------------------|
 | `Pxl`                                           | 재사용한다          | 상태 없음·스레드 안전. `new Pxl()`은 유효성 검사 부트스트랩 비용이 있으니 싱글톤으로 둔다 |
 | export 빌더<br/>(`exportExcel()`·`exportSampleExcel()`) | 재실행은 되나 재구성은 안 된다 | 구성이 빌더에 남으므로 마지막(실행) 단계를 다시 호출하면 그대로 한 번 더 만들지만, 시트를 더 넣으면 기존 것 위에 누적된다 |
+| CSV export 빌더<br/>(`exportCsv()`·`exportSampleCsv()`) | 재실행은 되나 재구성은 안 된다 | 위와 같고 `sheet(...)`이 누적되는 것도 같다 — 다만 CSV의 마지막 메서드는 시트 하나를 쓰므로, 두 번째 시트는 구성 단계가 아니라 마지막 메서드에서 실패한다 |
 | import 빌더<br/>(`importExcel()`·`importCsv()`)   | 재사용할 수 있다      | 소스 스텝이 필요한 설정을 복사해 가므로 같은 빌더로 시트마다 실행할 수 있다                           |
 
 export 빌더는 추가된 시트를 모두 보관하며, 어떤 마지막(실행) 단계도 이를 비우지 않는다.
@@ -271,6 +279,8 @@ List<Department> departments = builder.sheet(Department.class, "Departments")
 | `PxlFileFormat`  | 나온 바이트가 무엇인가          | `XLS` · `XLSX` · `CSV`    |
 
 `@PxlWorkbook(exportExcelEngine = ...)`와 `PxlExportWorkbookOption.exportExcelEngine`은 엔진을 받으므로, 어떤 엔진도 쓰지 않는 형식인 CSV는 애초에 선언할 자리가 없다. 각 엔진은 자기가 만드는 형식을 알고 있고, 시트/행/열 한도는 엔진이 아니라 그 형식에 속한다 — `XSSF`와 `SXSSF`가 한도를 공유하는 이유다.
+
+그래서 CSV로 쓰는 것은 엔진이 아니라 시작 메서드로 고른다. `exportCsv()`/`exportSampleCsv()`는 POI 워크북을 만들지 않는 별도 경로를 타며, 그 경로가 형식을 `PxlFileFormat.CSV`로 고정하기 때문에 CSV 한도가 걸린다. 엔진이 정했을 것들은 — 스트리밍 윈도우를 포함해 — 그곳에서 아무 의미가 없다.
 
 `PxlFileFormat`은 다운로드 응답을 조립할 때 쓰는 타입이다. 파일 확장자와 MIME content type을 갖고 있다.
 
@@ -329,6 +339,9 @@ response.setHeader("Content-Disposition",
 
 ### 타입별 동작 요약 — Export
 
+> 아래 표는 셀에 타입이 있는 엑셀 export 기준이다. CSV에는 셀 타입이 없으므로 필드에 들어가는 것은 언제나 codec이 계산한 문자열이다 —
+> `pattern` 없는 수치·날짜는 표시 형식을 얹은 serial이 아니라 그 codec의 문자열(`LocalDate`면 `2023-06-15`)로 기록되고, 아래의 quote-prefix 열은 CSV에 대응물이 없다.
+
 | 타입                                            | Export 동작 / 특이사항·제한                                                                                                                                                                                              |
 |------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `byte`·`short`·`int` + 래퍼 클래스               | 숫자 셀로 기록(표현 범위가 2^53 미만이라 안전)                                                                                                                                                                                    |
@@ -373,9 +386,12 @@ response.setHeader("Content-Disposition",
 | `importCsvDelimiter`                                              | `'\0'`→`','` | CSV 전용. Import할 CSV의 구분자(워크북의 모든 시트 공통, `char`). 개별 시트는 `@PxlSheet(importCsvDelimiter)`으로 따로 설정할 수 있다                                                                                                              |
 | `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Import 시 다국어 ResourceBundle의 base name / language / country                                                                                                                                                                    |
 | `exportExcelEngine`                                               | `XSSF`     | 워크북을 쓰는 POI 엔진(`PxlExcelEngine`): `XSSF`=XLSX(기본), `HSSF`=XLS, `SXSSF`=스트리밍 XLSX.<br/>형식이 아니라 writer를 고르는 속성이라 `XSSF`와 `SXSSF`는 똑같이 `.xlsx`를 만든다. CSV는 엔진이 아니므로 여기에 지정할 수 없다. |
-| `exportPassword`                                                  | `""`       | Export 시 설정할 문서보호 비밀번호.<br/>`toFile(...)`·`toStream(...)`에만 적용되고 `toWorkbook()`에는 적용되지 않는다.                                                                                                              |
+| `exportPassword`                                                  | `""`       | Export 시 설정할 문서보호 비밀번호.<br/>`toFile(...)`·`toStream(...)`에만 적용되고 `toWorkbook()`에는 적용되지 않는다.<br/>CSV export는 평문을 쓰는 대신 **거부**한다(`PxlArgumentException`). |
 | `exportDataValidation`                                            | `true`     | 쓰려는 객체에 대해 Bean Validation을 수행할지 여부.<br/>엑셀의 "데이터 유효성" 기능과는 무관하다 — 위 `importDataValidation` 참조 |
 | `exportSXSSFRowAccessWindowSize`                                  | `100`      | SXSSF Export 시 rowAccessWindowSize                                                                                                                                                                                                 |
+| `exportCsvCharset`                                                | `""`→`"UTF-8"` | CSV 전용. Export할 CSV의 문자 인코딩(워크북의 모든 시트 공통). 개별 시트는 `@PxlSheet(exportCsvCharset)`으로 따로 설정할 수 있다                                                                                                        |
+| `exportCsvDelimiter`                                              | `'\0'`→`','` | CSV 전용. Export할 CSV의 구분자(워크북의 모든 시트 공통, `char`). 개별 시트는 `@PxlSheet(exportCsvDelimiter)`으로 따로 설정할 수 있다                                                                                              |
+| `exportCsvBom`                                                    | `UNSPECIFIED`→`false` | CSV 전용. 출력 앞에 BOM을 붙일지 여부(`PxlOptionalBoolean`). 개별 시트는 `@PxlSheet(exportCsvBom)`으로 따로 설정할 수 있다.<br/>UTF-8/UTF-16LE/UTF-16BE에서만 적용되고, 그 외 문자셋에서는 조용히 생략된다(↓ *제한사항*) |
 | `exportWorkbookRequiredHeaderCellStyler`                          | (미지정)      | 필수 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderRequiredStyler`)                                                                                                                                                                  |
 | `exportWorkbookOptionalHeaderCellStyler`                          | (미지정)      | 선택 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderOptionalStyler`)                                                                                                                                                                  |
 | `exportWorkbookDataCellStyler`                                    | (미지정)      | 데이터 셀 스타일 (미지정/적용불가 시 `PxlDataVerticalCenterTextStyler`)                                                                                                                                                             |
@@ -415,6 +431,9 @@ export(및 샘플 export)에서는 사용되지 않는다.
 | `exportIfNull`                                                                                              | `false` | 필드가 null일 때 시트 생성 여부                                                                                  |
 | `exportIfEmpty`                                                                                             | `true`  | 필드가 비었을 때 시트 생성 여부                                                                                  |
 | `exportColumnFilter`                                                                                        | `false` | 필터 적용 여부                                                                                                   |
+| `exportCsvCharset`                                                                                          | (상속)    | CSV 전용. 이 시트의 CSV를 쓸 문자 인코딩. 빈 값(`""`)이면 워크북 값을 상속                                        |
+| `exportCsvDelimiter`                                                                                        | (상속)    | CSV 전용. 이 시트의 CSV를 쓸 구분자(`char`). NUL(`'\0'`)이면 워크북 값을 상속                                     |
+| `exportCsvBom`                                                                                              | (상속)    | CSV 전용. 이 시트의 CSV 앞에 BOM을 붙일지(`PxlOptionalBoolean`). `UNSPECIFIED`면 워크북 값을 상속하고, `FALSE`는 워크북이 켠 BOM을 끈다 — 평범한 `boolean`으로는 표현할 수 없는 경우다 |
 | `exportSheetRequiredHeaderCellStyler` / `exportSheetOptionalHeaderCellStyler` / `exportSheetDataCellStyler` | (미지정)   | 시트 단위 셀 스타일 (미지정 시 Workbook 단위로 위임)                                                             |
 
 ### `@PxlRowIndex` (필드 대상)
@@ -761,6 +780,11 @@ private List<String> roles;
 > Export 시 검증:  
 > - `exportLastDataColumnIndex`로 지정한 열 범위가 export할 컬럼 수보다 작으면(일부 컬럼 누락) 예외가 발생한다.
 > - 같은 시트 안에 중복된 컬럼명이 있으면 예외가 발생한다.
+
+> CSV export도 다섯 속성을 엑셀과 똑같이 지킨다 — 좌표 해석이 공용 메타에서 이뤄지기 때문이다.
+> 다만 텍스트 파일에서 좌표가 어떤 모양이 되는지는 알아 둘 만하다. 헤더보다 앞선 행이나 `FirstDataColumnIndex` 이전의 열은
+> 빈 필드로 기록된다 — 아무것도 없는 빈 줄이 아니라 빈 필드로 이뤄진 레코드(`"",,,`)다. 의도된 동작이다.
+> PXL의 CSV import는 빈 줄을 무시하므로, 빈 줄로 쓰면 다시 읽을 때 헤더가 위로 당겨져 왕복이 깨진다.
   
 > Import 시 빈 데이터 범위 동작:  
 > - 데이터 행 범위가 실제 데이터와 겹치지 않거나 비게 되는 설정(예: `importFirstDataRowIndex`를 실제 데이터보다 큰 행으로 지정)에서는
@@ -1093,7 +1117,55 @@ CompanyWorkbook workbook = pxl.importCsv()
 | 내장 기본값                                                     | `"UTF-8"` / `','`  |
 
 > "미지정"이 실효 기본값이 아니라 미지정 표식이므로, 워크북이 다른 값을 지정한 상황에서 시트가 `"UTF-8"`·`','`를 명시해 기본값으로 되돌릴 수 있다.  
-> 시트 폼(`sheet(...)`)에는 `@PxlSheet`를 붙일 필드가 없으므로 와일드카드 `PxlImportSheetOption`이 유일한 시트 단계 경로다 — *옵션 구조* 참고.
+> 시트 폼(`sheet(...)`)에는 `@PxlSheet`를 붙일 필드가 없으므로 와일드카드 `PxlImportSheetOption`이 유일한 시트 단계 경로다 — *옵션 구조* 참고.  
+> 한 단계 위도 마찬가지다. 시트 폼은 워크북 클래스 없이 워크북 메타를 만들므로 `@PxlWorkbook`도 읽지 않는다. 시트 폼에서는 애노테이션 두 단계가 모두 무효이고 옵션만 적용된다.
+
+### 시트: CSV 인코딩·구분자·BOM Export
+
+쓰는 쪽은 읽는 쪽과 대칭이며 BOM이 하나 더 붙는다 — CSV는 시트 하나가 파일 하나로 기록되므로 셋 다 스키마가 아니라 파일의 속성이다.
+
+```java
+import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
+
+pxl.exportCsv()
+   .sheet(Employee.class, employees, "Employees")
+   .override(PxlExportWorkbookOption.builder()
+                                    .exportCsvCharset("MS949")   // 기본값은 "UTF-8"
+                                    .exportCsvDelimiter('\t')    // char (예: TSV). 기본값 ','
+                                    .exportCsvBom(true)          // 옵션은 Boolean, 애노테이션은 PxlOptionalBoolean
+                                    .build())
+   .toFile(csvFile);
+```
+
+```java
+@PxlWorkbook(exportCsvCharset = "MS949", exportCsvBom = PxlOptionalBoolean.TRUE)
+public class CompanyWorkbook {
+
+    @PxlSheet(name = "Legacy")                                    // MS949와 BOM을 상속
+    private List<CharsetRow> legacy;
+
+    @PxlSheet(name = "Modern",
+              exportCsvCharset = "UTF-8",
+              exportCsvBom = PxlOptionalBoolean.FALSE)            // 이 파일만 BOM 없이 쓴다
+    private List<CharsetRow> modern;
+}
+```
+
+해석 순서는 import 쪽과 같은 5단이다.
+
+| 단계 | "미지정"을 뜻하는 값 |
+|------|--------------------|
+| `PxlExportSheetOption.exportCsvCharset` / `exportCsvDelimiter` / `exportCsvBom` | `null`, 그리고 `""` / `'\0'`도 동일 |
+| `@PxlSheet(exportCsvCharset)` / `(exportCsvDelimiter)` / `(exportCsvBom)`       | `""` / `'\0'` / `UNSPECIFIED` |
+| `PxlExportWorkbookOption.exportCsvCharset` / `exportCsvDelimiter` / `exportCsvBom` | `null`, 그리고 `""` / `'\0'`도 동일 |
+| `@PxlWorkbook(exportCsvCharset)` / `(exportCsvDelimiter)` / `(exportCsvBom)`    | `""` / `'\0'` / `UNSPECIFIED` |
+| 내장 기본값                                                                      | `"UTF-8"` / `','` / `false` |
+
+> 애노테이션에서 평범한 `boolean`을 못 쓰는 것은 `exportCsvBom`뿐이다. `boolean`에는 "미지정"에 쓸 값이 남지 않아 `false`가 침묵과 구분되지 않고,
+> 그러면 워크북이 켠 BOM을 시트가 끌 방법이 없다. 그 세 번째 값을 채워 주는 것이 `PxlOptionalBoolean`(`UNSPECIFIED` · `TRUE` · `FALSE`)이며,
+> 옵션 클래스는 `null`이 이미 그 뜻이라 박싱된 `Boolean`을 그대로 쓴다.  
+> BOM 자체는 UTF-8·UTF-16LE·UTF-16BE에서만 기록된다 — [제약 (Limitation)](#제약-limitation) 참고.  
+> import 쪽과 마찬가지로 시트 폼(`sheet(...)`)은 애노테이션 두 단계를 모두 읽지 않으므로 그곳에서는 옵션이 경로다.
 
 ### 워크북: 비밀번호로 암호화 Export
 
@@ -1138,7 +1210,7 @@ List<Employee> rows = pxl.importExcel()
 |------|---------|-----------|--------|------------------------------------------------|
 | XLSX | 100     | 1,048,576 | 16,384 | Streaming Reader로 메모리 문제(GC overhead) 없이 읽기 가능 |
 | XLS  | 100     | 65,536    | 256    | Streaming Reader 미지원이나, 비스트리밍으로도 메모리 문제 없음     |
-| CSV  | 100     | 100,000   | 16,384 | import 전용. 파일 하나가 시트 하나이므로 "시트"는 `fromFiles(...)`/`fromStreams(...)`에 넘긴 파일 수를 뜻한다.<br/>열 한도는 XLSX와 같게 맞춰 XLSX로 export되는 행 클래스가 CSV로도 그대로 읽히게 했고, 행 한도가 더 낮은 것은 CSV를 통째로 메모리에 적재해 파싱하기 때문이다 |
+| CSV  | 100     | 100,000   | 16,384 | 파일 하나가 시트 하나이므로 "시트"는 `fromFiles(...)`/`fromStreams(...)`에 넘긴 파일 수를 뜻한다 — CSV export는 시트 하나를 쓰므로 그쪽에는 행/열 한도만 적용된다.<br/>열 한도는 XLSX와 같게 맞춰 XLSX로 export되는 행 클래스가 CSV로도 그대로 읽히게 했고, 행 한도가 더 낮은 것은 CSV를 통째로 메모리에 올리기 때문이다 |
 
 > 이 한도는 `PxlFileFormat`이 갖고 있는 값(`getMaxExportRows()` 등)이다. 따라서 엔진은 자기가 쓰는 형식의 한도를 그대로 따르며, `XSSF`와 `SXSSF`도 마찬가지다.  
 > XLSX·XLS의 행/열 수치는 형식 자체의 한도지만, 시트 수와 CSV의 모든 수치는 형식이 아니라 PXL이 두는 한도다. 어느 쪽이든 초과하면 `PxlDataException`이다.
@@ -1153,6 +1225,24 @@ List<Employee> rows = pxl.importExcel()
   `SXSSF`는 같은 `.xlsx`를 만들면서 행을 슬라이딩 윈도우(`exportSXSSFRowAccessWindowSize`, 기본 100)만큼만 메모리에 두고 나머지는 임시 파일로 내보내므로, 힙 사용량이 행 수와 거의 무관해진다.  
   XLSX 전용이라 `HSSF` 엔진(`.xls`)에는 효과가 없다.  
   단, 자동 너비로 둔 열은 실측을 위해 추적 대상이 되고 추적된 열은 메모리에 남으므로 절감 효과를 깎아먹는다. `SXSSF`를 쓸 때는 `exportColumnWidth`를 고정하는 편이 좋다.
+
+- CSV export는 출력물을 메모리에 만든다  
+  CSV export는 목적지를 열기 전에 파일 전체를 렌더링한다. 그래서 실패해도 파일이 남지 않고 `toStream(...)`이 한 번에 쓸 수 있다.
+  대신 필요한 메모리가 출력 크기에 비례하며, 위의 행 한도는 그 상한이 되지 못한다 — 열 수도, 필드 길이도 사실상 제한이 없기 때문이다.
+  CSV를 "대용량용 가벼운 경로"가 아니라 비스트리밍 엑셀 export와 같은 메모리 프로필로 보는 편이 맞다.
+
+- CSV export가 무시하는 설정  
+  셀의 겉모습이나 워크북의 구성만 정하는 것들이다 — `@PxlColumn(exportColumn*Styler, exportColumnWidth, exportOptionItems, exportEnumDropDownListStyle)`,
+  `@PxlSheet(exportSheet*Styler, exportRowHeightInPoints, exportColumnFilter, exportGroupingFieldName)`,
+  `@PxlWorkbook(exportWorkbook*Styler, exportExcelEngine, exportSXSSFRowAccessWindowSize)`, 그리고 헤더 창 고정.
+  그룹핑이 무시된다는 것은 행이 그룹별로 모이지 않고 넘긴 순서 그대로 기록된다는 뜻이다.  
+  다만 둘은 값을 버리지 않고 파일에 남긴다 — `exportStringAsFormula`는 앞의 `=`까지 포함해 텍스트를 그대로 쓰고(평가하지 않는다),
+  `exportStringAsPicture`는 그림을 박는 대신 이미지 경로를 쓴다. 사라질 줄 알았던 경로·URL이 노출되는 셈이다.  
+
+- CSV BOM  
+  `exportCsvBom`은 UTF-8·UTF-16LE·UTF-16BE에서만 적용된다. 그 외 문자셋에서는 켜 두어도 예외도 경고도 없이 생략된다 —
+  `UTF-16`은 인코더가 이미 하나를 붙이고, EUC-KR 같은 비유니코드 문자셋은 U+FEFF를 인코딩하지 못해 `?`로 치환되어 첫 헤더 필드를 깨뜨리기 때문이다.
+  런타임에 알아챌 방법이 없으므로, BOM이 빠졌다면 먼저 문자셋을 확인한다.
 
 ---
 
@@ -1169,8 +1259,11 @@ List<Employee> rows = pxl.importExcel()
   `importHeaderRowIndex`, `exportFirstDataColumnIndex` 등 모두 1-based이다.  
   `@PxlRowIndex`가 받는 값도 마찬가지로 1-based로, 가져온 행의 스프레드시트 행 번호이다.
 - ✅ **CSV 기본 인코딩은 `UTF-8`**  
-  다른 인코딩(`US-ASCII`·`MS949`·`EUC-KR` 등)은 `importCsvCharset(...)`으로 명시한다.
-  워크북 폼에서는 시트마다 파일이 다르므로, 하나만 다른 시트는 워크북 전체를 한 설정으로 몰지 말고 `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)`로 그 시트만 지정한다.
+  다른 인코딩(`US-ASCII`·`MS949`·`EUC-KR` 등)은 `importCsvCharset(...)`으로, 쓸 때는 `exportCsvCharset(...)`으로 명시한다.
+  워크북 폼에서는 시트마다 파일이 다르므로, 하나만 다른 시트는 워크북 전체를 한 설정으로 몰지 말고 `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)` — 쓰는 쪽은 `(exportCsvCharset)` / `(exportCsvDelimiter)` / `(exportCsvBom)` — 로 그 시트만 지정한다.
+- ✅ **CSV export는 필요한 값만 인용한다**  
+  `"010"`·`"1E+10"` 같은 값은 인용 없이 기록되므로 Excel로 열면 숫자 `10`·`1e10`으로 재해석된다. PXL로 다시 읽으면 원래 문자열 그대로다 — 손실은 파일이 아니라 스프레드시트 앱에서 생긴다.
+  아직 인용 정책 설정은 없으므로, 표시가 중요하면 `pattern`으로 써 둔다.
 - ✅ **`long` / `BigInteger` / `BigDecimal` 정밀도**  
   큰 수는 숫자 셀(double, 2^53 한계)에서 정밀도가 손실될 수 있다. 정확히 보존하려면 `pattern`으로 문자열 셀 출력하거나 `BigInteger`/`BigDecimal`을 쓴다.
 - ✅ **`Pxl`은 재사용**한다.  

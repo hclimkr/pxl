@@ -6,6 +6,7 @@ import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.styler.PxlStyler;
+import io.github.hclimkr.pxl.type.PxlOptionalBoolean;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,7 +21,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Excel sheet export option
+ * Sheet export option, for an Excel or a CSV destination alike. A CSV workbook is written as one file per sheet, so
+ * this is the level at which its charset and delimiter are settled; an Excel export ignores that pair.
  */
 @Getter
 @AllArgsConstructor
@@ -132,6 +134,37 @@ public final class PxlExportSheetOption {
      */
     @Builder.Default
     private final Boolean exportColumnFilter = null;
+
+    /**
+     * Specifies the character encoding used to write this sheet as a CSV.
+     * <p>
+     * Takes precedence over {@link PxlSheet#exportCsvCharset()} and, through it, over the workbook charset.
+     * Ignored for an Excel destination. Left {@code null}, the annotation decides.
+     */
+    @Builder.Default
+    private final String exportCsvCharset = null;
+
+    /**
+     * Specifies the field delimiter used to write this sheet as a CSV.
+     * <p>
+     * Takes precedence over {@link PxlSheet#exportCsvDelimiter()} and, through it, over the workbook delimiter.
+     * Ignored for an Excel destination. Left {@code null}, the annotation decides.
+     */
+    @Builder.Default
+    private final Character exportCsvDelimiter = null;
+
+    /**
+     * Specifies whether a byte order mark is written ahead of this sheet's CSV.
+     * <p>
+     * Takes precedence over {@link PxlSheet#exportCsvBom()} and, through it, over the workbook setting. Being a
+     * boxed {@link Boolean}, {@code null} already says "not specified", which is what the annotation needs
+     * {@link PxlOptionalBoolean} for.
+     * <p>
+     * Honored only for UTF-8, UTF-16LE and UTF-16BE; any other charset drops the mark silently.
+     * Ignored for an Excel destination.
+     */
+    @Builder.Default
+    private final Boolean exportCsvBom = null;
 
     /**
      * Specifies the style applied to required header cells on export.

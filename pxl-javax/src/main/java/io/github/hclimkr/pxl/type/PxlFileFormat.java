@@ -1,6 +1,7 @@
-package io.github.hclimkr.pxl;
+package io.github.hclimkr.pxl.type;
 
 import com.github.pjfanning.xlsx.impl.StreamingWorkbook;
+import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -1,9 +1,6 @@
 package io.github.hclimkr.pxl;
 
-import io.github.hclimkr.pxl.builder.PxlCsvImportBuilder;
-import io.github.hclimkr.pxl.builder.PxlExcelExportBuilder;
-import io.github.hclimkr.pxl.builder.PxlExcelImportBuilder;
-import io.github.hclimkr.pxl.builder.PxlSampleExcelExportBuilder;
+import io.github.hclimkr.pxl.builder.*;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import org.slf4j.Logger;
@@ -18,8 +15,8 @@ import java.util.Locale;
  *
  * <p>All import/export operations are performed with fluent builders.</p>
  * <ul>
- *   <li>export: {@link #exportExcel()} — data → Excel workbook/file/stream</li>
- *   <li>sample: {@link #exportSampleExcel()} — class → Excel template with one sample data row (each column's exportSample value)</li>
+ *   <li>export: {@link #exportExcel()} / {@link #exportCsv()} — data → workbook/file/stream</li>
+ *   <li>sample: {@link #exportSampleExcel()} / {@link #exportSampleCsv()} — class → template with one sample data row (each column's exportSample value)</li>
  *   <li>import: {@link #importExcel()} / {@link #importCsv()} — configure the target, then supply the source → object</li>
  * </ul>
  *
@@ -81,6 +78,30 @@ public final class Pxl {
     public PxlSampleExcelExportBuilder exportSampleExcel() {
 
         return new PxlSampleExcelExportBuilder();
+    }
+
+    /**
+     * Creates a builder that exports data to a CSV file/stream.
+     *
+     * <p>CSV is one file per sheet, so the builder has the sheet form only and its terminals write a single
+     * sheet.</p>
+     *
+     * @return CSV export builder
+     */
+    public PxlCsvExportBuilder exportCsv() {
+
+        return new PxlCsvExportBuilder(validator);
+    }
+
+    /**
+     * Creates a builder that generates a CSV sample template from a class: a header record plus a single sample
+     * data record filled from each column's {@code exportSample} value (not an empty template).
+     *
+     * @return CSV sample builder
+     */
+    public PxlSampleCsvExportBuilder exportSampleCsv() {
+
+        return new PxlSampleCsvExportBuilder();
     }
 
     /**

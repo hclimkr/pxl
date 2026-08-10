@@ -1,7 +1,6 @@
 package io.github.hclimkr.pxl.internal.core;
 
 import io.github.hclimkr.pxl.PxlConstants;
-import io.github.hclimkr.pxl.PxlFileFormat;
 import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.codec.PxlCellResolver;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
@@ -14,6 +13,7 @@ import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
+import io.github.hclimkr.pxl.type.PxlFileFormat;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;

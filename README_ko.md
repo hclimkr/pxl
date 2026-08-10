@@ -13,7 +13,7 @@ PXL은 **애노테이션 기반으로 스프레드시트와 자바 객체를 양
 Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지원한다.
 
 - Import: XLSX · XLS · CSV → 자바 객체
-- Export: 자바 객체 → XLSX · XLS · 스트리밍 XLSX
+- Export: 자바 객체 → XLSX · XLS · 스트리밍 XLSX · CSV
 - 전용 애노테이션이 붙은 필드/클래스만 바인딩된다.
 
 지원 변수 타입 · 전체 옵션 · 제약 등 상세 내용은 [docs/reference_ko.md](docs/reference_ko.md)를 참고한다.
@@ -25,10 +25,12 @@ Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지
 3. [한눈에 보는 사용법](#한눈에-보는-사용법)
 4. [Export (객체 → 엑셀)](#export-객체--엑셀)
 5. [Export 샘플 (클래스 → 샘플 엑셀)](#export-샘플-클래스--샘플-엑셀)
-6. [Import (엑셀 → 객체)](#import-엑셀--객체)
-7. [Import (CSV → 객체)](#import-csv--객체)
-8. [빌드 & 기여](#빌드--기여)
-9. [라이선스](#라이선스)
+6. [Export (객체 → CSV)](#export-객체--csv)
+7. [Export 샘플 (클래스 → 샘플 CSV)](#export-샘플-클래스--샘플-csv)
+8. [Import (엑셀 → 객체)](#import-엑셀--객체)
+9. [Import (CSV → 객체)](#import-csv--객체)
+10. [빌드 & 기여](#빌드--기여)
+11. [라이선스](#라이선스)
 
 ---
 
@@ -266,6 +268,8 @@ Company company = pxl.importExcel()
 |--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 엑셀 export    | `pxl.exportExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)` / `.toWorkbook()`                                                                     |
 | 샘플 엑셀 export | `pxl.exportSampleExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)` / `.toWorkbook()`                                                               |
+| CSV export   | `pxl.exportCsv()`<br/>→ `.sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)`                                                                                                          |
+| 샘플 CSV export | `pxl.exportSampleCsv()`<br/>→ `.sheet(...)`<br/>→ `.toFile(File)` / `.toStream(OutputStream)`                                                                                                    |
 | 엑셀 import    | `pxl.importExcel()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromStream(InputStream)`                                                                                    |
 | CSV import   | `pxl.importCsv()`<br/>→ `.workbook(...) / .sheet(...)`<br/>→ `.fromFile(File)` / `.fromFiles(List<File>)` / `.fromStream(String, InputStream)` / `.fromStreams(List<String>, List<InputStream>)` |
 
@@ -397,6 +401,86 @@ pxl.exportSampleExcel()
 | **2** | John Doe | 25  | 45000  | true   | 2024-03-01 | C     |
 
 - 다중 시트(`Company` 또는 `.sheet(...).sheet(...)`)면 시트마다 같은 방식의 헤더 행 + 샘플 데이터 행 1개짜리가 만들어진다.
+
+---
+
+## Export (객체 → CSV)
+
+CSV 파일 하나에는 시트 하나가 담기므로 이 빌더는 시트 형태만 있고(`workbook(...)`이 없다) 마지막 실행 메서드가
+그 시트 하나를 쓴다. 값을 만드는 부분은 엑셀 export와 전부 공유한다 — 같은 애노테이션, 같은 컨버터, 같은 컬럼 순서다.
+
+```java
+pxl.exportCsv()
+   .sheet(Employee.class, employees, "Employees")
+   .toFile(new File("employees.csv"));
+```
+
+```csv
+Name,Age,Salary,Active,HireDate,Grade
+Alice,30,50000,true,2020-01-15,A
+Bob,42,72000,false,2018-06-01,B
+```
+
+### 인코딩 · 구분자 · BOM
+
+CSV 워크북은 한 시트가 곧 한 파일이므로 이 셋은 스키마가 아니라 파일의 속성이고, 시트 단계에서 정해진다.
+시트 형태에는 `@PxlSheet`를 붙일 필드가 없으므로 와일드카드 `PxlExportSheetOption`이 시트 단계 경로이고,
+워크북 단계 옵션은 모든 시트에 한 번에 적용된다.
+
+```java
+PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+        .exportCsvCharset("EUC-KR")
+        .exportCsvDelimiter('\t')
+        .exportCsvBom(true)
+        .build();
+
+pxl.exportCsv()
+   .sheet(Employee.class, employees, "Employees")
+   .override(option)
+   .toFile(new File("employees.csv"));
+```
+
+- BOM은 UTF-8 · UTF-16LE · UTF-16BE에서만 기록된다. 그 외 문자셋에서는 조용히 생략된다 — UTF-16은 인코더가
+  이미 하나를 붙이고, EUC-KR 같은 비유니코드 문자셋은 아예 인코딩할 수 없어 첫 필드가 깨지기 때문이다.
+- 헤더 줄은 항상 기록된다. 끄는 속성은 없다.
+
+### CSV가 담지 못하는 것
+
+셀의 겉모습이나 워크북의 구성을 정하는 설정은 무시된다 — 스타일러, 컬럼 폭, 행 높이, 창 고정, 자동 필터,
+드롭다운, 엔진과 스트리밍 윈도우, 그리고 `exportGroupingFieldName`(행은 넘긴 순서 그대로 나간다)이다.
+다만 둘은 값이 파일에 그대로 남는다 — `exportStringAsFormula`는 앞의 `=`까지 포함해 텍스트가 그대로 기록되고,
+`exportStringAsPicture`는 그림을 박는 대신 이미지 경로가 필드 값이 된다.
+
+`exportPassword`만은 무시가 아니라 거부된다. CSV는 암호화할 수 없는데 대신 평문을 쓰면 유출이기 때문이다.
+
+---
+
+## Export 샘플 (클래스 → 샘플 CSV)
+
+클래스만으로 헤더 1줄 + 각 컬럼 예시 값(`exportSample`)으로 채운 데이터 1줄짜리 샘플 양식을 만든다 —
+[Export 샘플 (클래스 → 샘플 엑셀)](#export-샘플-클래스--샘플-엑셀)의 CSV판이다.
+CSV 파일 하나에는 시트 하나가 담기므로 이 빌더도 시트 형태만 있고, 마지막 실행 메서드는 `toFile`/`toStream`이다
+(`toWorkbook`은 없다).
+
+```java
+pxl.exportSampleCsv()
+   .sheet(Employee.class, "Employees")
+   .toFile(new File("employees-template.csv"));
+```
+
+### Export 샘플 결과 CSV 모양
+
+위 `Employee`로 `exportSampleCsv().sheet(Employee.class, "Employees")`를 만들면 다음 파일이 나온다.
+
+```csv
+Name,Age,Salary,Active,HireDate,Grade
+John Doe,25,45000,true,2024-03-01,C
+```
+
+- `exportSample`이 없는 컬럼은 `exportNullString`(기본 `""`)이 들어가므로 해당 필드는 빈 값이 된다.
+- `importCsv()`로 그대로 다시 읽히므로, 배포해서 채워 받는 양식으로 쓸 수 있다.
+- CSV 파일 자체에는 시트 이름이 담기지 않는다. 여기 넘긴 이름은 시트 단계 옵션을 고르고 오류 메시지에 표시되는 용도다.
+- 인코딩 · 구분자 · BOM은 [Export (객체 → CSV)](#export-객체--csv)와 동일하게 정해지고, 무시·거부되는 설정도 같다.
 
 ---
 
