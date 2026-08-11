@@ -24,7 +24,9 @@ import java.io.OutputStream;
  *
  * <p>The order matters: preparing after the destination was opened would leave an empty file whenever the
  * preparation fails, and releasing outside the {@code finally} would leak whatever was prepared whenever
- * opening the destination fails.</p>
+ * opening the destination fails. All three run inside one {@code try}/{@code finally}, so the guarantees hold
+ * from the first seam onward - a failure in {@code prepare()} is normalized like any other and still reaches
+ * {@code cleanup()}, rather than escaping raw because of where it happened to be raised.</p>
  *
  * <p>The terminal methods are the <strong>normalization boundary</strong>: they declare
  * {@code throws PxlException}, but since that type is abstract what actually surfaces is always a concrete
@@ -32,7 +34,10 @@ import java.io.OutputStream;
  * {@link PxlCellCodecException},
  * {@link PxlValidationException}, ...), and
  * {@link PxlSystemException} (carrying the original as its cause) for anything else, including checked I/O failures
- * and unexpected runtime failures from the writer.</p>
+ * and unexpected runtime failures from either seam. An {@link Error} is not covered: it is not an
+ * {@link Exception}, so an {@link OutOfMemoryError} - which a CSV export, rendering its whole output into memory,
+ * makes more reachable than an Excel one - surfaces as itself. Catching it would be wrong, since wrapping
+ * allocates in the very condition that ran out of memory.</p>
  *
  * <p>Package-private: not part of the public API. Consumers reach the shared {@code public} terminals
  * ({@code toFile(...)}/{@code toStream(...)}) through the public concrete subclasses.</p>
@@ -58,12 +63,12 @@ abstract class PxlAbstractExportBuilder {
 
         PxlAssertSupport.notNull(outputFile, "outputFile");
 
-        // Prepare before the destination is opened: a failure here must not leave an empty file behind.
-        prepare();
-
         OutputStream outputStream = null;
 
         try {
+            // Prepare before the destination is opened: a failure here must not leave an empty file behind.
+            prepare();
+
             outputStream = new BufferedOutputStream(new FileOutputStream(outputFile));
             writeTo(outputStream);
         } catch (PxlException e) {
@@ -92,9 +97,9 @@ abstract class PxlAbstractExportBuilder {
 
         PxlAssertSupport.notNull(outputStream, "outputStream");
 
-        prepare();
-
         try {
+            prepare();
+
             writeTo(outputStream);
         } catch (PxlException e) {
             throw e;

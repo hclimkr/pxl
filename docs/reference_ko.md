@@ -1230,6 +1230,7 @@ List<Employee> rows = pxl.importExcel()
   CSV export는 목적지를 열기 전에 파일 전체를 렌더링한다. 그래서 실패해도 파일이 남지 않고 `toStream(...)`이 한 번에 쓸 수 있다.
   대신 필요한 메모리가 출력 크기에 비례하며, 위의 행 한도는 그 상한이 되지 못한다 — 열 수도, 필드 길이도 사실상 제한이 없기 때문이다.
   CSV를 "대용량용 가벼운 경로"가 아니라 비스트리밍 엑셀 export와 같은 메모리 프로필로 보는 편이 맞다.
+  메모리가 모자라면 `OutOfMemoryError`가 `PxlException`이 아니라 그 자체로 올라온다 — `Error`는 `Exception`이 아니라서 마지막 단계의 정규화가 덮지 못하며, 잡는 것도 옳지 않다(감싸는 행위 자체가 메모리가 없어서 난 상황에서 다시 할당하는 일이다). 출력 크기에 맞게 힙을 잡거나, 데이터가 크면 `SXSSF` 엑셀 export를 쓴다.
 
 - CSV export가 무시하는 설정  
   셀의 겉모습이나 워크북의 구성만 정하는 것들이다 — `@PxlColumn(exportColumn*Styler, exportColumnWidth, exportOptionItems, exportEnumDropDownListStyle)`,
