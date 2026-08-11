@@ -53,7 +53,7 @@ Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지
 <dependency>
     <groupId>io.github.hclimkr</groupId>
     <artifactId>pxl-javax</artifactId>
-    <version>0.9.3</version>
+    <version>0.9.4</version>
 </dependency>
 ```
 
@@ -62,7 +62,7 @@ Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지
 <dependency>
     <groupId>io.github.hclimkr</groupId>
     <artifactId>pxl-jakarta</artifactId>
-    <version>0.9.3</version>
+    <version>0.9.4</version>
 </dependency>
 ```
 
@@ -70,12 +70,12 @@ Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지
 
 ```groovy
 // javax 변형 (Java 8+)
-implementation 'io.github.hclimkr:pxl-javax:0.9.3'
+implementation 'io.github.hclimkr:pxl-javax:0.9.4'
 ```
 
 ```groovy
 // jakarta 변형 (Java 17+)
-implementation 'io.github.hclimkr:pxl-jakarta:0.9.3'
+implementation 'io.github.hclimkr:pxl-jakarta:0.9.4'
 ```
 
 ---
