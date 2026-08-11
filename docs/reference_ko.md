@@ -223,9 +223,9 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 | import<br/>`fromFile(File)`<br/>`fromFiles(List<File>)` (CSV)                                   | 호출자의 `File`                  | 내부에서 파일의 스트림을 열고 직접 닫는다      |
 | import<br/>`fromStream(InputStream)` (Excel)<br/>`fromStream(String, InputStream)`·`fromStreams(List<String>, List<InputStream>)` (CSV) | 호출자의 `InputStream`  | 닫지 않는다. 호출자가 닫아야 한다          |
 
-CSV export는 목적지를 열기 전에 출력물 전체를 메모리에 만든다. 그래서 export가 실패하면 `toFile(...)`은 파일을 아예 만들지 않고,
-`toStream(...)`은 호출자의 스트림에 한 번에 쓴다. 대가는 CSV export가 필요로 하는 메모리가 출력 크기에 비례한다는 점이다 —
-[제한사항](#제한사항) 참조.
+CSV export는 목적지를 열기 전에 출력물 전체를 만든다. 그래서 export가 실패하면 `toFile(...)`은 파일을 아예 만들지 않고,
+`toStream(...)`은 호출자의 스트림에 한 번에 쓴다. 작은 출력은 메모리에 두고, 큰 출력은 임시 파일로 이어 쓴 뒤 호출이
+끝나기 전에 그 파일을 지운다 — [제한사항](#제한사항) 참조.
 
 ### 빌더 수명과 스레드 안전성
 
@@ -1210,7 +1210,7 @@ List<Employee> rows = pxl.importExcel()
 |------|---------|-----------|--------|------------------------------------------------|
 | XLSX | 100     | 1,048,576 | 16,384 | Streaming Reader로 메모리 문제(GC overhead) 없이 읽기 가능 |
 | XLS  | 100     | 65,536    | 256    | Streaming Reader 미지원이나, 비스트리밍으로도 메모리 문제 없음     |
-| CSV  | 100     | 100,000   | 16,384 | 파일 하나가 시트 하나이므로 "시트"는 `fromFiles(...)`/`fromStreams(...)`에 넘긴 파일 수를 뜻한다 — CSV export는 시트 하나를 쓰므로 그쪽에는 행/열 한도만 적용된다.<br/>열 한도는 XLSX와 같게 맞춰 XLSX로 export되는 행 클래스가 CSV로도 그대로 읽히게 했고, 행 한도가 더 낮은 것은 CSV를 통째로 메모리에 올리기 때문이다 |
+| CSV  | 100     | 100,000   | 16,384 | 파일 하나가 시트 하나이므로 "시트"는 `fromFiles(...)`/`fromStreams(...)`에 넘긴 파일 수를 뜻한다 — CSV export는 시트 하나를 쓰므로 그쪽에는 행/열 한도만 적용된다.<br/>열 한도는 XLSX와 같게 맞춰 XLSX로 export되는 행 클래스가 CSV로도 그대로 읽히게 했고, 행 한도가 더 낮은 것은 import 시 CSV를 통째로 메모리에 올린 뒤에야 한도를 검사하기 때문이다 |
 
 > 이 한도는 `PxlFileFormat`이 갖고 있는 값(`getMaxExportRows()` 등)이다. 따라서 엔진은 자기가 쓰는 형식의 한도를 그대로 따르며, `XSSF`와 `SXSSF`도 마찬가지다.  
 > XLSX·XLS의 행/열 수치는 형식 자체의 한도지만, 시트 수와 CSV의 모든 수치는 형식이 아니라 PXL이 두는 한도다. 어느 쪽이든 초과하면 `PxlDataException`이다.
@@ -1226,11 +1226,12 @@ List<Employee> rows = pxl.importExcel()
   XLSX 전용이라 `HSSF` 엔진(`.xls`)에는 효과가 없다.  
   단, 자동 너비로 둔 열은 실측을 위해 추적 대상이 되고 추적된 열은 메모리에 남으므로 절감 효과를 깎아먹는다. `SXSSF`를 쓸 때는 `exportColumnWidth`를 고정하는 편이 좋다.
 
-- CSV export는 출력물을 메모리에 만든다  
+- CSV export는 쓰기 전에 출력물을 만들며, 크면 임시 파일로 넘긴다  
   CSV export는 목적지를 열기 전에 파일 전체를 렌더링한다. 그래서 실패해도 파일이 남지 않고 `toStream(...)`이 한 번에 쓸 수 있다.
-  대신 필요한 메모리가 출력 크기에 비례하며, 위의 행 한도는 그 상한이 되지 못한다 — 열 수도, 필드 길이도 사실상 제한이 없기 때문이다.
-  CSV를 "대용량용 가벼운 경로"가 아니라 비스트리밍 엑셀 export와 같은 메모리 프로필로 보는 편이 맞다.
-  메모리가 모자라면 `OutOfMemoryError`가 `PxlException`이 아니라 그 자체로 올라온다 — `Error`는 `Exception`이 아니라서 마지막 단계의 정규화가 덮지 못하며, 잡는 것도 옳지 않다(감싸는 행위 자체가 메모리가 없어서 난 상황에서 다시 할당하는 일이다). 출력 크기에 맞게 힙을 잡거나, 데이터가 크면 `SXSSF` 엑셀 export를 쓴다.
+  `PxlConstants.EXPORT_MEMORY_THRESHOLD_OF_CSV`(4 MiB)까지는 그 출력물을 메모리에 두고, 그 이상은 임시 파일로 이어 쓰므로 **필요한 힙이 출력 크기를 따라 늘지 않는다.**
+  임시 파일은 `java.io.tmpdir` 아래 `pxl-csv-export-` 접두어로 만들어지고, 성공·실패와 무관하게 호출이 끝나기 전에 지워진다.
+  이 spill에서 알아 둘 것이 셋이다. 큰 export는 **디스크 여유 공간**이 필요하며, 모자라면 `PxlIOException`으로 실패한다. 임시 파일은 **평문으로 기록**되는데, CSV export가 `exportPassword`를 암호화 대신 거부하기 때문에 더 유의해야 한다 — 민감한 데이터라면 `java.io.tmpdir`를 신뢰할 수 있는 위치로 지정한다. 그리고 export 도중 **JVM이 강제 종료되면 파일이 남는다**(정상 반환이나 예외만이 정리 단계에 도달한다).
+  그럼에도 메모리가 모자라면 `OutOfMemoryError`가 `PxlException`이 아니라 그 자체로 올라온다 — `Error`는 `Exception`이 아니라서 마지막 단계의 정규화가 덮지 못하며, 잡는 것도 옳지 않다(감싸는 행위 자체가 메모리가 없어서 난 상황에서 다시 할당하는 일이다). 넘긴 행 객체는 여전히 전량 상주하므로, 힙은 그 쪽을 기준으로 잡는다.
 
 - CSV export가 무시하는 설정  
   셀의 겉모습이나 워크북의 구성만 정하는 것들이다 — `@PxlColumn(exportColumn*Styler, exportColumnWidth, exportOptionItems, exportEnumDropDownListStyle)`,

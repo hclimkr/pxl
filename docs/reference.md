@@ -223,9 +223,10 @@ The direction (export/import) and format (excel/csv) are embedded in the start m
 | import<br/>`fromFile(File)`<br/>`fromFiles(List<File>)` (CSV)                             | Caller's `File`         | Opens the file's stream internally and closes it directly |
 | import<br/>`fromStream(InputStream)` (Excel)<br/>`fromStream(String, InputStream)`·`fromStreams(List<String>, List<InputStream>)` (CSV) | Caller's `InputStream`  | Does not close it. The caller must close it |
 
-A CSV export builds its whole output in memory before the destination is touched, so `toFile(...)` creates no file
-when the export fails and `toStream(...)` writes to the caller's stream once, in a single pass. The trade is that
-the memory a CSV export needs grows with the size of its output; see [Limitation](#limitation).
+A CSV export builds its whole output before the destination is touched, so `toFile(...)` creates no file when the
+export fails and `toStream(...)` writes to the caller's stream once, in a single pass. A small output is held in
+memory; a large one continues into a temporary file, which is deleted before the call returns; see
+[Limitation](#limitation).
 
 ### Builder Lifecycle and Thread Safety
 
@@ -1225,7 +1226,7 @@ List<Employee> rows = pxl.importExcel()
 |--------|------------|------------|-------------|--------------------------------------------------------------|
 | XLSX   | 100        | 1,048,576  | 16,384      | Can be read with the Streaming Reader without memory issues (GC overhead) |
 | XLS    | 100        | 65,536     | 256         | The Streaming Reader is not supported, but non-streaming also has no memory issues |
-| CSV    | 100        | 100,000    | 16,384      | One file is one sheet, so "sheets" counts the files passed to `fromFiles(...)`/`fromStreams(...)` — a CSV export writes a single sheet, so only the row/column caps apply there.<br/>The column cap matches XLSX so that a row class exporting to XLSX stays readable from CSV; the row cap is lower because a CSV is held in memory whole |
+| CSV    | 100        | 100,000    | 16,384      | One file is one sheet, so "sheets" counts the files passed to `fromFiles(...)`/`fromStreams(...)` — a CSV export writes a single sheet, so only the row/column caps apply there.<br/>The column cap matches XLSX so that a row class exporting to XLSX stays readable from CSV; the row cap is lower because an imported CSV is read into memory whole before the cap is checked |
 
 > These are the limits `PxlFileFormat` carries (`getMaxExportRows()` and its siblings), so an engine is bound by the
 > limits of the format it writes — `XSSF` and `SXSSF` alike.  
@@ -1243,9 +1244,10 @@ List<Employee> rows = pxl.importExcel()
   It applies to XLSX only — it has no effect on the `HSSF` engine (`.xls`).  
   Note that a column left at automatic width must be tracked in order to be measured, and a tracked column stays in memory, which eats into the saving. Pair `SXSSF` with a fixed `exportColumnWidth`.
 
-- CSV export builds its output in memory  
-  A CSV export renders the whole file before the destination is opened, which is what makes a failure leave no file behind and lets `toStream(...)` write in one pass. The memory it needs therefore grows with the size of the output, and the row cap above is not a bound on it — neither the column count nor the length of a field is capped in practice. Treat CSV as having the same memory profile as a non-streaming Excel export rather than as a lightweight path for very large data.  
-  Should it run out, the `OutOfMemoryError` reaches you as itself rather than as a `PxlException`: an `Error` is not an `Exception`, so the terminal method's normalization does not cover it — and catching it would be wrong, since wrapping allocates in the very condition that ran out of memory. Size the heap for the output, or export to Excel with `SXSSF` when the data is large.
+- CSV export builds its output before writing, spilling to a temporary file when it is large  
+  A CSV export renders the whole file before the destination is opened, which is what makes a failure leave no file behind and lets `toStream(...)` write in one pass. Up to `PxlConstants.EXPORT_MEMORY_THRESHOLD_OF_CSV` (4 MiB) that output is held in memory; past it the rest continues into a temporary file, so the heap a CSV export needs does not grow with the output. The file is created under `java.io.tmpdir` with the prefix `pxl-csv-export-`, and is deleted before the call returns whether it succeeded or failed.  
+  Three consequences of that spill are worth knowing. A large export needs free disk space, and running out of it fails as a `PxlIOException`. Its contents are written unencrypted, which matters because a CSV export refuses `exportPassword` rather than encrypting — if the rows are sensitive, point `java.io.tmpdir` somewhere you trust. And a JVM killed mid-export leaves the file behind, since only a normal return or a thrown exception reaches the cleanup.  
+  Should memory run out anyway, the `OutOfMemoryError` reaches you as itself rather than as a `PxlException`: an `Error` is not an `Exception`, so the terminal method's normalization does not cover it — and catching it would be wrong, since wrapping allocates in the very condition that ran out of memory. The rows you pass in are still held in full, so that remains the term to size the heap for.
 
 - Settings a CSV export ignores  
   Everything that only describes how a cell looks or what a workbook contains: `@PxlColumn(exportColumn*Styler, exportColumnWidth, exportOptionItems, exportEnumDropDownListStyle)`, `@PxlSheet(exportSheet*Styler, exportRowHeightInPoints, exportColumnFilter, exportGroupingFieldName)`, `@PxlWorkbook(exportWorkbook*Styler, exportExcelEngine, exportSXSSFRowAccessWindowSize)`, and the header freeze pane. Grouping being ignored means the rows are written in the order given, not gathered per group.  

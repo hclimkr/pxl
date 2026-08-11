@@ -11,9 +11,15 @@ import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.option.PxlExportSheetOption;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.output.DeferredFileOutputStream;
 import org.apache.commons.lang3.StringUtils;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -24,12 +30,22 @@ import java.util.Optional;
 /**
  * CSV-specific base for the export builders, filling in the three seams of {@link PxlAbstractExportBuilder}.
  *
- * <p>{@link #prepare()} renders the whole CSV into an in-memory buffer and {@link #writeTo(OutputStream)} only
- * copies it out. Rendering ahead of the destination being opened is what gives CSV the same failure semantics as
- * Excel: a codec, validation or limit failure leaves no file behind. The price is that the memory needed grows
- * with the output.</p>
+ * <p>{@link #prepare()} renders the whole CSV before {@link #writeTo(OutputStream)} copies it out. Rendering ahead
+ * of the destination being opened is what gives CSV the same failure semantics as Excel: a codec, validation or
+ * limit failure leaves no file behind.</p>
  *
- * <p>The division of labour with the core is that the charset, the byte order mark and the buffer belong here,
+ * <p>Where that rendering is held depends on how large it turns out to be. Up to
+ * {@link PxlConstants#EXPORT_MEMORY_THRESHOLD_OF_CSV} it stays in memory, and beyond it the rest continues
+ * into a temporary file, which is what {@link DeferredFileOutputStream} switches between. Holding all of it in
+ * memory made the heap the ceiling - the buffer's growth copy puts the peak at two to three times the output - while
+ * always using a file would charge every small export a temporary file it does not need. The spill trades heap for
+ * disk without touching the failure semantics: the destination is still opened only once the output is complete.</p>
+ *
+ * <p>Because the sink may hold a temporary file, {@link #cleanup()} rather than {@code prepare()} owns its removal,
+ * and the field is assigned before rendering starts so that a failure part-way through still has something to
+ * release.</p>
+ *
+ * <p>The division of labour with the core is that the charset, the byte order mark and the sink belong here,
  * while the CSV grammar belongs to {@code PxlCoreCsvExporter}. That is why the seam subclasses fill in receives a
  * {@link Writer} rather than a printer.</p>
  *
@@ -45,6 +61,18 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
     private static final char BOM = (char) 0xFEFF;
 
     /**
+     * Name prefix of the temporary file a large export spills into. Distinctive enough that a file left behind by a
+     * killed JVM can be told apart from other temporary files.
+     */
+    private static final String TEMP_FILE_PREFIX = "pxl-csv-export-";
+
+    /**
+     * Name suffix of that temporary file. Deliberately not {@code .csv}: the file is an implementation detail, and
+     * a half-written one must not look like a result.
+     */
+    private static final String TEMP_FILE_SUFFIX = ".tmp";
+
+    /**
      * Sheet names, in the order {@code sheet(...)} was called. CSV writes one file per sheet, so the terminals
      * accept exactly one; the check runs in {@link #prepare()} rather than in {@code sheet(...)} because it is the
      * terminal, not the builder, that cannot take more than one.
@@ -57,12 +85,14 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
     protected final List<Class<?>> rowClasses = new ArrayList<>();
 
     /**
-     * The rendered output, held between {@code prepare()} and {@code writeTo(...)}.
+     * The rendered output, held between {@code prepare()} and {@code writeTo(...)}. In memory while it is small
+     * enough, in a temporary file once it is not.
      */
-    private ByteArrayOutputStream buffer;
+    private DeferredFileOutputStream deferredFileOutputStream;
 
     /**
-     * Validates the configuration and renders the whole CSV into memory.
+     * Validates the configuration and renders the whole CSV, in memory up to
+     * {@link PxlConstants#EXPORT_MEMORY_THRESHOLD_OF_CSV} and into a temporary file beyond it.
      *
      * @throws PxlArgumentException if no sheet or more than one sheet is configured, a password is requested, or the
      *                              charset/delimiter cannot be used
@@ -87,10 +117,16 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
         final Charset charset = resolveCharset(workbookMeta, sheetName);
         assertUsableDelimiter(workbookMeta, sheetName);
 
-        final ByteArrayOutputStream rendered = new ByteArrayOutputStream();
+        // Assigned before rendering: a failure part-way through may already have spilled to a file, and cleanup()
+        // can only remove what it can reach.
+        deferredFileOutputStream = DeferredFileOutputStream.builder()
+                .setThreshold(PxlConstants.EXPORT_MEMORY_THRESHOLD_OF_CSV)
+                .setPrefix(TEMP_FILE_PREFIX)
+                .setSuffix(TEMP_FILE_SUFFIX)
+                .get();
 
         try {
-            final Writer writer = new OutputStreamWriter(rendered, charset);
+            final Writer writer = new OutputStreamWriter(deferredFileOutputStream, charset);
 
             if (resolveCsvBom(workbookMeta) && writesBom(charset)) {
                 writer.write(BOM);
@@ -98,17 +134,18 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
 
             writeRecords(writer, workbookMeta);
 
-            // Push the encoder's remainder into the buffer; the core only flushed as far as this writer.
+            // Push the encoder's remainder into the sink; the core only flushed as far as this writer.
             writer.flush();
+
+            // writeTo(...) refuses to read a sink that is still open, and a spilled one has to reach the disk first.
+            deferredFileOutputStream.close();
         } catch (IOException e) {
             throw new PxlIOException(e);
         }
-
-        this.buffer = rendered;
     }
 
     /**
-     * Copies the rendered output to the destination.
+     * Copies the rendered output to the destination, from memory or from the temporary file it spilled into.
      *
      * @param outputStream the destination output stream
      * @throws PxlIOException if writing fails
@@ -118,20 +155,34 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
             throws PxlIOException {
 
         try {
-            // Not toByteArray(), which would copy the whole output once more.
-            buffer.writeTo(outputStream);
+            // Not getData(), which would copy the whole output once more - and which answers null once spilled.
+            deferredFileOutputStream.writeTo(outputStream);
         } catch (IOException e) {
             throw new PxlIOException(e);
         }
     }
 
     /**
-     * Releases the rendered output so it is not held until the next run.
+     * Releases the rendered output so neither the memory nor the temporary file outlives the run.
+     *
+     * <p>Runs on the failure path too, which is the only thing standing between a mid-render failure and a
+     * temporary file left on disk.</p>
      */
     @Override
     protected final void cleanup() {
 
-        this.buffer = null;
+        final DeferredFileOutputStream sink = deferredFileOutputStream;
+        deferredFileOutputStream = null;
+
+        if (Objects.isNull(sink)) {
+            return;
+        }
+
+        // Closing twice is harmless, and a sink abandoned mid-render was never closed at all.
+        IOUtils.closeQuietly(sink);
+
+        // null while the output stayed in memory; a temporary file only exists once the threshold was passed.
+        FileUtils.deleteQuietly(sink.getFile());
     }
 
     /**

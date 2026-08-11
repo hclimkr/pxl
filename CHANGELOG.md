@@ -22,8 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the text verbatim, leading `=` and all, and `exportStringAsPicture` writes the image location; `exportPassword` is
   refused with `PxlArgumentException`, since CSV cannot be encrypted and writing plaintext would be a leak.
 - A CSV export renders its whole output before the destination is opened, so a codec, validation or limit failure
-  leaves no file behind and `toStream(...)` writes in one pass. The trade is memory proportional to output size —
-  the 100,000-row cap does not bound it, as neither column count nor field length is capped in practice.
+  leaves no file behind and `toStream(...)` writes in one pass. The first
+  `PxlConstants.EXPORT_MEMORY_THRESHOLD_OF_CSV` (4 MiB) is held in memory and the rest spills to a temporary file
+  removed before the call returns, so the heap does not grow with the output — at the cost of disk space.
 - `@PxlWorkbook` and `@PxlSheet` gain `exportCsvCharset`, `exportCsvDelimiter` and `exportCsvBom`, with matching
   fields on `PxlExportWorkbookOption` and `PxlExportSheetOption`, resolving through the same five levels as the
   import pair. A byte order mark is written only for UTF-8, UTF-16LE and UTF-16BE; any other charset drops it, as
@@ -52,8 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   either type changed: same constants, same lookups, same behavior.
 - The CSV column cap is 16,384 rather than 100, on both `PxlConstants.IMPORT_MAX_NUMBER_OF_CSV_COLUMNS` and
   `EXPORT_MAX_NUMBER_OF_CSV_COLUMNS`, so a row class written to XLSX can be read back from CSV. 100 had no basis in
-  the format; nothing narrows, so no CSV that imported before stops importing. The row cap stays at 100,000 —
-  neither cap is a memory guard as implemented, both being checked after the file is already materialized.
+  the format; nothing narrows, so no CSV that imported before stops importing. The row cap stays at 100,000. Neither
+  cap guards memory: they bound counts, not bytes, and on import both are checked once the file is already loaded.
 - **The six option classes are immutable and builder-only.** Every field of
   `Pxl{Import,Export}{Workbook,Sheet,Column}Option` is `final` and `@Setter`/`@NoArgsConstructor` are gone, which
   removes **65 setters and 6 no-argument constructors** that nothing called. `@Getter`, `@AllArgsConstructor`,

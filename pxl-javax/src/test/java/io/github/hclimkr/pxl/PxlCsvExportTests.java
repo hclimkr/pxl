@@ -957,4 +957,127 @@ public class PxlCsvExportTests {
         }
     }
 
+    // ------------------------------------------------------------------
+    // Output too large to hold in memory spills to a temporary file
+    // ------------------------------------------------------------------
+
+    @Test
+    public void exportCsv_outputOverTheMemoryThreshold_spillsToDiskAndWritesEveryRecord() throws Exception {
+        final File csvFile = csvFile();
+        final List<LargeTextRow> rows = largeTextRows();
+
+        final int temporariesBefore = countSpillFiles();
+
+        pxl.exportCsv()
+                .sheet(LargeTextRow.class, rows, "Large")
+                .toFile(csvFile);
+
+        // Past the threshold the render carries on into a temporary file, so this exercises the spilled path and
+        // not the in-memory one. Asserting on the size rather than on the file itself keeps the test honest if the
+        // threshold moves: the output either passed it or the test is no longer testing a spill.
+        assertThat(csvFile.length()).isGreaterThan(PxlConstants.EXPORT_MEMORY_THRESHOLD_OF_CSV);
+
+        final List<CSVRecord> records = recordsOf(csvFile);
+        assertThat(records).hasSize(rows.size() + 1);
+        assertThat(records.get(0).toList()).containsExactly("Text", "Value");
+        // The hand-over from memory to file happens part-way through, so a record after it is the one that would
+        // show the buffered part being dropped or written twice.
+        assertThat(records.get(records.size() - 1).get(0)).isEqualTo(rows.get(0).getText());
+
+        // The temporary file belongs to the run, not to the builder.
+        assertThat(countSpillFiles()).isEqualTo(temporariesBefore);
+    }
+
+    @Test
+    public void exportCsv_spilledOutput_readsBackAsItWasWritten() throws Exception {
+        final File csvFile = csvFile();
+        final List<LargeTextRow> rows = largeTextRows();
+
+        pxl.exportCsv()
+                .sheet(LargeTextRow.class, rows, "Large")
+                .toFile(csvFile);
+
+        final List<LargeTextRow> readBack = pxl.importCsv()
+                .sheet(LargeTextRow.class)
+                .fromFile(csvFile);
+
+        assertThat(readBack).hasSize(rows.size());
+        assertThat(readBack.get(0).getText()).isEqualTo(rows.get(0).getText());
+        assertThat(readBack.get(readBack.size() - 1).getText()).isEqualTo(rows.get(0).getText());
+    }
+
+    @Test
+    public void exportCsv_spilledRenderWithDestinationUnopenable_leavesNoTemporaryFile() throws Exception {
+        final List<LargeTextRow> rows = largeTextRows();
+        final File unopenable = new File(TestPaths.EXPORT_DIR + "/no-such-directory/out.csv");
+
+        final int temporariesBefore = countSpillFiles();
+
+        assertThrows(PxlSystemException.class, () -> pxl.exportCsv()
+                .sheet(LargeTextRow.class, rows, "Large")
+                .toFile(unopenable));
+
+        assertThat(unopenable).doesNotExist();
+        // The render had already spilled by the time the destination failed to open, so the terminal's finally is
+        // what has to remove the temporary file.
+        assertThat(countSpillFiles()).isEqualTo(temporariesBefore);
+    }
+
+    @Test
+    public void exportCsv_codecFailureAfterSpilling_leavesNoFileAndNoTemporaryFile() throws Exception {
+        final File csvFile = csvFile();
+        Files.deleteIfExists(csvFile.toPath());
+
+        final List<LargeTextRow> rows = new ArrayList<>(largeTextRows());
+        final LargeTextRow failing = new LargeTextRow();
+        failing.setText("last");
+        // A non-finite double is rejected at encode time, so the failure lands once the render is well past the
+        // threshold and a temporary file is already open.
+        failing.setValue(Double.NaN);
+        rows.add(failing);
+
+        final int temporariesBefore = countSpillFiles();
+
+        assertThrows(PxlCellCodecException.class, () -> pxl.exportCsv()
+                .sheet(LargeTextRow.class, rows, "Large")
+                .toFile(csvFile));
+
+        // Rendering still finishes before the destination is opened, spill or no spill.
+        assertThat(csvFile).doesNotExist();
+        // Nothing closed the sink on this path, which is why cleanup() has to be able to reach a sink that was
+        // abandoned mid-render.
+        assertThat(countSpillFiles()).isEqualTo(temporariesBefore);
+    }
+
+    // The name a CSV export gives the temporary file it spills into.
+    private static final String SPILL_FILE_PREFIX = "pxl-csv-export-";
+
+    private static int countSpillFiles() {
+        final String[] found = new File(System.getProperty("java.io.tmpdir"))
+                .list((dir, name) -> name.startsWith(SPILL_FILE_PREFIX));
+
+        return found == null ? 0 : found.length;
+    }
+
+    // Enough rows to carry the output past the memory threshold, with one shared String behind every row so the
+    // rows themselves stay small while the output does not.
+    private static List<LargeTextRow> largeTextRows() {
+        final int textWidth = 10_000;
+        final int rowCount = PxlConstants.EXPORT_MEMORY_THRESHOLD_OF_CSV / textWidth + 100;
+
+        final char[] text = new char[textWidth];
+        Arrays.fill(text, 'x');
+        final String shared = new String(text);
+
+        final List<LargeTextRow> rows = new ArrayList<>(rowCount);
+        for (int index = 0; index < rowCount; index++) {
+            final LargeTextRow row = new LargeTextRow();
+            row.setText(shared);
+            row.setValue(1.0);
+            rows.add(row);
+        }
+
+        return rows;
+    }
+
 }

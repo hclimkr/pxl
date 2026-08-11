@@ -35,9 +35,8 @@ import java.io.OutputStream;
  * {@link PxlValidationException}, ...), and
  * {@link PxlSystemException} (carrying the original as its cause) for anything else, including checked I/O failures
  * and unexpected runtime failures from either seam. An {@link Error} is not covered: it is not an
- * {@link Exception}, so an {@link OutOfMemoryError} - which a CSV export, rendering its whole output into memory,
- * makes more reachable than an Excel one - surfaces as itself. Catching it would be wrong, since wrapping
- * allocates in the very condition that ran out of memory.</p>
+ * {@link Exception}, so an {@link OutOfMemoryError} raised while a result is being prepared surfaces as itself.
+ * Catching it would be wrong, since wrapping allocates in the very condition that ran out of memory.</p>
  *
  * <p>Package-private: not part of the public API. Consumers reach the shared {@code public} terminals
  * ({@code toFile(...)}/{@code toStream(...)}) through the public concrete subclasses.</p>

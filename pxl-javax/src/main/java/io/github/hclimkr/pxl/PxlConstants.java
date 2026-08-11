@@ -214,6 +214,18 @@ public interface PxlConstants {
      * Kept equal to {@link #IMPORT_MAX_NUMBER_OF_CSV_COLUMNS} so a CSV PXL writes is one PXL can read back.
      */
     int EXPORT_MAX_NUMBER_OF_CSV_COLUMNS = 16_384;  // max number of columns in the CSV to export (= XLSX)
+    /**
+     * How many bytes of a CSV export are held in memory before the rest spills to a temporary file.
+     * <p>
+     * A CSV export renders its whole output before the destination is opened, which is what keeps a failure from
+     * leaving a file behind. Holding all of it in memory made the heap the limit: the growth copy of the buffer puts
+     * the peak at two to three times the output, so roughly half the heap was the real ceiling. Above this threshold
+     * the output continues into a temporary file instead, which trades that ceiling for disk. Below it nothing
+     * touches the file system, so the common case - a report of a few thousand rows - behaves exactly as before.
+     * <p>
+     * The row and column caps above do not bound the output in bytes, so they are no substitute for this.
+     */
+    int EXPORT_MEMORY_THRESHOLD_OF_CSV = 4 * 1024 * 1024;  // 4 MiB, then spill to a temporary file
 
     /**
      * Default Commons-CSV parse format used for import (Excel dialect, quoted, empty lines ignored).
