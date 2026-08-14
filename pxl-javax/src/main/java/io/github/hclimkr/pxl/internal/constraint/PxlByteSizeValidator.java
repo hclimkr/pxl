@@ -23,7 +23,7 @@ public class PxlByteSizeValidator implements ConstraintValidator<PxlByteSize, Ch
     private int max;
 
     /**
-     * The charset used in parse to a string.
+     * The charset the value is encoded with before its bytes are counted.
      */
     private Charset charset;
 

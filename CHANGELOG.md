@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Javadoc that contradicted the code: `PxlConstants.DEFAULT_EXPORT_IF_NULL` / `DEFAULT_EXPORT_IF_EMPTY` decide
+  whether the **sheet** is created for a null or empty row collection, not whether a cell is written;
+  `PxlImportSheetOption.importExcludeHiddenRows` / `importExcludeHiddenColumns` **exclude** hidden rows and columns
+  rather than import them; and `PxlColumnSupport` named `exportDropdownList`, which does not exist, instead of
+  `exportOptionItems` / `exportEnumDropDownListStyle`. Two `{@link}` references to `PxlSheet` in
+  `PxlExportWorkbookOption` now resolve. Comments only — no signature, default or behavior changed.
+
 ## [0.9.4] - 2026-08-11
 
 ### Added

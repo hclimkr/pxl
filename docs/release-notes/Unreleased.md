@@ -1,0 +1,11 @@
+# PXL Unreleased
+
+Documentation release for **PXL**: the javadoc now says what the code does, in the handful of places where the two had drifted apart.
+
+Pre-1.0 release with **no breaking changes** — nothing but comments moved, so there is nothing to recompile and nothing to update at a call site. See the [CHANGELOG](../../CHANGELOG.md).
+
+## Highlights
+
+  - **Three javadoc statements described behavior the code does not have.** `PxlConstants.DEFAULT_EXPORT_IF_NULL` and `DEFAULT_EXPORT_IF_EMPTY` were documented as deciding whether a *cell* is written for a null or empty value; they decide whether the **sheet** is created when its row collection is null or empty, which is what `@PxlSheet` and the REFERENCE already said. `PxlImportSheetOption.importExcludeHiddenRows` / `importExcludeHiddenColumns` read "whether to import hidden rows/columns" — the opposite of the flag, which **excludes** them. And `PxlColumnSupport` pointed at `@PxlColumn(exportDropdownList)`, an attribute that does not exist; a dropdown comes from `exportOptionItems` or, for an enum column, `exportEnumDropDownListStyle`.
+  - **Two `{@link}` references pointed at a type that was not in scope.** `PxlExportWorkbookOption` linked `PxlSheet#exportCsvCharset()` and `PxlSheet#exportCsvDelimiter()` without importing `PxlSheet`, so neither resolved and both rendered as plain text where the CSV cascade is explained — the one place a reader is being sent to the sheet-level counterpart. They sit on private fields, which javadoc does not process at the plugin's default visibility, so the build never flagged them; the same reference on a public member is an `error: reference not found` that fails it. A javadoc-only import fixes both, and a sweep of every `{@link}`, `{@value}` and `@see` across the module found no other unresolved reference.
+  - **Smaller corrections in the same pass.** A doubled brace (`{{@link Date}`) that leaked a stray `{` into `PxlCodecConstants`, a `@param`-count note missing from one diagnostic key, `PxlByteSize#charset()` and its validator explaining the charset in a sentence that did not parse, `PxlTemporalAmountSupport` claiming a token run matches exactly N digits where the regex accepts at least N, and `PxlCellUtils` naming a "no-argument overload" that does not exist. All comment text; no signature, default or message changed.

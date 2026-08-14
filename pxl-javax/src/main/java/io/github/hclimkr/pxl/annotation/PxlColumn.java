@@ -31,7 +31,6 @@ public @interface PxlColumn {
      *
      * @return the shared import/export cell-formatting pattern; empty ({@code ""}) by default
      */
-
     String pattern() default "";
 
     /**
@@ -141,7 +140,6 @@ public @interface PxlColumn {
      *
      * @return the export-specific cell-formatting pattern; empty ({@code ""}) falls back to {@link #pattern()}
      */
-
     String exportPattern() default "";
 
     /**

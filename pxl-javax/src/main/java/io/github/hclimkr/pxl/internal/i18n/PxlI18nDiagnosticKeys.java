@@ -232,7 +232,7 @@ public final class PxlI18nDiagnosticKeys {
      */
     public static final String CORE_EXPORT_SHEET_NAME_ROW_CLASS_COUNT_MISMATCH = "core.export.sheetNameRowClassCountMismatch";
     /**
-     * Duplicate sheet name supplied on export.
+     * Duplicate sheet name supplied on export; {@code {0}}=names.
      */
     public static final String CORE_EXPORT_DUPLICATE_SHEET_NAME = "core.export.duplicateSheetName";
     /**

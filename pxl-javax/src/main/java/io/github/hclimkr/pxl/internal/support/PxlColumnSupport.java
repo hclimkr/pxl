@@ -11,7 +11,8 @@ import org.apache.poi.ss.util.CellRangeAddressList;
 import java.util.Arrays;
 
 /**
- * Builds the dropdown (list) data validation an export column declares through {@code @PxlColumn(exportDropdownList)}.
+ * Builds the dropdown (list) data validation an export column declares through
+ * {@code @PxlColumn(exportOptionItems)} or, for an enum column, {@code @PxlColumn(exportEnumDropDownListStyle)}.
  * <p>
  * Excel offers two ways to constrain a cell to a list, and which one works depends on the items: an inline
  * explicit list is simplest but is comma-delimited and capped at 255 characters, so items containing a comma or a

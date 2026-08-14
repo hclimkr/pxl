@@ -91,7 +91,7 @@ public final class PxlTemporalAmountSupport {
     /**
      * Compiles a {@link DurationFormatUtils}-style pattern into a reusable regular expression plus the capture-group field order.
      * <p>
-     * A run of N identical tokens matches a digit group of N digits (N&gt;1) or one or more digits (N==1). Portions enclosed
+     * A run of N identical tokens matches a digit group of at least N digits (N&gt;1) or one or more digits (N==1). Portions enclosed
      * in single quotes and all other characters are treated as literals. The produced regex is always well-formed (digit groups
      * and {@link Pattern#quote(String)} literals only), so this never throws for any pattern string. The result is meant to be
      * cached per column (the pattern is a column-level constant) and reused for every cell.
@@ -187,7 +187,7 @@ public final class PxlTemporalAmountSupport {
         private final Pattern regex;
 
         /**
-         * the field order: for capture group (1-based), is the time-field token it holds.
+         * the field order: the time-field token each capture group (1-based) holds.
          */
         private final List<Character> fieldOrder;
 

@@ -99,7 +99,7 @@ public final class PxlCodecConstants {
 
     // Excel display format codes applied when a date/time value is exported as a Numeric (Excel date serial) cell (POI built-in, locale-independent).
     /**
-     * Excel display format code for {{@link Date} numeric-serial cells.
+     * Excel display format code for {@link Date} numeric-serial cells.
      */
     public static final String javaDateExcelFormat = BuiltinFormats.getBuiltinFormat(14);
 

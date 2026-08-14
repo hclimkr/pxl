@@ -445,11 +445,11 @@ public interface PxlConstants {
     int DEFAULT_EXPORT_LAST_DATA_COLUMN_INDEX = 0;
 
     /**
-     * Whether a cell is written when the source value is {@code null} by default.
+     * Whether a sheet is created when its row collection is {@code null} by default.
      */
     boolean DEFAULT_EXPORT_IF_NULL = false;
     /**
-     * Whether a cell is written when the source value is empty by default.
+     * Whether a sheet is created when its row collection is empty by default.
      */
     boolean DEFAULT_EXPORT_IF_EMPTY = true;
 

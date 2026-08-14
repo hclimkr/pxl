@@ -389,7 +389,7 @@ public final class PxlImportColumnMeta {
          * @param valueClass            the value type
          * @param importConverterMethod the {@link PxlImportConverter}-annotated method, or {@code null}
          * @param stringConstructor     the single-String constructor, or {@code null}
-         * @param toStringMethod        the type's {@code toString} method
+         * @param toStringMethod        the type's {@code toString} method, or {@code null}
          */
         private PxlImportConverterMeta(final Class<?> valueClass,
                                        final Method importConverterMethod,

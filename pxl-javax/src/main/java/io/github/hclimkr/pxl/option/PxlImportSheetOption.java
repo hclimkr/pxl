@@ -57,13 +57,13 @@ public final class PxlImportSheetOption {
     private final Boolean importOverrideSuperClassSheet = null;
 
     /**
-     * Specifies whether to import hidden rows on import.
+     * Specifies whether to exclude (skip) hidden rows on import.
      */
     @Builder.Default
     private final Boolean importExcludeHiddenRows = null;
 
     /**
-     * Specifies whether to import hidden columns on import.
+     * Specifies whether to exclude (skip) hidden columns on import.
      */
     @Builder.Default
     private final Boolean importExcludeHiddenColumns = null;

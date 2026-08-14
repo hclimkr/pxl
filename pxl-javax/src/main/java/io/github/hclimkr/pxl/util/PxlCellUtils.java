@@ -36,8 +36,8 @@ import java.util.*;
  * The {@code setCellValue} family spans the JDK types PXL binds (numbers, {@link String}, {@code boolean},
  * {@link Date} and {@code java.time}, ...), so a caller need not pick the right POI setter per type, and
  * {@code getCellStringValue} renders a cell the way the spreadsheet displays it by honouring its number format
- * through a {@link DataFormatter} - pass the workbook's cached formatter on hot paths, as the no-argument overload
- * allocates one per call. Also here: formula, error and blank cells; {@code getCellWithMerges}, which reads the
+ * through a {@link DataFormatter} - pass the workbook's cached formatter on hot paths, as the overload without one
+ * allocates a formatter per call. Also here: formula, error and blank cells; {@code getCellWithMerges}, which reads the
  * value a merged region carries from any of its cells; cell-style cloning; notes; and pictures anchored to a cell.
  * <p>
  * The lookups are null-safe: a {@code null} or streaming sheet, or an absent row/cell that is not to be created,

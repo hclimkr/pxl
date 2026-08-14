@@ -70,7 +70,7 @@ public @interface PxlByteSize {
      * The charset the value is encoded with before its bytes are counted, which is what makes the limit depend on
      * the encoding rather than on the character count.
      *
-     * @return the charset name used in parse to a string
+     * @return the charset name the value is encoded with before its bytes are counted; {@code "UTF-8"} by default
      */
     String charset() default "UTF-8";
 
