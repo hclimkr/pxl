@@ -13,7 +13,7 @@
     <artifactId>pxl-jakarta</artifactId>
 
     <name>PXL (jakarta)</name>
-    <description>Annotation-driven, bidirectional binding between spreadsheets and Java objects, built on Apache POI (jakarta.validation variant)</description>
+    <description>Java library to map Excel (XLSX/XLS) and CSV files to POJOs with annotations, built on Apache POI (jakarta.validation variant)</description>
     <url>https://github.com/hclimkr/pxl</url>
 
     <properties>

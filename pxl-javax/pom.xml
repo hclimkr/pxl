@@ -13,7 +13,7 @@
     <artifactId>pxl-javax</artifactId>
 
     <name>PXL (javax)</name>
-    <description>Annotation-driven, bidirectional binding between spreadsheets and Java objects, built on Apache POI (javax.validation variant)</description>
+    <description>Java library to map Excel (XLSX/XLS) and CSV files to POJOs with annotations, built on Apache POI (javax.validation variant)</description>
     <url>https://github.com/hclimkr/pxl</url>
 
     <properties>

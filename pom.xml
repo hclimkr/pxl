@@ -10,7 +10,7 @@
     <packaging>pom</packaging>
 
     <name>PXL</name>
-    <description>Annotation-driven, bidirectional binding between spreadsheets and Java objects, built on Apache POI</description>
+    <description>Java library to map Excel (XLSX/XLS) and CSV files to POJOs with annotations, built on Apache POI</description>
     <url>https://github.com/hclimkr/pxl</url>
 
     <licenses>

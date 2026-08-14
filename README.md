@@ -1,6 +1,6 @@
 **English** · [한국어](README_ko.md)
 
-PXL
+PXL - Java Excel & CSV to POJO Mapping Library
 =============================
 
 [![Build](https://github.com/hclimkr/pxl/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/hclimkr/pxl/actions/workflows/build.yml)
@@ -12,9 +12,20 @@ PXL
 PXL is an **annotation-driven, bidirectional binding between spreadsheets and Java objects**,
 built on top of Apache POI and Apache Commons CSV, and supports Java 8 and above.
 
+Read an uploaded `.xlsx`, `.xls` or `.csv` file straight into a `List<Employee>`, and write a
+`List<Employee>` straight back out as an Excel or CSV download — no `Row`/`Cell` loops, no manual
+type conversion, no separate reader and writer to keep in sync. You annotate the DTO once and that
+one declaration drives both directions.
+
 - Import: XLSX · XLS · CSV → Java objects
 - Export: Java objects → XLSX · XLS · streaming XLSX · CSV
 - Only fields/classes marked with the dedicated annotations are bound.
+
+```java
+List<Employee> employees = pxl.importExcel()
+                              .sheet(Employee.class, "Employees")
+                              .fromFile(new File("employees.xlsx"));
+```
 
 For details such as supported variable types, the full set of options, and constraints, refer to [docs/reference.md](docs/reference.md).
 
@@ -26,17 +37,47 @@ For details such as supported variable types, the full set of options, and const
 
 ## Table of Contents
 
-1. [Setup](#setup)
-2. [Defining DTO Classes](#defining-dto-classes)
-3. [Usage at a Glance](#usage-at-a-glance)
-4. [Export (Objects → Excel)](#export-objects--excel)
-5. [Export Sample (Class → Sample Excel)](#export-sample-class--sample-excel)
-6. [Export (Objects → CSV)](#export-objects--csv)
-7. [Export Sample (Class → Sample CSV)](#export-sample-class--sample-csv)
-8. [Import (Excel → Objects)](#import-excel--objects)
-9. [Import (CSV → Objects)](#import-csv--objects)
-10. [Build & Contributing](#build--contributing)
-11. [License](#license)
+1. [Features](#features)
+2. [Setup](#setup)
+3. [Defining DTO Classes](#defining-dto-classes)
+4. [Usage at a Glance](#usage-at-a-glance)
+5. [Export (Objects → Excel)](#export-objects--excel)
+6. [Export Sample (Class → Sample Excel)](#export-sample-class--sample-excel)
+7. [Export (Objects → CSV)](#export-objects--csv)
+8. [Export Sample (Class → Sample CSV)](#export-sample-class--sample-csv)
+9. [Import (Excel → Objects)](#import-excel--objects)
+10. [Import (CSV → Objects)](#import-csv--objects)
+11. [FAQ](#faq)
+12. [Build & Contributing](#build--contributing)
+13. [License](#license)
+
+---
+
+## Features
+
+- **Excel to POJO and POJO to Excel from one declaration** — the same `@PxlColumn` mapping is read by
+  the importer and the exporter, so a round trip cannot drift apart.
+- **XLSX, XLS and streaming XLSX** — pick the POI engine (`XSSF` / `HSSF` / `SXSSF`) with a single
+  annotation attribute; the file format, extension and sheet/row/column limits follow from it.
+- **CSV in the same model** — the same annotations, the same converters and the same column order
+  write a CSV instead of a workbook, and read it straight back.
+- **Declarative mapping only** — `@PxlColumn` on a field, `@PxlSheet` on a collection field,
+  `@PxlWorkbook` on the class. Nothing else in the DTO is touched. Header names match by name, so
+  column order in the file is free and unknown columns are ignored.
+- **Around 30 field types out of the box** — primitives and their wrappers, `String`, `BigDecimal`,
+  `BigInteger`, `enum`, `LocalDate` / `LocalDateTime` / `LocalTime` / `Date`, `Duration` / `Period`,
+  `Collection`, and anything else through `@PxlImportConverter` / `@PxlExportConverter`.
+- **Bean Validation per row** — standard `javax.validation` / `jakarta.validation` constraints
+  declared on the DTO are enforced while binding, alongside PXL's own `@PxlByteSize`.
+- **Excel-side presentation** — cell stylers, column widths, row heights, freeze panes, auto filters,
+  dropdown validation, row grouping, embedded pictures and password-protected workbooks.
+- **Built for large files** — import can run on `excel-streaming-reader`, export can run on SXSSF,
+  and CSV export spills past 4 MiB to a temporary file instead of growing the heap.
+- **Sample templates from a class alone** — generate a header row plus one filled example row as an
+  `.xlsx` or `.csv` form to hand out and collect back.
+- **Localization on two independent channels** — translate sheet and column names for the content,
+  and switch the language of PXL's own diagnostics and exception messages (English / Korean bundled).
+- **Two variants, one source** — `pxl-javax` for Java 8+ and `pxl-jakarta` for Java 17+.
 
 ---
 
@@ -614,6 +655,49 @@ List<Employee> employees = pxl.importCsv()
 ---
 
 For more details (per-type behavior, the full set of annotation attributes, i18n, stylers, exceptions, etc.), refer to [docs/reference.md](docs/reference.md).
+
+---
+
+## FAQ
+
+**How do I read an Excel file into a list of Java objects?**
+Annotate the DTO fields with `@PxlColumn`, then call
+`pxl.importExcel().sheet(Employee.class, "Employees").fromFile(file)`. It returns a `List<Employee>`
+with every cell already converted to the field's type — see [Import (Excel → Objects)](#import-excel--objects).
+
+**How do I return an Excel download from a Spring controller?**
+Write to the servlet output stream with `toStream(...)`. PXL does not close the stream, so the caller
+keeps control of the response — see [Output Targets](#output-targets). The matching content type and
+file extension are available from `PxlFileFormat`.
+
+**Can it handle files too large to fit in memory?**
+Import can run on `excel-streaming-reader` with `@PxlWorkbook(importUsingStreamReader = true)` (XLSX
+only, and formula cells cannot be evaluated), export can use the `SXSSF` engine, and CSV export moves
+to a temporary file once it passes 4 MiB.
+
+**Does it read `.xls` as well as `.xlsx`?**
+Yes. Import detects the format from the file itself, and export chooses it with
+`@PxlWorkbook(exportExcelEngine = PxlExcelEngine.HSSF)` for `.xls`.
+
+**Does it handle CSV too?**
+Yes, through `exportCsv()` / `importCsv()`, with the same annotations as Excel. Character set,
+delimiter and byte order mark are configurable, and multiple CSV files can be read as one workbook
+with one sheet per file.
+
+**What if a column's type is not one PXL knows?**
+Write a `@PxlImportConverter` / `@PxlExportConverter` method pair on the class and PXL will route that
+column through it.
+
+**Which artifact do I need, `pxl-javax` or `pxl-jakarta`?**
+`pxl-javax` for `javax.validation` on Java 8 or later, `pxl-jakarta` for `jakarta.validation` on Java
+17 or later. They are the same library — add exactly one.
+
+**Is Bean Validation required?**
+No. If no implementation is on the classpath, PXL logs a warning and simply skips validation instead
+of failing.
+
+**Is a `Pxl` instance safe to share?**
+Yes — it is stateless and thread-safe, so create it once and reuse it as a singleton or a Spring bean.
 
 ---
 

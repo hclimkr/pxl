@@ -1,6 +1,6 @@
 [English](README.md) · **한국어**
 
-PXL
+PXL - 자바 엑셀 · CSV 객체 매핑 라이브러리
 =============================
 
 [![Build](https://github.com/hclimkr/pxl/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/hclimkr/pxl/actions/workflows/build.yml)
@@ -12,9 +12,19 @@ PXL
 PXL은 **애노테이션 기반으로 스프레드시트와 자바 객체를 양방향 바인딩하는 라이브러리**다.
 Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지원한다.
 
+업로드된 `.xlsx` · `.xls` · `.csv` 파일을 곧바로 `List<Employee>`로 읽고, `List<Employee>`를 곧바로
+엑셀 · CSV 다운로드로 내보낸다 — `Row`/`Cell` 순회도, 수동 타입 변환도, 따로 관리해야 하는 리더와
+라이터도 없다. DTO에 애노테이션을 한 번 붙이면 그 선언 하나가 양방향을 모두 구동한다.
+
 - Import: XLSX · XLS · CSV → 자바 객체
 - Export: 자바 객체 → XLSX · XLS · 스트리밍 XLSX · CSV
 - 전용 애노테이션이 붙은 필드/클래스만 바인딩된다.
+
+```java
+List<Employee> employees = pxl.importExcel()
+                              .sheet(Employee.class, "Employees")
+                              .fromFile(new File("employees.xlsx"));
+```
 
 지원 변수 타입 · 전체 옵션 · 제약 등 상세 내용은 [docs/reference_ko.md](docs/reference_ko.md)를 참고한다.
 
@@ -26,17 +36,46 @@ Apache POI와 Apache Commons CSV 위에 구축되었으며, Java 8 이상을 지
 
 ## 목차
 
-1. [구성](#구성)
-2. [객체 DTO 정의](#객체-dto-정의)
-3. [한눈에 보는 사용법](#한눈에-보는-사용법)
-4. [Export (객체 → 엑셀)](#export-객체--엑셀)
-5. [Export 샘플 (클래스 → 샘플 엑셀)](#export-샘플-클래스--샘플-엑셀)
-6. [Export (객체 → CSV)](#export-객체--csv)
-7. [Export 샘플 (클래스 → 샘플 CSV)](#export-샘플-클래스--샘플-csv)
-8. [Import (엑셀 → 객체)](#import-엑셀--객체)
-9. [Import (CSV → 객체)](#import-csv--객체)
-10. [빌드 & 기여](#빌드--기여)
-11. [라이선스](#라이선스)
+1. [주요 기능](#주요-기능)
+2. [구성](#구성)
+3. [객체 DTO 정의](#객체-dto-정의)
+4. [한눈에 보는 사용법](#한눈에-보는-사용법)
+5. [Export (객체 → 엑셀)](#export-객체--엑셀)
+6. [Export 샘플 (클래스 → 샘플 엑셀)](#export-샘플-클래스--샘플-엑셀)
+7. [Export (객체 → CSV)](#export-객체--csv)
+8. [Export 샘플 (클래스 → 샘플 CSV)](#export-샘플-클래스--샘플-csv)
+9. [Import (엑셀 → 객체)](#import-엑셀--객체)
+10. [Import (CSV → 객체)](#import-csv--객체)
+11. [자주 묻는 질문](#자주-묻는-질문)
+12. [빌드 & 기여](#빌드--기여)
+13. [라이선스](#라이선스)
+
+---
+
+## 주요 기능
+
+- **엑셀 → 객체와 객체 → 엑셀을 선언 하나로** — 같은 `@PxlColumn` 매핑을 importer와 exporter가 함께
+  읽으므로 라운드트립이 어긋나지 않는다.
+- **XLSX · XLS · 스트리밍 XLSX** — POI 엔진(`XSSF` / `HSSF` / `SXSSF`)을 애노테이션 속성 하나로 고르며,
+  파일 형식 · 확장자 · 시트/행/열 한도가 거기서 따라온다.
+- **CSV도 같은 모델로** — 같은 애노테이션, 같은 컨버터, 같은 컬럼 순서가 워크북 대신 CSV를 쓰고 그대로
+  다시 읽는다.
+- **선언만으로 매핑** — 필드에 `@PxlColumn`, 컬렉션 필드에 `@PxlSheet`, 클래스에 `@PxlWorkbook`. DTO의
+  나머지는 건드리지 않는다. 헤더는 이름으로 매칭하므로 파일의 열 순서는 자유이고 정의에 없는 열은 무시된다.
+- **약 30종 필드 타입 기본 지원** — 원시 타입과 래퍼, `String`, `BigDecimal`, `BigInteger`, `enum`,
+  `LocalDate` / `LocalDateTime` / `LocalTime` / `Date`, `Duration` / `Period`, `Collection`, 그리고 그 밖의
+  타입은 `@PxlImportConverter` / `@PxlExportConverter`로 처리한다.
+- **행 단위 Bean Validation** — DTO에 선언한 표준 `javax.validation` / `jakarta.validation` 제약이 바인딩
+  중에 검증되며, PXL 자체 제약 `@PxlByteSize`도 함께 쓸 수 있다.
+- **엑셀 표현 요소** — 셀 스타일러, 컬럼 폭, 행 높이, 창 고정, 자동 필터, 드롭다운 검증, 행 그룹핑,
+  이미지 삽입, 암호가 걸린 워크북.
+- **대용량 파일 대응** — import는 `excel-streaming-reader` 위에서, export는 SXSSF로 돌릴 수 있고,
+  CSV export는 4 MiB를 넘어서면 힙 대신 임시 파일로 이어 쓴다.
+- **클래스만으로 샘플 양식 생성** — 헤더 행 + 예시 값이 채워진 데이터 행 1개짜리 `.xlsx` · `.csv` 양식을
+  만들어 배포하고 채워 받을 수 있다.
+- **독립된 두 채널의 다국어 지원** — 콘텐츠 쪽으로 시트명 · 컬럼명을 번역하고, PXL 자체 진단 · 예외 메시지의
+  언어를 따로 전환한다(영어 · 한국어 번들 동봉).
+- **소스 하나에서 나오는 두 변형** — Java 8+용 `pxl-javax`와 Java 17+용 `pxl-jakarta`.
 
 ---
 
@@ -607,6 +646,45 @@ List<Employee> employees = pxl.importCsv()
 ---
 
 더 자세한 내용(타입별 동작, 전체 애노테이션 속성, i18n, 스타일러, 예외 등)은 [docs/reference_ko.md](docs/reference_ko.md) 를 참고한다.
+
+---
+
+## 자주 묻는 질문
+
+**엑셀 파일을 자바 객체 리스트로 어떻게 읽나?**
+DTO 필드에 `@PxlColumn`을 붙이고
+`pxl.importExcel().sheet(Employee.class, "Employees").fromFile(file)`을 호출한다. 모든 셀이 필드 타입으로
+변환된 `List<Employee>`가 반환된다 — [Import (엑셀 → 객체)](#import-엑셀--객체) 참고.
+
+**스프링 컨트롤러에서 엑셀 다운로드로 어떻게 내려주나?**
+`toStream(...)`으로 서블릿 출력 스트림에 쓴다. PXL은 스트림을 닫지 않으므로 응답의 제어권은 호출자가
+그대로 쥔다 — [출력 대상](#출력-대상) 참고. 응답에 실을 content type과 확장자는 `PxlFileFormat`에서 얻는다.
+
+**메모리에 다 올릴 수 없는 대용량 파일도 되나?**
+import는 `@PxlWorkbook(importUsingStreamReader = true)`로 `excel-streaming-reader` 위에서 돌릴 수 있고(XLSX
+전용이며 수식 셀은 평가하지 못한다), export는 `SXSSF` 엔진을 쓸 수 있다. CSV export는 4 MiB를 넘으면
+임시 파일로 넘어간다.
+
+**`.xlsx` 말고 `.xls`도 읽나?**
+읽는다. import는 파일 자체에서 형식을 탐지하고, export는
+`@PxlWorkbook(exportExcelEngine = PxlExcelEngine.HSSF)`로 `.xls`를 고른다.
+
+**CSV도 지원하나?**
+`exportCsv()` / `importCsv()`로 지원하며 애노테이션은 엑셀과 동일하다. 문자셋 · 구분자 · BOM을 지정할 수
+있고, 여러 CSV 파일을 파일 하나당 시트 하나로 묶어 한 워크북처럼 읽을 수 있다.
+
+**PXL이 모르는 타입의 컬럼은 어떻게 하나?**
+클래스에 `@PxlImportConverter` / `@PxlExportConverter` 메서드 쌍을 두면 해당 컬럼이 그 변환기를 거친다.
+
+**`pxl-javax`와 `pxl-jakarta` 중 무엇을 쓰나?**
+Java 8 이상에서 `javax.validation`을 쓰면 `pxl-javax`, Java 17 이상에서 `jakarta.validation`을 쓰면
+`pxl-jakarta`다. 같은 라이브러리이므로 정확히 하나만 추가한다.
+
+**Bean Validation이 반드시 있어야 하나?**
+아니다. 구현체가 클래스패스에 없으면 PXL은 경고 로그만 남기고 검증을 건너뛴 채 그대로 동작한다.
+
+**`Pxl` 인스턴스를 공유해도 되나?**
+된다 — 상태가 없고 thread-safe하므로 한 번 만들어 싱글톤이나 스프링 빈으로 재사용한다.
 
 ---
 
