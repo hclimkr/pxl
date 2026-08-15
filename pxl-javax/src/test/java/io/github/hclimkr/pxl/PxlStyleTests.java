@@ -196,6 +196,32 @@ public class PxlStyleTests {
     }
 
     // ------------------------------------------------------------------
+    // Workbook-level stylers declared on @PxlWorkbook (the option path is covered above)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void stylers_workbookLevelAnnotation_applyToHeaderAndData() throws Exception {
+        final WorkbookStylerWorkbook workbook = new WorkbookStylerWorkbook();
+        workbook.setWorkbookName("W");
+        workbook.setRows(Arrays.asList(sampleRow()));
+
+        final Workbook poi = pxl.exportExcel()
+                .workbook(workbook)
+                .override(noValidationOption())
+                .toWorkbook();
+        try {
+            assertHeaderStyles(poi, "Styled");
+
+            final Sheet styled = poi.getSheet("Styled");
+            assertThat(styled.getRow(1).getCell(colIndex(styled, "Req")).getCellStyle().getAlignment())
+                    .as("the workbook data styler reaches the data cells")
+                    .isEqualTo(HorizontalAlignment.CENTER);
+        } finally {
+            poi.close();
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Sheet-level header styler (@PxlSheet)
     // ------------------------------------------------------------------
 
@@ -283,6 +309,36 @@ public class PxlStyleTests {
             // The header cell applies the custom required header styler (horizontal center)
             assertThat(sheet.getRow(0).getCell(colIndex(sheet, "Custom")).getCellStyle().getAlignment())
                     .isEqualTo(HorizontalAlignment.CENTER);
+        } finally {
+            poi.close();
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Column header styler (exportColumnOptionalHeaderCellStyler)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void headerStyler_columnLevelOptional_applied() throws Exception {
+        // Which of the two column stylers is consulted follows from the column's own constraints, so the optional
+        // one needs a column without them: Plain carries no @NotNull and must pick up the wrap-text styler while
+        // the @NotNull column beside it keeps the required one.
+        final ColumnHeaderStylerRow row = new ColumnHeaderStylerRow();
+        row.setCustom("x");
+        row.setPlain("y");
+
+        final Workbook poi = pxl.exportExcel()
+                .sheet(ColumnHeaderStylerRow.class, Arrays.asList(row), "T")
+                .override(noValidationOption())
+                .toWorkbook();
+        try {
+            final Sheet sheet = poi.getSheet("T");
+            assertThat(sheet.getRow(0).getCell(colIndex(sheet, "Plain")).getCellStyle().getWrapText())
+                    .as("the optional header styler applies to a column without a required constraint")
+                    .isTrue();
+            assertThat(sheet.getRow(0).getCell(colIndex(sheet, "Custom")).getCellStyle().getWrapText())
+                    .as("the required column keeps its own styler")
+                    .isFalse();
         } finally {
             poi.close();
         }

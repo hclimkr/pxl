@@ -37,7 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * <p>
  * Verifies pattern/importPattern/exportPattern, custom true/false strings, custom collection separators, exportNullString,
  * importTrim, column name aliases (name={...}), importUnique, exportOptionItems, exportEnumDropDownListStyle,
- * and column-level import/export enable toggles via actual round-trips/assertions.
+ * exportSampleEnabled against a data export, and column-level import/export enable toggles via actual
+ * round-trips/assertions.
  */
 public class PxlColumnOptionTests {
 
@@ -440,6 +441,24 @@ public class PxlColumnOptionTests {
         assertThat(rows.get(0).getImportOff()).isNull();
         // no value either, since it was not exported
         assertThat(rows.get(0).getExportOff()).isNull();
+    }
+
+    // ------------------------------------------------------------------
+    // exportSampleEnabled governs the sample export alone
+    // ------------------------------------------------------------------
+
+    @Test
+    public void columnSampleDisabled_dataExport_stillWritesColumn() throws Exception {
+        // The sample export drops the Skip column (covered in PxlSampleExcelExportTests); a data export must not,
+        // or the two flags would collapse into one.
+        final SampleColumnRow row = new SampleColumnRow();
+        row.setKeep("k");
+        row.setSkip("s");
+
+        final SampleColumnRow imported = roundTrip("Data", Arrays.asList(row), SampleColumnRow.class).get(0);
+
+        assertThat(imported.getKeep()).isEqualTo("k");
+        assertThat(imported.getSkip()).as("exportSampleEnabled=false is not exportEnabled=false").isEqualTo("s");
     }
 
     // ------------------------------------------------------------------

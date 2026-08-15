@@ -882,6 +882,20 @@ public class PxlCsvExportTests {
     }
 
     @Test
+    public void exportCsv_emptyRowsWithExportIfEmptyOn_writesHeaderOnly() throws Exception {
+        final File csvFile = csvFile();
+
+        // The default keeps an empty collection exportable, and what lands on disk is the header record alone -
+        // a file the import side can still read back as zero rows.
+        pxl.exportCsv()
+                .sheet(Employee.class, new ArrayList<Employee>(), "Employees")
+                .toFile(csvFile);
+
+        assertThat(recordsOf(csvFile)).hasSize(1);
+        assertThat(linesOf(csvFile).get(0)).isEqualTo("Name,Age,Salary,Active,HireDate,Grade,Department");
+    }
+
+    @Test
     public void exportCsv_rowCountExceeded_throws() {
         // The data bound counts from the first data row, so a high enough origin exceeds the CSV row cap without
         // actually holding a hundred thousand rows.

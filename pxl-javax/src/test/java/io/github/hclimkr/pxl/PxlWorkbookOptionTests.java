@@ -25,7 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Workbook/option-level behavior tests - importDataValidation, sheet/column exportOrder, superclass override,
- * stream-reader cache buffer, SXSSF window, conditional sheets, column export on/off, enum dropdown, importColumnRange.
+ * stream-reader cache buffer, SXSSF window, conditional sheets, column export on/off, enum dropdown, importColumnRange,
+ * and the same workbook attributes declared on @PxlWorkbook instead of a runtime option.
  */
 public class PxlWorkbookOptionTests {
 
@@ -401,6 +402,106 @@ public class PxlWorkbookOptionTests {
     }
 
     // ------------------------------------------------------------------
+    // Workbook attributes declared on @PxlWorkbook rather than in a runtime option
+    // ------------------------------------------------------------------
+
+    @Test
+    public void dataValidation_disabledOnAnnotation_skipsValidationBothWays() throws Exception {
+        // Age is null, which its @NotNull rejects. The annotation turns validation off on both directions, so the
+        // row travels out and back untouched.
+        final ValidatedRow row = new ValidatedRow();
+        row.setName("Alice");
+
+        final NoValidationWorkbook workbook = new NoValidationWorkbook();
+        workbook.setWorkbookName("Lenient");
+        workbook.setRows(Arrays.asList(row));
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toFile(excelFile);
+
+        final NoValidationWorkbook imported = pxl.importExcel()
+                .workbookName("Lenient")
+                .workbook(NoValidationWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(imported.getRows()).hasSize(1);
+        assertThat(imported.getRows().get(0).getName()).isEqualTo("Alice");
+        assertThat(imported.getRows().get(0).getAge()).isNull();
+
+        // Putting validation back on rejects the very same row, which is what makes the annotation the cause above.
+        assertThrows(PxlValidationException.class, () -> pxl.exportExcel()
+                .workbook(workbook)
+                .override(PxlExportWorkbookOption.builder().exportDataValidation(true).build())
+                .toStream(new ByteArrayOutputStream()));
+    }
+
+    @Test
+    public void streamReader_declaredOnAnnotation_readsAllRows() throws Exception {
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .sheet(Employee.class, twoEmployees(), "People")
+                .override(noValidationOption())
+                .toFile(excelFile);
+
+        // The reader, its row cache and its buffer all come off @PxlWorkbook here.
+        final StreamReaderWorkbook imported = pxl.importExcel()
+                .workbookName("Streamed")
+                .workbook(StreamReaderWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(imported.getPeople()).extracting(Employee::getName).containsExactly("Alice", "Bob");
+    }
+
+    @Test
+    public void sxssfRowAccessWindow_declaredOnAnnotation_keepsEveryFlushedRow() throws Exception {
+        // Fifty rows through a ten-row window, so most of them leave memory before the workbook is written - the
+        // case the option test above never reaches with its window wider than the data.
+        final List<Employee> many = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            many.add(Fixtures.employee("Name" + i, 20 + i, "1000", true, null, Grade.A, "Dept"));
+        }
+
+        final SxssfWindowWorkbook workbook = new SxssfWindowWorkbook();
+        workbook.setWorkbookName("Windowed");
+        workbook.setPeople(many);
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .workbook(workbook)
+                .override(noValidationOption())
+                .toFile(excelFile);
+
+        final List<Employee> rows = pxl.importExcel()
+                .sheet(Employee.class, Arrays.asList("People"))
+                .fromFile(excelFile);
+
+        assertThat(rows).hasSize(50);
+        assertThat(rows.get(0).getName()).isEqualTo("Name0");
+        assertThat(rows.get(49).getName()).isEqualTo("Name49");
+    }
+
+    // ------------------------------------------------------------------
+    // Column override on import (importOverrideSuperClassColumn)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void importOverrideSuperClassColumn_childColumnWins() throws Exception {
+        // Parent and child both bind a column named "Val". The child claims the name, so the cell reaches the child
+        // field and the shadowed parent field is left untouched rather than bound a second time.
+        final byte[] bytes = buildStringSheet("C", new String[]{"Val"}, new String[][]{{"cell"}});
+
+        final List<ImportDerivedColRow> rows = pxl.importExcel()
+                .sheet(ImportDerivedColRow.class, Arrays.asList("C"))
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).val).isEqualTo("cell");
+        assertThat(((BaseColRow) rows.get(0)).val).as("the superclass column is dropped").isNull();
+    }
+
+    // ------------------------------------------------------------------
     // Works correctly even when stream-reader cache/buffer sizes are specified
     // ------------------------------------------------------------------
 
@@ -502,6 +603,139 @@ public class PxlWorkbookOptionTests {
             assertThat(poiWorkbook.getSheet("KeepWhenEmpty")).as("created even when list is empty").isNotNull();
         } finally {
             poiWorkbook.close();
+        }
+    }
+
+    @Test
+    public void conditionalSheet_sheetOptions_overrideAnnotations() throws Exception {
+        // The same data as above, with every sheet's flag flipped by an option keyed on that sheet's field name:
+        // what the annotations keep the options drop, and the other way round.
+        final ConditionalWorkbook workbook = new ConditionalWorkbook();
+        workbook.setKeepWhenNull(null);
+        workbook.setDropWhenNull(null);
+        workbook.setDropWhenEmpty(new ArrayList<>());
+        workbook.setKeepWhenEmpty(new ArrayList<>());
+
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportDataValidation(false)
+                .exportSheetOptions(Arrays.asList(
+                        PxlExportSheetOption.builder().fieldName("keepWhenNull").exportIfNull(false).build(),
+                        PxlExportSheetOption.builder().fieldName("dropWhenNull").exportIfNull(true).build(),
+                        PxlExportSheetOption.builder().fieldName("dropWhenEmpty").exportIfEmpty(true).build(),
+                        PxlExportSheetOption.builder().fieldName("keepWhenEmpty").exportIfEmpty(false).build()))
+                .build();
+
+        final Workbook poiWorkbook = pxl.exportExcel()
+                .workbook(workbook)
+                .override(option)
+                .toWorkbook();
+        try {
+            assertThat(poiWorkbook.getSheet("KeepWhenNull")).as("exportIfNull=false from the option").isNull();
+            assertThat(poiWorkbook.getSheet("DropWhenNull")).as("exportIfNull=true from the option").isNotNull();
+            assertThat(poiWorkbook.getSheet("DropWhenEmpty")).as("exportIfEmpty=true from the option").isNotNull();
+            assertThat(poiWorkbook.getSheet("KeepWhenEmpty")).as("exportIfEmpty=false from the option").isNull();
+        } finally {
+            poiWorkbook.close();
+        }
+    }
+
+    @Test
+    public void conditionalSheet_exportIfNull_createsHeaderOnlySheet() throws Exception {
+        // "Created" has to mean a sheet worth opening: the header row is written even with no collection behind it.
+        final ConditionalWorkbook workbook = new ConditionalWorkbook();
+        workbook.setKeepWhenNull(null);
+
+        final Workbook poiWorkbook = pxl.exportExcel()
+                .workbook(workbook)
+                .override(noValidationOption())
+                .toWorkbook();
+        try {
+            final Sheet sheet = poiWorkbook.getSheet("KeepWhenNull");
+            assertThat(sheet).isNotNull();
+            assertThat(headerSequence(sheet)).contains("Name", "Age", "Department");
+            assertThat(sheet.getLastRowNum()).as("the header row is the only row").isZero();
+            assertThat(sheet.getPhysicalNumberOfRows()).isEqualTo(1);
+        } finally {
+            poiWorkbook.close();
+        }
+    }
+
+    @Test
+    public void conditionalSheet_emptyList_ignoresExportIfNull() throws Exception {
+        // The two flags answer different questions, and only one of them is ever asked: a null field never reaches
+        // the empty check. DropWhenNull declares exportIfNull=false but says nothing about empties, so an empty
+        // list still gets a sheet.
+        final ConditionalWorkbook workbook = new ConditionalWorkbook();
+        workbook.setDropWhenNull(new ArrayList<>());
+
+        final Workbook poiWorkbook = pxl.exportExcel()
+                .workbook(workbook)
+                .override(noValidationOption())
+                .toWorkbook();
+        try {
+            assertThat(poiWorkbook.getSheet("DropWhenNull"))
+                    .as("exportIfNull=false does not drop an empty list")
+                    .isNotNull();
+        } finally {
+            poiWorkbook.close();
+        }
+    }
+
+    @Test
+    public void conditionalSheet_everySheetDropped_throws() {
+        // A wildcard option turns both flags off for every sheet, leaving nothing to write. The export has to say
+        // so rather than hand back a workbook with no sheet in it.
+        final ConditionalWorkbook workbook = new ConditionalWorkbook();
+        workbook.setKeepWhenNull(null);
+        workbook.setDropWhenNull(null);
+        workbook.setDropWhenEmpty(new ArrayList<>());
+        workbook.setKeepWhenEmpty(new ArrayList<>());
+
+        // fieldName defaults to the "*" wildcard, so this one option covers all four sheets.
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportDataValidation(false)
+                .exportSheetOptions(Arrays.asList(PxlExportSheetOption.builder()
+                        .exportIfNull(false)
+                        .exportIfEmpty(false)
+                        .build()))
+                .build();
+
+        assertThrows(PxlDataException.class, () -> pxl.exportExcel()
+                .workbook(workbook)
+                .override(option)
+                .toStream(new ByteArrayOutputStream()));
+    }
+
+    @Test
+    public void conditionalSheet_sheetFormEmptyRows_exportIfEmptyOff_throws() {
+        // The sheet form has no field to skip past, so dropping its only sheet empties the workbook - the same
+        // PxlDataException the CSV terminal raises for the same collection.
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportDataValidation(false)
+                .exportSheetOptions(Arrays.asList(PxlExportSheetOption.builder()
+                        .exportIfEmpty(false)
+                        .build()))
+                .build();
+
+        assertThrows(PxlDataException.class, () -> pxl.exportExcel()
+                .sheet(Employee.class, new ArrayList<Employee>(), "People")
+                .override(option)
+                .toStream(new ByteArrayOutputStream()));
+    }
+
+    @Test
+    public void conditionalSheet_sheetFormEmptyRows_exportIfEmptyOn_writesHeaderOnlySheet() throws Exception {
+        final Workbook workbook = pxl.exportExcel()
+                .sheet(Employee.class, new ArrayList<Employee>(), "People")
+                .override(noValidationOption())
+                .toWorkbook();
+        try {
+            final Sheet sheet = workbook.getSheet("People");
+            assertThat(sheet).as("exportIfEmpty defaults to true").isNotNull();
+            assertThat(headerSequence(sheet)).contains("Name", "Age", "Department");
+            assertThat(sheet.getLastRowNum()).as("the header row is the only row").isZero();
+        } finally {
+            workbook.close();
         }
     }
 

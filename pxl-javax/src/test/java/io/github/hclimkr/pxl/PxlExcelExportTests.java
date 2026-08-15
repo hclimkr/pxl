@@ -3,6 +3,7 @@ package io.github.hclimkr.pxl;
 import io.github.hclimkr.pxl.builder.PxlExcelExportBuilder;
 import io.github.hclimkr.pxl.exception.PxlCellCodecException;
 import io.github.hclimkr.pxl.exception.PxlDataException;
+import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.exception.PxlSystemException;
 import io.github.hclimkr.pxl.option.*;
 import io.github.hclimkr.pxl.tcdata.*;
@@ -353,6 +354,32 @@ public class PxlExcelExportTests {
 
         assertThat(people).hasSize(1);
         assertThat(people.get(0).getName()).isEqualTo("Alice");
+    }
+
+    @Test
+    public void exportPassword_declaredOnAnnotation_encryptsAndReopens() throws Exception {
+        // The round trip above drives both passwords from an option; @PxlWorkbook is the other way in.
+        final PasswordWorkbook workbook = new PasswordWorkbook();
+        workbook.setWorkbookName("Protected");
+        workbook.setPeople(Arrays.asList(
+                Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering")));
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toFile(excelFile);
+
+        // Opening it without the password has to fail, or the export would have written plaintext.
+        assertThrows(PxlException.class, () -> pxl.importExcel()
+                .sheet(Employee.class, Arrays.asList("People"))
+                .fromFile(excelFile));
+
+        final PasswordWorkbook imported = pxl.importExcel()
+                .workbookName("Protected")
+                .workbook(PasswordWorkbook.class)
+                .fromFile(excelFile);
+
+        assertThat(imported.getPeople()).extracting(Employee::getName).containsExactly("Alice");
     }
 
     // ------------------------------------------------------------------

@@ -950,6 +950,39 @@ public class PxlExcelImportTests {
                 .fromStream(new ByteArrayInputStream(bytes)));
     }
 
+    @Test
+    public void importExcel_sheetIndexGuards_throw() throws Exception {
+        // The row inversion above arrives on the annotation; the sibling guards on the same indices are only
+        // reachable through an option, and nothing else exercises them.
+        final byte[] bytes = stringSheet("S", new String[]{"Name"}, new String[][]{{"Alice"}});
+
+        // A negative index.
+        assertThrows(PxlDataException.class, () -> importList(bytes, "S", Employee.class, sheetOptionOf(
+                PxlImportSheetOption.builder()
+                        .importHeaderRowIndex(-1)
+                        .build())));
+
+        // The first data row must come after the header row.
+        assertThrows(PxlDataException.class, () -> importList(bytes, "S", Employee.class, sheetOptionOf(
+                PxlImportSheetOption.builder()
+                        .importHeaderRowIndex(3)
+                        .importFirstDataRowIndex(2)
+                        .build())));
+
+        // The column range must not be inverted either.
+        assertThrows(PxlDataException.class, () -> importList(bytes, "S", Employee.class, sheetOptionOf(
+                PxlImportSheetOption.builder()
+                        .importFirstDataColumnIndex(5)
+                        .importLastDataColumnIndex(3)
+                        .build())));
+    }
+
+    private static PxlImportWorkbookOption sheetOptionOf(final PxlImportSheetOption sheetOption) {
+        return PxlImportWorkbookOption.builder()
+                .importSheetOptions(Arrays.asList(sheetOption))
+                .build();
+    }
+
     // ------------------------------------------------------------------
     // An empty import data range returns an empty result without an exception
     // ------------------------------------------------------------------

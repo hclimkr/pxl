@@ -6,6 +6,8 @@ import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,8 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Column/sheet name matching rule tests.
  * <p>
  * Names are matched whitespace-insensitively; a column header is matched case-sensitively while a sheet name is not.
- * Verifies array (alias), numeric-header, and enum-value matching rules, plus behavior when a required/optional
- * column header is missing.
+ * Verifies array (alias), numeric-header, and enum-value matching rules, the name a column is written under (the
+ * first alias, or the field name when none is declared), plus behavior when a required/optional column header is
+ * missing.
  */
 public class PxlNameMatchingTests {
 
@@ -105,6 +108,55 @@ public class PxlNameMatchingTests {
         final AliasRow row = importList(bytes, "Alias", AliasRow.class).get(0);
         assertThat(row.getName()).isEqualTo("Alice");
         assertThat(row.getAge()).isEqualTo(30);
+    }
+
+    @Test
+    public void columnName_alias_exportsUnderTheFirstName() throws Exception {
+        // Import accepts any of the aliases, but a header can only be written as one of them: the first.
+        final AliasRow row = new AliasRow();
+        row.setName("Alice");
+        row.setAge(30);
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .sheet(AliasRow.class, Arrays.asList(row), "Alias")
+                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build())
+                .toFile(excelFile);
+
+        try (Workbook poi = WorkbookFactory.create(excelFile)) {
+            final Row header = poi.getSheet("Alias").getRow(0);
+            assertThat(Arrays.asList(header.getCell(0).getStringCellValue(), header.getCell(1).getStringCellValue()))
+                    .as("the remaining aliases are not written as headers")
+                    .containsExactlyInAnyOrder("FullName", "Age");
+        }
+    }
+
+    @Test
+    public void columnName_notDeclared_usesFieldName() throws Exception {
+        // With name left at {}, the field name is the header written and the header matched.
+        final FieldNameColumnRow row = new FieldNameColumnRow();
+        row.setCode("A-1");
+        row.setAmount(7);
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .sheet(FieldNameColumnRow.class, Arrays.asList(row), "Fields")
+                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build())
+                .toFile(excelFile);
+
+        try (Workbook poi = WorkbookFactory.create(excelFile)) {
+            final Row header = poi.getSheet("Fields").getRow(0);
+            assertThat(Arrays.asList(header.getCell(0).getStringCellValue(), header.getCell(1).getStringCellValue()))
+                    .containsExactlyInAnyOrder("code", "amount");
+        }
+
+        final FieldNameColumnRow imported = pxl.importExcel()
+                .sheet(FieldNameColumnRow.class, Arrays.asList("Fields"))
+                .fromFile(excelFile)
+                .get(0);
+
+        assertThat(imported.getCode()).isEqualTo("A-1");
+        assertThat(imported.getAmount()).isEqualTo(7);
     }
 
     @Test
