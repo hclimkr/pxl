@@ -67,7 +67,7 @@ public class NumericCellRow {
     @PxlColumn(name = "BoolFromBoolean")
     private Boolean boolFromBoolean;
 
-    // NUMERIC cell -> Boolean (|x| > epsilon)
+    // NUMERIC cell -> Boolean (non-zero)
     @PxlColumn(name = "BoolFromNumeric")
     private Boolean boolFromNumeric;
 

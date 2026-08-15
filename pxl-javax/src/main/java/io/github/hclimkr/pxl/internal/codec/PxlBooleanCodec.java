@@ -33,8 +33,8 @@ final class PxlBooleanCodec {
     }
 
     /**
-     * Parses the given cell into a {@link Boolean}. NUMERIC cells are {@code true} when their absolute
-     * value exceeds 1e-7; STRING cells are delegated to
+     * Parses the given cell into a {@link Boolean}. NUMERIC cells are {@code true} when non-zero
+     * (both {@code 0.0} and {@code -0.0} are {@code false}); STRING cells are delegated to
      * {@link #parseBooleanValue(String, PxlImportColumnMeta)}; BOOLEAN cells are returned directly; BLANK
      * cells yield {@code null}.
      *
@@ -53,7 +53,7 @@ final class PxlBooleanCodec {
         switch (cellType) {
             case NUMERIC:
                 final double numericValue = cell.getNumericCellValue();
-                booleanValue = Math.abs(numericValue) > 0.0000001;
+                booleanValue = numericValue != 0;
                 break;
 
             case STRING:

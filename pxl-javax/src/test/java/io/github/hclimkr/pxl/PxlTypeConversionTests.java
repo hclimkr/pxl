@@ -565,6 +565,23 @@ public class PxlTypeConversionTests {
     }
 
     @Test
+    public void boolean_numericCell_nonZeroIsTrue() throws Exception {
+        // A numeric cell is true when it is not zero, which is the rule the REFERENCE states. The comparison used
+        // to be against an epsilon (|x| > 1e-7), so a genuine small value such as 1e-8 read as false with nothing
+        // to show for it (issue L3 fix). Both signed zeros stay false.
+        final double[] numericValues = {1e-8, 2, -1, 0, -0.0};
+        final byte[] bytes = sheet("B", s -> {
+            s.createRow(0).createCell(0).setCellValue("Bool");
+            for (int rowIndex = 0; rowIndex < numericValues.length; rowIndex++) {
+                s.createRow(rowIndex + 1).createCell(0).setCellValue(numericValues[rowIndex]);
+            }
+        });
+
+        assertThat(importList(bytes, "B", TypedRow.class)).extracting(TypedRow::getBool)
+                .containsExactly(Boolean.TRUE, Boolean.TRUE, Boolean.TRUE, Boolean.FALSE, Boolean.FALSE);
+    }
+
+    @Test
     public void boolean_builtInTokens_parse() throws Exception {
         final byte[] bytes = stringSheet("B", new String[]{"Bool"},
                 new String[][]{{"t"}, {"off"}, {"1"}, {"No"}, {"TRUE"}});

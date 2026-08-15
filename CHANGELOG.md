@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A `boolean`/`Boolean` column read a numeric cell through `Math.abs(value) > 0.0000001` instead of comparing it
+  with zero, so a genuine small value such as `1e-8` bound as `false` with nothing to show for it. The cutoff had
+  no recorded rationale and contradicted the REFERENCE, which has always said a numeric cell is `true` when it is
+  not 0. The comparison is now `value != 0`; both signed zeros stay `false`.
 - `BigInteger` and `BigDecimal` columns with a `pattern` threw `ClassCastException` on the infinity and NaN
   tokens (`"∞"`, `"NaN"`). Their formatter runs with `setParseBigDecimal(true)`, which still returns a
   `Double` for those two, and the codec cast the result to `BigDecimal` unconditionally. The importer wrapped the
