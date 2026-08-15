@@ -334,7 +334,8 @@ response.setHeader("Content-Disposition",
 **Import 공통**
 
 - 빈 셀 / 빈 값(Excel BLANK·없는 셀, CSV 빈 값)은 필드에 값을 설정하지 않는다 — 참조형은 `null`, primitive는 DTO 기본값(`0`/`false` 등)으로 설정.
-- `importTrim`은 기본 `true`. `false`면 `String`만 공백을 보존하고, 다른 타입은 공백이 섞이면 파싱 실패/잘못된 값이 될 수 있다.
+- `pattern`/`importPattern`은 셀 값 **전체**와 맞아야 한다. 패턴이 앞부분만 읽는 값 — `"#,##0"`에 `"123abc"`·`"1e3"`, `"yyyy-MM-dd"`에 `"2024-01-02 xxx"` — 은 읽어낸 앞부분을 바인딩하지 않고 `PxlCellCodecException`을 낸다. 따라서 패턴을 지정한다고 해서 지정하지 않았을 때보다 더 관대해지는 일은 없다. (검사하는 것은 소비 여부뿐이다 — `"1,2,3"`처럼 그룹 구분자의 **위치**가 어긋난 값은 여전히 통과한다. `DecimalFormat`이 파싱 시 그룹 크기를 검증하지 않기 때문이다.)
+- `importTrim`은 기본 `true`. `false`면 `String`만 공백을 보존하고, 다른 타입은 공백이 섞이면 파싱 실패/잘못된 값이 될 수 있다. `pattern`이 있으면 뒤쪽 공백(`"123 "`)도 소비되지 않은 입력이므로 거부된다.
 - Streaming Reader(`importUsingStreamReader`, XLSX 전용)는 수식 셀을 평가하지 못하며 헤더 행 위치를 정확히 지정해야 한다.
 
 ### 타입별 동작 요약 — Export
@@ -449,12 +450,12 @@ import 전용: export(및 샘플 export)에서는 사용되지 않는다.
 | 속성                                                                                                             | 기본값        | 설명                                                                                                             |
 |----------------------------------------------------------------------------------------------------------------|------------|----------------------------------------------------------------------------------------------------------------|
 | `name`                                                                                                         | 필드명        | 열 이름(배열). 실제 열명과 일치해야 바인딩됨(공백은 무시, 대소문자는 구분).<br/>배열로 지정 시 그중 하나만 존재해야 함                                                         |
-| `pattern`                                                                                                      | `""`       | `importPattern` / `exportPattern`이 비었을 때 쓰는 공통 폴백 패턴                                                           |
+| `pattern`                                                                                                      | `""`       | `importPattern` / `exportPattern`이 비었을 때 쓰는 공통 폴백 패턴.<br/>파싱에 쓰일 때는 값 전체와 맞아야 한다(↑ *Import 공통*) |
 | `collectionSeparator`                                                                                          | `";"`      | `importCollectionSeparator` / `exportCollectionSeparator`가 비었을 때 쓰는 공통 폴백                                      |
 | `importEnabled`                                                                                                | `true`     | Import 사용 여부                                                                                                   |
 | `importTrim`                                                                                                   | `true`     | Import 시 문자열 trim 여부.<br/>단, `false`이면 숫자·날짜·`Boolean` 등은 공백 탓에 파싱 실패/오값이 될 수 있다                               |
 | `importUnique`                                                                                                 | `false`    | Import 시 열 값들의 유일성 검사 여부                                                                                       |
-| `importPattern`                                                                                                | `""`       | Import 형식(수치=`DecimalFormat`, 날짜·시각=`DateTimeFormat`).<br/>날짜·시각은 실패 시 기본 패턴 폴백                                |
+| `importPattern`                                                                                                | `""`       | Import 형식(수치=`DecimalFormat`, 날짜·시각=`DateTimeFormat`).<br/>셀 값 전체와 맞아야 하며, 남는 문자가 있으면 그 값은 무효다.<br/>날짜·시각은 실패 시 기본 패턴 폴백(부분 일치도 실패로 쳐서 폴백 포맷터로 넘어간다) |
 | `importTrueString` / `importFalseString`                                                                       | `"true"`/`"false"` | `String` 열: 불리언 셀을 이 문자열로 렌더링.<br/>`Boolean` 열: 이 문자열(대소문자 무시)을 참/거짓으로 해석(내장 토큰보다 우선)                              |
 | `importCollectionSeparator`                                                                                    | `""`       | Cell 값을 Collection 요소로 분리할 구분자.<br/>리터럴 전체 문자열(`"::"`·`", "` 등 다중문자 가능).              |
 | `importOverrideSuperClassColumn`                                                                               | `false`    | 슈퍼클래스의 동일 컬럼명 필드를 override할지                                                                                   |

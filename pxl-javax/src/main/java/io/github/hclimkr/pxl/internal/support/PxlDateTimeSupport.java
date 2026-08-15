@@ -1,5 +1,10 @@
 package io.github.hclimkr.pxl.internal.support;
 
+import io.github.hclimkr.pxl.exception.PxlCellCodecException;
+import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
+import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
+
+import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -18,6 +23,11 @@ import java.util.Objects;
  * Builds strict (non-lenient) formatters for pattern-based parsing/formatting of cell values, and converts between the
  * legacy {@link Date} and {@link LocalDateTime} using the system default time zone. Formatters are strict on purpose so
  * that out-of-range or malformed values fail rather than being silently rolled over.
+ * <p>
+ * {@code parseFullyAsDate} continues that intent through parsing: {@code SimpleDateFormat.parse(String)} stops at
+ * the first character the pattern cannot read and reports what it got so far, so {@code "2024-01-02 xxx"} would bind as
+ * 2 January 2024 even though the cell holds something else as well. The {@code java.time} codecs already refuse that,
+ * since {@code LocalDate.parse(CharSequence, DateTimeFormatter)} requires the whole text.
  */
 public final class PxlDateTimeSupport {
 
@@ -66,6 +76,39 @@ public final class PxlDateTimeSupport {
                 .parseDefaulting(ChronoField.ERA, 1)
                 .toFormatter(locale)
                 .withResolverStyle(resolverStyle);
+    }
+
+    /**
+     * Parses the whole string with the given formatter, rejecting anything the pattern does not consume.
+     * <p>
+     * {@code SimpleDateFormat.parse(String)} only fails when the pattern matches nothing at the start of the string: it
+     * parses as far as it can, ignores the rest and reports success, so {@code "2024-01-02 xxx"} yields 2 January 2024.
+     * Parsing through a {@link ParsePosition} instead makes it possible to require that the position ends at the end of
+     * the string, which is what the {@code java.time} codecs already get from
+     * {@code LocalDate.parse(CharSequence, DateTimeFormatter)}.
+     * <p>
+     * Callers that have another parser to try (the {@link Date} import path works through the column's own pattern, then
+     * the built-in read formatters, then an ISO-8601 instant) catch this exception and move on to the next one.
+     *
+     * @param formatter the formatter to parse with
+     * @param value     the string to parse
+     * @param typeName  the target type name, used in the error message
+     * @return the parsed {@link Date}
+     * @throws PxlCellCodecException when the string is not a date in this pattern or is only partly consumed by it
+     */
+    public static Date parseFullyAsDate(final SimpleDateFormat formatter,
+                                        final String value,
+                                        final String typeName)
+            throws PxlCellCodecException {
+
+        final ParsePosition parsePosition = new ParsePosition(0);
+        final Date date = formatter.parse(value, parsePosition);
+
+        if (Objects.isNull(date) || parsePosition.getIndex() != value.length()) {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(value), typeName));
+        }
+
+        return date;
     }
 
     /**

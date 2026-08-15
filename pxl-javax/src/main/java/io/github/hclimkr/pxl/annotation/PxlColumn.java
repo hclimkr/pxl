@@ -28,6 +28,11 @@ public @interface PxlColumn {
     /**
      * Specifies the cell formatting string used when importing/exporting the Excel column.
      * If importPattern is empty, this value is used; if exportPattern is empty, this value is used.
+     * <p>
+     * A pattern has to match the value it parses in full. A value the pattern reads only the front of - {@code "1e3"}
+     * or {@code "123abc"} under {@code "#,##0"}, {@code "2024-01-02 xxx"} under {@code "yyyy-MM-dd"} - is rejected
+     * rather than bound as the part that could be read. Naming a pattern therefore never makes a column accept more
+     * than it would without one.
      *
      * @return the shared import/export cell-formatting pattern; empty ({@code ""}) by default
      */
@@ -65,6 +70,7 @@ public @interface PxlColumn {
     /**
      * Specifies the cell formatting string on import.
      * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, OffsetDateTime.
+     * The pattern has to consume the cell value in full - see {@link #pattern()}.
      *
      * @return the import-specific cell-formatting pattern; empty ({@code ""}) falls back to {@link #pattern()}
      */

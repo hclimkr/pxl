@@ -865,11 +865,76 @@ public class PxlTypeConversionTests {
     }
 
     @Test
-    public void numeric_customPattern_trailingGarbage_characterize() throws Exception {
-        // A numeric custom pattern uses DecimalFormat.parse (single-arg), so it silently drops trailing garbage ("abc" of "123abc") and parses 123 (issue M3, characterization).
-        // Pins the asymmetry with the no-pattern case, which rejects via full validation.
+    public void numeric_customPattern_trailingGarbage_throws() throws Exception {
+        // A numeric custom pattern must consume the whole string, so "123abc" is rejected rather than read as 123
+        // (issue M3 fix). This used to bind 123 silently, which made a patterned column more permissive than an
+        // unpatterned one - the no-pattern path has always rejected the same value via Integer.parseInt and friends.
         final byte[] bytes = stringSheet("G", new String[]{"Amount"}, new String[][]{{"123abc"}});
-        assertThat(importList(bytes, "G", PatternRow.class).get(0).getAmount()).isEqualByComparingTo(new BigDecimal("123"));
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "G", PatternRow.class));
+    }
+
+    @Test
+    public void numeric_customPattern_scientificNotation_throws() throws Exception {
+        // "1e3" is the dangerous shape of the same defect: "#,##0" reads the leading 1 and stops, so the value used to
+        // bind as 1 - a plausible number that no later validation could flag. The whole string must match (issue M3 fix).
+        final byte[] bytes = stringSheet("G", new String[]{"WrapInt"}, new String[][]{{"1e3"}});
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "G", NumberPatternRow.class));
+    }
+
+    @Test
+    public void numeric_customPattern_groupedValue_parses() throws Exception {
+        // Requiring full consumption must not reject what the pattern legitimately reads: the grouping separator and
+        // the decimal part are part of the pattern, so both values still bind.
+        final byte[] bytes = stringSheet("G", new String[]{"WrapInt", "BigDec"}, new String[][]{{"1,234", "9,876.25"}});
+
+        final NumberPatternRow row = importList(bytes, "G", NumberPatternRow.class).get(0);
+        assertThat(row.getWrapInt()).isEqualTo(1234);
+        assertThat(row.getBigDec()).isEqualByComparingTo(new BigDecimal("9876.25"));
+    }
+
+    @Test
+    public void numeric_customPattern_infinityToken_throws() throws Exception {
+        // DecimalFormat consumes its own infinity symbol in full, so full-consumption alone does not stop it. With
+        // setParseBigDecimal(true) it still hands back a Double for infinity/NaN, which the BigDecimal codec used to
+        // cast blindly (ClassCastException); it is now rejected as a malformed value (issue M3 fix, adjacent finding).
+        final byte[] bytes = stringSheet("G", new String[]{"BigDec"}, new String[][]{{"∞"}});   // U+221E, the Locale.ROOT infinity symbol
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "G", NumberPatternRow.class));
+    }
+
+    @Test
+    public void collection_customPattern_validElements_parse() throws Exception {
+        // A pattern on a Collection column applies to each element; well-formed elements bind as before.
+        final byte[] bytes = stringSheet("C", new String[]{"Nums"}, new String[][]{{"10;1,200;30"}});
+        assertThat(importList(bytes, "C", CollectionPatternRow.class).get(0).getNums()).containsExactly(10, 1200, 30);
+    }
+
+    @Test
+    public void collection_customPattern_trailingGarbageElement_throws() throws Exception {
+        // The element path goes through the same codec, so one bad element rejects the row rather than binding 2
+        // for "2x" (issue M3 fix).
+        final byte[] bytes = stringSheet("C", new String[]{"Nums"}, new String[][]{{"10;2x;30"}});
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "C", CollectionPatternRow.class));
+    }
+
+    @Test
+    public void date_customPattern_trailingGarbage_throws() throws Exception {
+        // java.util.Date had the same defect through SimpleDateFormat.parse (single-arg): "2024-01-02 xxx" parsed as
+        // 2 January 2024. Now the custom pattern has to match in full, and so do the built-in read formatters it falls
+        // back to (none of which is date-only), so the value is rejected (issue M2 fix).
+        final byte[] bytes = stringSheet("R", new String[]{"D"}, new String[][]{{"2024-01-02 xxx"}});
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "R", LenientJavaDateRow.class));
+    }
+
+    @Test
+    public void date_customPattern_exactValue_parses() throws Exception {
+        // The value the pattern reads end to end still binds - the fallback chain is unchanged for well-formed input.
+        final byte[] bytes = stringSheet("R", new String[]{"D"}, new String[][]{{"2024-01-02"}});
+
+        final Calendar calendar = Calendar.getInstance();
+        calendar.setTime(importList(bytes, "R", LenientJavaDateRow.class).get(0).getD());
+        assertThat(calendar.get(Calendar.YEAR)).isEqualTo(2024);
+        assertThat(calendar.get(Calendar.MONTH)).isEqualTo(Calendar.JANUARY);
+        assertThat(calendar.get(Calendar.DAY_OF_MONTH)).isEqualTo(2);
     }
 
     // ==================================================================

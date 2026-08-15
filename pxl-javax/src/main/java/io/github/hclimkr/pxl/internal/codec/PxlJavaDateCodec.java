@@ -7,12 +7,12 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlExportColumnMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlImportColumnMeta;
 import io.github.hclimkr.pxl.internal.support.PxlDateCellSupport;
+import io.github.hclimkr.pxl.internal.support.PxlDateTimeSupport;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -26,7 +26,9 @@ import java.util.Optional;
  *
  * <p>Import reads date-formatted NUMERIC cells via POI, other numerics as Excel date
  * serials, and strings via the column's cached {@link SimpleDateFormat} (falling back to the built-in read
- * formatters, then an ISO-8601 instant). A BOOLEAN cell is rejected as an unsupported cell type. Export
+ * formatters, then an ISO-8601 instant). Every one of those parsers must match the value in full, so a string
+ * carrying anything beyond the date is rejected rather than read up to the point where it stops making sense
+ * ({@code PxlDateTimeSupport.parseFullyAsDate}). A BOOLEAN cell is rejected as an unsupported cell type. Export
  * writes either a formatted string (when exported to string) or a numeric Excel-date cell (when no
  * pattern/masking applies).
  */
@@ -91,7 +93,8 @@ final class PxlJavaDateCodec {
 
     /**
      * Parses a string token into a {@link Date}. The column's cached {@link SimpleDateFormat} is
-     * tried first, then the built-in read formatters, then an ISO-8601 instant. The value is trimmed when
+     * tried first, then the built-in read formatters, then an ISO-8601 instant; a parser that matches only part of the
+     * value counts as no match and hands over to the next one. The value is trimmed when
      * {@code importTrim} is set; a blank value yields {@code null}.
      *
      * @param s          the raw string token
@@ -113,18 +116,18 @@ final class PxlJavaDateCodec {
         final SimpleDateFormat importJavaDateFormatter = columnMeta.getImportJavaDateFormatterCache();
         if (Objects.nonNull(importJavaDateFormatter)) {
             try {
-                dateValue = importJavaDateFormatter.parse(stringValue);
+                dateValue = PxlDateTimeSupport.parseFullyAsDate(importJavaDateFormatter, stringValue, "Date");
                 return dateValue;
-            } catch (ParseException parseException) {
+            } catch (PxlCellCodecException pxlCellCodecException) {
                 // go to next parser
             }
         }
 
         for (final SimpleDateFormat simpleDateFormatter : PxlCodecConstants.javaDateReadFormatters.get()) {
             try {
-                dateValue = simpleDateFormatter.parse(stringValue);
+                dateValue = PxlDateTimeSupport.parseFullyAsDate(simpleDateFormatter, stringValue, "Date");
                 return dateValue;
-            } catch (ParseException parseException) {
+            } catch (PxlCellCodecException pxlCellCodecException) {
                 // go to next parser
             }
         }
@@ -141,7 +144,7 @@ final class PxlJavaDateCodec {
 
     /**
      * Writes the given value as a {@link Date} cell and returns the exported string. A {@link String}
-     * source is parsed with the export formatter; a {@link Date} source is used directly. A
+     * source is parsed with the export formatter, which must match it in full; a {@link Date} source is used directly. A
      * {@code null} result blanks the cell; otherwise the cell is written as a formatted string when
      * exported to string, or as a numeric Excel-date cell when no pattern/masking applies.
      *
@@ -170,9 +173,9 @@ final class PxlJavaDateCodec {
                 dateValue = null;
             } else {
                 try {
-                    dateValue = exportJavaDateFormatter.parse(stringValue);
-                } catch (ParseException parseException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Date"), parseException);
+                    dateValue = PxlDateTimeSupport.parseFullyAsDate(exportJavaDateFormatter, stringValue, "Date");
+                } catch (PxlCellCodecException pxlCellCodecException) {
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Date"), pxlCellCodecException);
                 }
             }
         } else if (object instanceof Date) {

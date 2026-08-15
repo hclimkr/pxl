@@ -2,6 +2,7 @@ package io.github.hclimkr.pxl;
 
 import io.github.hclimkr.pxl.builder.PxlCsvImportBuilder;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
+import io.github.hclimkr.pxl.exception.PxlCellCodecException;
 import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
@@ -775,6 +776,32 @@ public class PxlCsvImportTests {
         assertThat(exception.getMessage()).contains("Employees");
         assertThat(exception).hasMessageContaining("importCsvDelimiter");
         assertThat(exception).hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // Value conversion: CSV shares the codecs with Excel, but always through the string path
+    // ------------------------------------------------------------------
+
+    @Test
+    public void importCsvStream_numberCustomPatternTrailingGarbage_throws() throws Exception {
+        // Every CSV value arrives as a string, so a numeric custom pattern is the parser for every row here - the
+        // branch Excel only reaches through a STRING cell. The pattern has to consume the value in full, so "123abc"
+        // is rejected instead of binding 123 (issue M3 fix).
+        final PxlCellCodecException exception = assertThrows(PxlCellCodecException.class, () -> pxl.importCsv()
+                .sheet(NumberPatternRow.class)
+                .fromStream("Numbers", stream("WrapInt\n123abc\n")));
+
+        assertThat(exception.getCause()).hasMessageContaining("123abc");
+    }
+
+    @Test
+    public void importCsvStream_numberCustomPatternGroupedValue_binds() throws Exception {
+        // The counterpart: a value the pattern reads end to end still binds, so the stricter parse costs nothing here.
+        final List<NumberPatternRow> rows = pxl.importCsv()
+                .sheet(NumberPatternRow.class)
+                .fromStream("Numbers", stream("WrapInt\n\"1,234\"\n"));
+
+        assertThat(rows.get(0).getWrapInt()).isEqualTo(1234);
     }
 
     // ------------------------------------------------------------------

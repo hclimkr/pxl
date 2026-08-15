@@ -14,7 +14,6 @@ import org.apache.poi.ss.usermodel.CellType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -82,8 +81,10 @@ final class PxlBigIntegerCodec {
 
     /**
      * Parses a string into a {@link BigInteger}. Trims first when {@code importTrim} is enabled and returns {@code null} for
-     * blank input. When an import {@link DecimalFormat} is configured (parsing to {@link BigDecimal}) its result is truncated
-     * to a {@link BigInteger}; otherwise {@code new BigInteger(String)} parses the value exactly.
+     * blank input. When an import {@link DecimalFormat} is configured (parsing to {@link BigDecimal}) the whole string must
+     * match the pattern and its result is truncated to a {@link BigInteger}
+     * ({@code PxlNumberSupport.parseFullyAsBigDecimal}, which also rejects the infinity/NaN tokens the formatter would
+     * otherwise hand back as a {@link Double}); otherwise {@code new BigInteger(String)} parses the value exactly.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
@@ -103,11 +104,7 @@ final class PxlBigIntegerCodec {
 
         final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
         if (Objects.nonNull(importDecimalFormatter)) {
-            try {
-                bigIntegerValue = ((BigDecimal) importDecimalFormatter.parse(stringValue)).toBigInteger();
-            } catch (ParseException parseException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "BigInteger"), parseException);
-            }
+            bigIntegerValue = PxlNumberSupport.parseFullyAsBigDecimal(importDecimalFormatter, stringValue, "BigInteger").toBigInteger();
         } else {
             try {
                 bigIntegerValue = new BigInteger(stringValue);

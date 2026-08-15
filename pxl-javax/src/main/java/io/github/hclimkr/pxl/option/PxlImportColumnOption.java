@@ -57,6 +57,7 @@ public final class PxlImportColumnOption {
     /**
      * Specifies the cell formatting string on import.
      * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, and OffsetDateTime.
+     * The pattern has to consume the cell value in full; a value it reads only the front of is rejected.
      */
     @Builder.Default
     private final String importPattern = null;

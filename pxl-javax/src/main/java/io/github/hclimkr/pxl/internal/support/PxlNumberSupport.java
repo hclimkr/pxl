@@ -8,12 +8,13 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.text.ParsePosition;
 import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Numeric helpers shared by the number codecs: pattern formatting, float widening, and the range/finiteness guards
- * that keep a spreadsheet's {@code double} storage from silently corrupting a bound value.
+ * Numeric helpers shared by the number codecs: pattern formatting and parsing, float widening, and the
+ * range/finiteness guards that keep a spreadsheet's {@code double} storage from silently corrupting a bound value.
  * <p>
  * A spreadsheet holds every number as a {@code double}, which is where the guards come in. {@code requireWithinRange}
  * rejects a value that would not survive the target type (including the 2^53 limit beyond which a {@code double}
@@ -25,6 +26,11 @@ import java.util.Objects;
  * {@code "#,##0.##"} parses and formats identically regardless of the JVM's default locale, and
  * {@code floatToPlainDouble} widens a {@code float} through its short decimal form so {@code 0.1f} becomes
  * {@code 0.1} rather than {@code 0.10000000149011612}.
+ * <p>
+ * {@code parseFullyAsNumber} is what the codecs parse a patterned string with. It exists because {@code DecimalFormat}'s
+ * own {@code parse(String)} stops at the first character the pattern cannot read and returns what it got so far,
+ * so a value such as {@code "1e3"} would bind as {@code 1} without any error - the opposite of the pattern-less
+ * path, where {@code Integer.parseInt} rejects the whole string.
  */
 public final class PxlNumberSupport {
 
@@ -50,6 +56,71 @@ public final class PxlNumberSupport {
     public static DecimalFormat getDecimalFormat(final String pattern) {
 
         return new DecimalFormat(pattern, DecimalFormatSymbols.getInstance(Locale.ROOT));
+    }
+
+    /**
+     * Parses the whole string with the given import formatter, rejecting anything the pattern does not consume.
+     * <p>
+     * {@code DecimalFormat.parse(String)} only fails when nothing at all could be read: it parses as far as the pattern
+     * matches, leaves the rest of the string behind and reports success, so {@code "123abc"} yields {@code 123} and
+     * {@code "1e3"} yields {@code 1}. Parsing through a {@link ParsePosition} instead makes it possible to require that
+     * the position ends at the end of the string, which is what the pattern-less paths ({@link Integer#parseInt(String)}
+     * and friends) and the {@code java.time} codecs already do.
+     * <p>
+     * Note that this checks consumption only. A grouping separator in an unexpected place ({@code "1,2,3"}) is still
+     * accepted, because {@code DecimalFormat} does not verify group sizes while parsing.
+     *
+     * @param formatter the column's import formatter
+     * @param value     the string to parse
+     * @param typeName  the target type name, used in the error message
+     * @return the parsed number
+     * @throws PxlCellCodecException when the string is not a number in this pattern or is only partly consumed by it
+     */
+    public static Number parseFullyAsNumber(final DecimalFormat formatter,
+                                            final String value,
+                                            final String typeName)
+            throws PxlCellCodecException {
+
+        final ParsePosition parsePosition = new ParsePosition(0);
+        final Number number = formatter.parse(value, parsePosition);
+
+        if (Objects.isNull(number) || parsePosition.getIndex() != value.length()) {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(value), typeName));
+        }
+
+        return number;
+    }
+
+    /**
+     * Parses the whole string with the given import formatter and returns it as a {@link BigDecimal}, for the unbounded
+     * target types ({@link BigDecimal}/{@link BigInteger}) whose formatters run with {@code setParseBigDecimal(true)}.
+     * <p>
+     * That flag does not cover every result: infinity and NaN come back as a {@link Double} even with it set, so a plain
+     * cast to {@link BigDecimal} would fail with a {@link ClassCastException} whose message says nothing about the cell.
+     * Neither value has a {@link BigDecimal} form, so they are rejected here with the same message the {@link Double} and
+     * {@link Float} codecs use.
+     *
+     * @param formatter the column's import formatter
+     * @param value     the string to parse
+     * @param typeName  the target type name, used in the error message
+     * @return the parsed value as a {@link BigDecimal}
+     * @throws PxlCellCodecException when the string is not a number in this pattern, is only partly consumed by it, or is
+     *                               infinity/NaN
+     */
+    public static BigDecimal parseFullyAsBigDecimal(final DecimalFormat formatter,
+                                                    final String value,
+                                                    final String typeName)
+            throws PxlCellCodecException {
+
+        final Number number = parseFullyAsNumber(formatter, value, typeName);
+
+        if (number instanceof BigDecimal) {
+            return (BigDecimal) number;
+        }
+
+        requireFiniteForImport(number.doubleValue(), typeName);
+
+        return new BigDecimal(number.toString());
     }
 
     /**

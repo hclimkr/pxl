@@ -12,7 +12,6 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 
 import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -78,8 +77,9 @@ final class PxlLongCodec {
 
     /**
      * Parses a string into a {@link Long}. Trims first when {@code importTrim} is enabled and returns {@code null} for blank
-     * input. When an import {@link DecimalFormat} is configured the parsed number is range-checked against the {@link Long}
-     * range and truncated; otherwise {@link Long#parseLong(String)} is used (preserving full precision).
+     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and the parsed number is range-checked against the {@link Long} range and
+     * truncated; otherwise {@link Long#parseLong(String)} is used (preserving full precision).
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
@@ -99,11 +99,7 @@ final class PxlLongCodec {
 
         final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
         if (Objects.nonNull(importDecimalFormatter)) {
-            try {
-                longValue = PxlNumberSupport.requireWithinRange(importDecimalFormatter.parse(stringValue), Long.MIN_VALUE, Long.MAX_VALUE, "Long").longValue();
-            } catch (ParseException parseException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Long"), parseException);
-            }
+            longValue = PxlNumberSupport.requireWithinRange(PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "Long"), Long.MIN_VALUE, Long.MAX_VALUE, "Long").longValue();
         } else {
             try {
                 longValue = Long.parseLong(stringValue);

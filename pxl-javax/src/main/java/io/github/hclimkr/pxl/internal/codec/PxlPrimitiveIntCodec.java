@@ -12,7 +12,6 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 
 import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -78,8 +77,9 @@ final class PxlPrimitiveIntCodec {
 
     /**
      * Parses a string into an {@code int}. Trims first when {@code importTrim} is enabled and returns {@code 0} for blank
-     * input. When an import {@link DecimalFormat} is configured the parsed number is range-checked against the {@code int}
-     * range and truncated; otherwise {@link Integer#parseInt(String)} is used.
+     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and the parsed number is range-checked against the {@code int} range and
+     * truncated; otherwise {@link Integer#parseInt(String)} is used.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
@@ -99,11 +99,7 @@ final class PxlPrimitiveIntCodec {
 
         final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
         if (Objects.nonNull(importDecimalFormatter)) {
-            try {
-                intValue = PxlNumberSupport.requireWithinRange(importDecimalFormatter.parse(stringValue), Integer.MIN_VALUE, Integer.MAX_VALUE, "int").intValue();
-            } catch (ParseException parseException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "int"), parseException);
-            }
+            intValue = PxlNumberSupport.requireWithinRange(PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "int"), Integer.MIN_VALUE, Integer.MAX_VALUE, "int").intValue();
         } else {
             try {
                 intValue = Integer.parseInt(stringValue);

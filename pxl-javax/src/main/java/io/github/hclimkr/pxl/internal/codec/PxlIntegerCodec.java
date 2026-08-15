@@ -12,7 +12,6 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 
 import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -78,8 +77,9 @@ final class PxlIntegerCodec {
 
     /**
      * Parses a string into an {@link Integer}. Trims first when {@code importTrim} is enabled and returns {@code null}
-     * for blank input. When an import {@link DecimalFormat} is configured the parsed number is range-checked against the
-     * {@link Integer} range and truncated; otherwise {@link Integer#parseInt(String)} is used.
+     * for blank input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and the parsed number is range-checked against the {@link Integer} range and
+     * truncated; otherwise {@link Integer#parseInt(String)} is used.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
@@ -99,11 +99,7 @@ final class PxlIntegerCodec {
 
         final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
         if (Objects.nonNull(importDecimalFormatter)) {
-            try {
-                integerValue = PxlNumberSupport.requireWithinRange(importDecimalFormatter.parse(stringValue), Integer.MIN_VALUE, Integer.MAX_VALUE, "Integer").intValue();
-            } catch (ParseException parseException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Integer"), parseException);
-            }
+            integerValue = PxlNumberSupport.requireWithinRange(PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "Integer"), Integer.MIN_VALUE, Integer.MAX_VALUE, "Integer").intValue();
         } else {
             try {
                 integerValue = Integer.parseInt(stringValue);

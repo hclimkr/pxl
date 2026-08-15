@@ -13,7 +13,6 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.util.NumberToTextConverter;
 
 import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -83,7 +82,8 @@ final class PxlPrimitiveFloatCodec {
 
     /**
      * Parses a string into a {@code float}. Trims first when {@code importTrim} is enabled and returns {@code 0.0f} for blank
-     * input. When an import {@link DecimalFormat} is configured its parsed value is narrowed to {@code float}; otherwise
+     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and its parsed value is narrowed to {@code float}; otherwise
      * {@link Float#parseFloat(String)} is used.
      *
      * @param s          the source string
@@ -104,11 +104,7 @@ final class PxlPrimitiveFloatCodec {
 
         final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
         if (Objects.nonNull(importDecimalFormatter)) {
-            try {
-                floatValue = importDecimalFormatter.parse(stringValue).floatValue();
-            } catch (ParseException parseException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "float"), parseException);
-            }
+            floatValue = PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "float").floatValue();
         } else {
             try {
                 floatValue = Float.parseFloat(stringValue);

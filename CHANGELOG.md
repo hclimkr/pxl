@@ -7,8 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **A numeric or `java.util.Date` `pattern` now has to match the cell value in full.** A patterned column was
+  parsed with `DecimalFormat.parse(String)` / `SimpleDateFormat.parse(String)`, which stop at the first character
+  the pattern cannot read and report success with whatever came before it: under `"#,##0"`, `"123abc"` bound as
+  `123` and `"1e3"` as `1`; under `"yyyy-MM-dd"`, `"2024-01-02 xxx"` bound as 2 January 2024. Naming a pattern
+  therefore made a column *more* permissive than leaving it off, where `Integer.parseInt` and
+  `LocalDate.parse(CharSequence, DateTimeFormatter)` have always required the whole string. Parsing now runs
+  through a `ParsePosition` and rejects anything left over, so those values raise `PxlCellCodecException` instead
+  of binding silently. Values a pattern reads end to end are unaffected, including prefixes and suffixes that are
+  part of it (`"$1,234"` under `"$#,##0"`, `"50%"` under `"#0%"`). Two consequences worth noting: with
+  `importTrim = false`, trailing whitespace (`"123 "`) is itself unconsumed input and is now rejected; and for
+  `Date`, a custom pattern that matches only part of the value counts as a miss, so the built-in read formatters
+  and the ISO-8601 instant still get their turn. Only consumption is checked - a misplaced grouping separator
+  (`"1,2,3"`) still parses, as `DecimalFormat` does not verify group sizes.
+
 ### Fixed
 
+- `BigInteger` and `BigDecimal` columns with a `pattern` threw `ClassCastException` on the infinity and NaN
+  tokens (`"∞"`, `"NaN"`). Their formatter runs with `setParseBigDecimal(true)`, which still returns a
+  `Double` for those two, and the codec cast the result to `BigDecimal` unconditionally. The importer wrapped the
+  failure with the cell coordinates, so nothing escaped, but the message named a cast rather than the value.
+  Neither has a `BigDecimal` form, so both are now refused with the same diagnostic the `Double` and `Float`
+  codecs use.
 - Javadoc that contradicted the code: `PxlConstants.DEFAULT_EXPORT_IF_NULL` / `DEFAULT_EXPORT_IF_EMPTY` decide
   whether the **sheet** is created for a null or empty row collection, not whether a cell is written;
   `PxlImportSheetOption.importExcludeHiddenRows` / `importExcludeHiddenColumns` **exclude** hidden rows and columns

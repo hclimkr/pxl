@@ -13,7 +13,6 @@ import org.apache.poi.ss.usermodel.CellType;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -80,8 +79,10 @@ final class PxlBigDecimalCodec {
 
     /**
      * Parses a string into a {@link BigDecimal}. Trims first when {@code importTrim} is enabled and returns {@code null} for
-     * blank input. When an import {@link DecimalFormat} is configured (parsing to {@link BigDecimal}) its result is used;
-     * otherwise {@code new BigDecimal(String)} parses the value exactly.
+     * blank input. When an import {@link DecimalFormat} is configured (parsing to {@link BigDecimal}) the whole string
+     * must match the pattern and its result is used ({@code PxlNumberSupport.parseFullyAsBigDecimal}, which also rejects
+     * the infinity/NaN tokens the formatter would otherwise hand back as a {@link Double}); otherwise
+     * {@code new BigDecimal(String)} parses the value exactly.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
@@ -101,11 +102,7 @@ final class PxlBigDecimalCodec {
 
         final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
         if (Objects.nonNull(importDecimalFormatter)) {
-            try {
-                bigDecimalValue = (BigDecimal) importDecimalFormatter.parse(stringValue);
-            } catch (ParseException parseException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "BigDecimal"), parseException);
-            }
+            bigDecimalValue = PxlNumberSupport.parseFullyAsBigDecimal(importDecimalFormatter, stringValue, "BigDecimal");
         } else {
             try {
                 bigDecimalValue = new BigDecimal(stringValue);

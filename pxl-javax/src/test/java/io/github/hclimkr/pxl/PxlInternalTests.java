@@ -28,6 +28,8 @@ import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.Period;
@@ -260,6 +262,32 @@ public class PxlInternalTests {
     }
 
     @Test
+    public void numberSupport_parseFullyAsNumber_rejectsPartialConsumption() throws Exception {
+        final DecimalFormat formatter = PxlNumberSupport.getDecimalFormat("#,##0");
+
+        // what the pattern reads end to end
+        assertThat(PxlNumberSupport.parseFullyAsNumber(formatter, "1,234", "X").intValue()).isEqualTo(1234);
+        // read in part: DecimalFormat.parse(String) would return 123 / 1 and drop the rest without complaint
+        assertThrows(PxlCellCodecException.class, () -> PxlNumberSupport.parseFullyAsNumber(formatter, "123abc", "X"));
+        assertThrows(PxlCellCodecException.class, () -> PxlNumberSupport.parseFullyAsNumber(formatter, "1e3", "X"));
+        // read not at all: rejected before and after
+        assertThrows(PxlCellCodecException.class, () -> PxlNumberSupport.parseFullyAsNumber(formatter, "abc", "X"));
+    }
+
+    @Test
+    public void numberSupport_parseFullyAsBigDecimal_rejectsNonFiniteToken() throws Exception {
+        final DecimalFormat formatter = PxlNumberSupport.getDecimalFormat("#,##0.00");
+        formatter.setParseBigDecimal(true);   // what the meta does for BigDecimal/BigInteger columns
+
+        assertThat(PxlNumberSupport.parseFullyAsBigDecimal(formatter, "1,234.50", "X")).isEqualByComparingTo("1234.50");
+        assertThrows(PxlCellCodecException.class, () -> PxlNumberSupport.parseFullyAsBigDecimal(formatter, "1,234.50junk", "X"));
+        // setParseBigDecimal(true) still yields a Double for the infinity and NaN tokens, which a bare cast to
+        // BigDecimal would meet with a ClassCastException
+        assertThrows(PxlCellCodecException.class, () -> PxlNumberSupport.parseFullyAsBigDecimal(formatter, "∞", "X"));
+        assertThrows(PxlCellCodecException.class, () -> PxlNumberSupport.parseFullyAsBigDecimal(formatter, "NaN", "X"));
+    }
+
+    @Test
     public void numberSupport_requireFiniteForExport_rejectsNonFinite() throws Exception {
         // finite and null values pass
         PxlNumberSupport.requireFiniteForExport((Float) 1.5F);
@@ -285,6 +313,20 @@ public class PxlInternalTests {
         final LocalDateTime ldt = LocalDateTime.of(2023, 6, 15, 10, 30, 45);
         final Date date = PxlDateTimeSupport.localDateTimeToJavaDate(ldt);
         assertThat(PxlDateTimeSupport.javaDateToLocalDateTime(date)).isEqualTo(ldt);
+    }
+
+    @Test
+    public void dateTimeSupport_parseFullyAsDate_rejectsPartialConsumption() throws Exception {
+        final SimpleDateFormat formatter = PxlDateTimeSupport.getCellSimpleDateFormatter("yyyy-MM-dd", Locale.ROOT);
+
+        final Calendar calendar = Calendar.getInstance();
+        calendar.setTime(PxlDateTimeSupport.parseFullyAsDate(formatter, "2024-01-02", "X"));
+        assertThat(calendar.get(Calendar.YEAR)).isEqualTo(2024);
+        assertThat(calendar.get(Calendar.DAY_OF_MONTH)).isEqualTo(2);
+
+        // SimpleDateFormat.parse(String) would stop at the space and report 2 January 2024 as a success
+        assertThrows(PxlCellCodecException.class, () -> PxlDateTimeSupport.parseFullyAsDate(formatter, "2024-01-02 xxx", "X"));
+        assertThrows(PxlCellCodecException.class, () -> PxlDateTimeSupport.parseFullyAsDate(formatter, "not a date", "X"));
     }
 
     @Test

@@ -12,7 +12,6 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 
 import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -79,8 +78,9 @@ final class PxlPrimitiveShortCodec {
 
     /**
      * Parses a string into a {@code short}. Trims first when {@code importTrim} is enabled and returns {@code 0} for blank
-     * input. When an import {@link DecimalFormat} is configured the parsed number is range-checked against the {@code short}
-     * range and truncated; otherwise {@link Short#parseShort(String)} is used.
+     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and the parsed number is range-checked against the {@code short} range and
+     * truncated; otherwise {@link Short#parseShort(String)} is used.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
@@ -100,11 +100,7 @@ final class PxlPrimitiveShortCodec {
 
         final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
         if (Objects.nonNull(importDecimalFormatter)) {
-            try {
-                shortValue = PxlNumberSupport.requireWithinRange(importDecimalFormatter.parse(stringValue), Short.MIN_VALUE, Short.MAX_VALUE, "short").shortValue();
-            } catch (ParseException parseException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "short"), parseException);
-            }
+            shortValue = PxlNumberSupport.requireWithinRange(PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "short"), Short.MIN_VALUE, Short.MAX_VALUE, "short").shortValue();
         } else {
             try {
                 shortValue = Short.parseShort(stringValue);

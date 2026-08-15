@@ -292,6 +292,18 @@ public class PxlSampleExcelExportTests {
     // ------------------------------------------------------------------
 
     @Test
+    public void exportSample_javaDateSampleWithTrailingGarbage_throws() {
+        // A Date column's exportSample is a raw string that the export formatter has to parse, so it is the export-side
+        // counterpart of the import defect: "2020-01-15 xxx" used to be read up to the space and written as
+        // 2020-01-15. The pattern must now match the sample in full (issue M2 fix).
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        assertThrows(PxlCellCodecException.class, () ->
+                pxl.exportSampleExcel()
+                        .sheet(BadJavaDateSampleRow.class, "S")
+                        .toStream(outputStream));
+    }
+
+    @Test
     public void exportSample_enumSampleNotAnEnumConstant_throws() {
         // An enum column's exportSample is internally reverse-parsed to the enum and re-exported, so it must be a valid value.
         // "N/A", which is not in Grade(A/B/C/F) -> the sample export fails with an exception.

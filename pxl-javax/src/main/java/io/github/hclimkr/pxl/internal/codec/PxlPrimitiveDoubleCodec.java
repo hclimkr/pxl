@@ -13,7 +13,6 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.util.NumberToTextConverter;
 
 import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -82,8 +81,9 @@ final class PxlPrimitiveDoubleCodec {
 
     /**
      * Parses a string into a {@code double}. Trims first when {@code importTrim} is enabled and returns {@code 0.0} for blank
-     * input. When an import {@link DecimalFormat} is configured its parsed value is used; otherwise
-     * {@link Double#parseDouble(String)} is used.
+     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and its parsed value is used; otherwise {@link Double#parseDouble(String)}
+     * is used.
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
@@ -103,11 +103,7 @@ final class PxlPrimitiveDoubleCodec {
 
         final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
         if (Objects.nonNull(importDecimalFormatter)) {
-            try {
-                doubleValue = importDecimalFormatter.parse(stringValue).doubleValue();
-            } catch (ParseException parseException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "double"), parseException);
-            }
+            doubleValue = PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "double").doubleValue();
         } else {
             try {
                 doubleValue = Double.parseDouble(stringValue);
