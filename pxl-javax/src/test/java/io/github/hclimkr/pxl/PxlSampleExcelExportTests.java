@@ -291,6 +291,43 @@ public class PxlSampleExcelExportTests {
     // The exportSample of an enum column must be a value parseable to that enum (constraint)
     // ------------------------------------------------------------------
 
+    // ------------------------------------------------------------------
+    // exportSample goes through the same codec as a data value, so the export forms apply to the sample row
+    // ------------------------------------------------------------------
+
+    @Test
+    public void exportSample_formulaColumn_writesFormulaCell() throws Exception {
+        // A sample value is a raw string handed to the String codec, so exportStringAsFormula turns the sample row's
+        // cell into a formula rather than into the text "=1+2".
+        final Workbook workbook = pxl.exportSampleExcel()
+                .sheet(FormulaPictureSampleRow.class, "S")
+                .toWorkbook();
+        try {
+            final Cell cell = workbook.getSheet("S").getRow(1).getCell(0);
+            assertThat(cell.getCellType()).isEqualTo(CellType.FORMULA);
+            assertThat(cell.getCellFormula()).isEqualTo("1+2");
+        } finally {
+            workbook.close();
+        }
+    }
+
+    @Test
+    public void exportSample_pictureColumn_takesPicturePath() throws Exception {
+        // The same applies to exportStringAsPicture: the sample value is treated as an image location. "photo.png" is
+        // not one that can be loaded, so it is skipped the way any bad location is and the cell is left empty - the
+        // sample row does not fall back to showing the location as text.
+        final Workbook workbook = pxl.exportSampleExcel()
+                .sheet(FormulaPictureSampleRow.class, "S")
+                .toWorkbook();
+        try {
+            final Cell cell = workbook.getSheet("S").getRow(1).getCell(1);
+            assertThat(cell.getCellType()).isEqualTo(CellType.BLANK);
+            assertThat(workbook.getAllPictures()).isEmpty();
+        } finally {
+            workbook.close();
+        }
+    }
+
     @Test
     public void exportSample_javaDateSampleWithTrailingGarbage_throws() {
         // A Date column's exportSample is a raw string that the export formatter has to parse, so it is the export-side

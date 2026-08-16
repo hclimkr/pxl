@@ -472,8 +472,8 @@ import 전용: export(및 샘플 export)에서는 사용되지 않는다.
 | `exportEnumDropDownListStyle`                                                                                  | `SET`      | Enum 필드를 드롭다운으로 설정할 스타일 (`SET` / `SORTED_SET` / `NONE`)                                                        |
 | `exportNullString`                                                                                             | `""`       | null 값(및 빈/공백 `String`)을 export할 때 쓸 문자열. 기본은 빈 문자열이 든 문자열 셀(blank 셀 아님)                                       |
 | `exportTrueString` / `exportFalseString`                                                                       | `"true"`/`"false"` | 참/거짓을 export할 때 쓸 문자열.<br/>커스텀 값을 다시 import하려면 `importTrueString`/`importFalseString`도 같은 값으로 지정               |
-| `exportStringAsPicture`                                                                                        | `false`    | 이미지 URL 문자열을 셀에 이미지로 삽입                                                                                        |
-| `exportStringAsFormula`                                                                                        | `false`    | 수식 문자열(선두 `=`)을 계산하여 셀에 적용                                                                                     |
+| `exportStringAsPicture`                                                                                        | `false`    | 이미지 URL 문자열을 셀에 이미지로 삽입 |
+| `exportStringAsFormula`                                                                                        | `false`    | 수식 문자열(선두 `=`)을 계산하여 셀에 적용.<br/>`exportStringAsPicture`와 함께 지정하면 이쪽이 우선 |
 | `exportColumnRequiredHeaderCellStyler` / `exportColumnOptionalHeaderCellStyler` / `exportColumnDataCellStyler` | (미지정)      | 컬럼 단위 셀 스타일 (미지정 시 Sheet 단위로 위임)                                                                               |
 
 ### `@PxlImportConverter` / `@PxlExportConverter` (메서드 대상)

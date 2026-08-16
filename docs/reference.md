@@ -481,8 +481,8 @@ Import-only: It is not used on export (or sample export).
 | `exportEnumDropDownListStyle`                                                                                  | `SET`      | Style to set an Enum field as a dropdown (`SET` / `SORTED_SET` / `NONE`)                                        |
 | `exportNullString`                                                                                             | `""`       | String to use when exporting a null value (and empty/blank `String`). Default is a string cell containing an empty string (not a blank cell) |
 | `exportTrueString` / `exportFalseString`                                                                       | `"true"`/`"false"` | Strings to use when exporting true/false.<br/>To import a custom value again, specify `importTrueString`/`importFalseString` with the same values |
-| `exportStringAsPicture`                                                                                        | `false`    | Insert an image URL string into the cell as an image                                                            |
-| `exportStringAsFormula`                                                                                        | `false`    | Compute a formula string (leading `=`) and apply it to the cell                                                 |
+| `exportStringAsPicture`                                                                                        | `false`    | Insert an image URL string into the cell as an image |
+| `exportStringAsFormula`                                                                                        | `false`    | Compute a formula string (leading `=`) and apply it to the cell.<br/>Takes precedence over `exportStringAsPicture` when both are set |
 | `exportColumnRequiredHeaderCellStyler` / `exportColumnOptionalHeaderCellStyler` / `exportColumnDataCellStyler` | (unspecified) | Column-level cell style (delegates to the Sheet level when unspecified)                                      |
 
 ### `@PxlImportConverter` / `@PxlExportConverter` (targets a method)

@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A `String` column with `exportStringAsPicture` wrote a value starting with `=` as quote-prefixed text instead of
+  embedding a picture. The export checked the leading `=` before it looked at any option, so the picture branch was
+  only reachable for values that did not start with one - and the same attribute on a `Collection` column had no
+  such check, making one annotation behave differently by field type. The options now pick the form first, with
+  `exportStringAsFormula` taking precedence over `exportStringAsPicture` when both are set; the quote prefix stays
+  as what it always was, a safeguard on how a plain-text value is written.
 - An empty CSV value bound a space (`0x20`) to a `char` column instead of leaving it at the Java default. A blank
   Excel cell never reaches the codec - the resolver drops it and the field keeps what it held - so the same absent
   value meant two different things depending on the source, and `char` was the only primitive where that was

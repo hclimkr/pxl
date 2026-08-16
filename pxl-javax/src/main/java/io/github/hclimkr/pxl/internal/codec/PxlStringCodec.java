@@ -115,10 +115,12 @@ final class PxlStringCodec {
     /**
      * Writes the given value's {@link String} form into the cell (when non-{@code null}) and returns it.
      *
-     * <p>A value starting with {@code '='} is treated as a formula: it is set as a cell formula when
-     * {@code exportStringAsFormula} is enabled (falling back to a quote-prefixed literal on failure),
-     * otherwise written as a quote-prefixed literal. When {@code exportStringAsPicture} is enabled the
-     * string is rendered as an embedded picture; otherwise it is written as a plain string value.
+     * <p>The column's options pick the form, in this order: with {@code exportStringAsFormula} enabled a value
+     * starting with {@code '='} is set as a cell formula (falling back to a quote-prefixed literal when POI rejects
+     * it), then {@code exportStringAsPicture} renders the string as an embedded picture, and otherwise the string is
+     * written as a plain value. Formula therefore wins when both options are set. A value starting with {@code '='}
+     * that lands in the plain-text form is written quote-prefixed, so Excel shows it verbatim instead of reading it
+     * as a formula - a safeguard on how text is written, not a fourth way of choosing the form.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
      * @param object     the source value (a {@link String})
@@ -131,16 +133,10 @@ final class PxlStringCodec {
 
         final String cellString = makeExportString(object, columnMeta);
         if (Objects.nonNull(cell)) {
-            if (StringUtils.startsWith(cellString, "=")) {  // FORMULA
-                if (columnMeta.isExportStringAsFormula()) {
-                    try {
-                        cell.setCellFormula(StringUtils.substring(cellString, 1));
-                    } catch (Exception ignored) {
-                        columnMeta.setQuotePrefixedCellValue(cell, cellString);
-                    }
-                } else {
-                    // Quote(Apostrophe) Prefix
-                    // A leading single quote character ' is a special character in Excel, which tells it to treat it's contents verbatim.
+            if (columnMeta.isExportStringAsFormula() && StringUtils.startsWith(cellString, "=")) {  // FORMULA
+                try {
+                    cell.setCellFormula(StringUtils.substring(cellString, 1));
+                } catch (Exception ignored) {
                     columnMeta.setQuotePrefixedCellValue(cell, cellString);
                 }
             } else if (columnMeta.isExportStringAsPicture()) {
@@ -150,6 +146,10 @@ final class PxlStringCodec {
                         PxlConstants.EXPORT_PICTURE_SCREEN_HEIGHT_IN_PIXELS,
                         PxlConstants.EXPORT_PICTURE_SCREEN_PADDING_IN_PIXELS,
                         PxlConstants.EXPORT_HORIZONTAL_NUMBER_OF_PICTURE);
+            } else if (StringUtils.startsWith(cellString, "=")) {
+                // Quote(Apostrophe) Prefix
+                // A leading single quote character ' is a special character in Excel, which tells it to treat it's contents verbatim.
+                columnMeta.setQuotePrefixedCellValue(cell, cellString);
             } else {
                 cell.setCellValue(cellString);
             }

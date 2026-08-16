@@ -552,6 +552,28 @@ public class PxlExcelExportTests {
         assertThat(out.get(0).getExpr()).isEqualTo("=1+2");
     }
 
+    @Test
+    public void exportLiteralFormula_writtenQuotePrefixed() throws Exception {
+        // The round-trip above shows the value survives; this pins how. Without exportStringAsFormula the leading '='
+        // makes the cell a quote-prefixed string, so Excel shows the text verbatim instead of reading it as a formula.
+        // That prefix is a safeguard on writing text, not one of the forms the column options choose between.
+        final LiteralRow row = new LiteralRow();
+        row.setExpr("=1+2");
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .sheet(LiteralRow.class, Arrays.asList(row), "Literal")
+                .override(noValidationOption())
+                .toFile(excelFile);
+
+        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+            final Cell cell = firstDataCell(workbook, "Literal", "Expr");
+            assertThat(cell.getCellType()).isEqualTo(CellType.STRING);
+            assertThat(cell.getStringCellValue()).isEqualTo("=1+2");
+            assertThat(cell.getCellStyle().getQuotePrefixed()).isTrue();
+        }
+    }
+
     // ------------------------------------------------------------------
     // Column inheritance: @PxlColumn fields from the superclass are also bound
     // ------------------------------------------------------------------
@@ -907,6 +929,28 @@ public class PxlExcelExportTests {
             assertThat(cell.getCellFormula()).isEqualTo("2+3");
             // If export had not computed it, the cached value would be 0.0 - 5.0 means it was computed at export time.
             assertThat(cell.getNumericCellValue()).isEqualTo(5.0);
+        }
+    }
+
+    // exportStringAsFormula only claims a value that starts with '=': anything else is ordinary text.
+    @Test
+    public void exportFormula_valueWithoutLeadingEquals_writesPlainText() throws Exception {
+        final FormulaRow row = new FormulaRow();
+        row.setLabel("calc");
+        row.setFormula("not a formula");
+
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
+                .override(noValidationOption())
+                .toFile(excelFile);
+
+        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+            final Cell cell = firstDataCell(workbook, "Formula", "Formula");
+            assertThat(cell.getCellType()).isEqualTo(CellType.STRING);
+            assertThat(cell.getStringCellValue()).isEqualTo("not a formula");
+            // no leading '=', so there is nothing for the quote prefix to guard against either
+            assertThat(cell.getCellStyle().getQuotePrefixed()).isFalse();
         }
     }
 
