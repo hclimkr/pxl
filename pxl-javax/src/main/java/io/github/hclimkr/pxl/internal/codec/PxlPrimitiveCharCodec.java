@@ -17,7 +17,9 @@ import java.util.Optional;
  * Codec for primitive {@code char} column values - parses cells and strings into {@code char} on import and writes {@code char}
  * into cells on export. The character is taken as the first character of the cell's text (numeric cells are first rendered via
  * {@link NumberToTextConverter}); boolean cells map to {@code '1'}/{@code '0'}. Because {@code char} cannot be {@code null},
- * empty/blank input parses to a space {@code ' '}. Export always writes the character as a text cell (no numeric formatting or masking).
+ * empty/blank input parses to {@code (char) 0}, the type's own default - the same choice the other primitive codecs make
+ * ({@code 0}, {@code 0.0}), so an empty value leaves the field indistinguishable from one that was never set. Export always
+ * writes the character as a text cell (no numeric formatting or masking).
  */
 final class PxlPrimitiveCharCodec {
 
@@ -32,18 +34,19 @@ final class PxlPrimitiveCharCodec {
     /**
      * Parses an Excel cell into a {@code char}. NUMERIC cells are rendered to text via {@link NumberToTextConverter} and the
      * first character is taken; STRING cells take their first character; BOOLEAN cells map to {@code '1'} (true) or {@code '0'}
-     * (false); BLANK cells yield a space {@code ' '}.
+     * (false); BLANK cells yield {@code (char) 0} (the resolver returns {@code null} for a blank cell before this codec is
+     * reached, so the field keeps whatever it held).
      *
      * @param cell       the source cell
      * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code char} (a space for a blank cell)
+     * @return the parsed {@code char} ({@code (char) 0} for a blank cell)
      * @throws PxlCellCodecException if the cell type is unsupported
      */
     static char parsePrimitiveCharValue(final Cell cell,
                                         final PxlImportColumnMeta columnMeta)
             throws PxlCellCodecException {
 
-        char charValue = ' ';
+        char charValue = (char) 0;
 
         final CellType cellType = cell.getCellType();
         switch (cellType) {
@@ -74,12 +77,12 @@ final class PxlPrimitiveCharCodec {
     }
 
     /**
-     * Parses a string into a {@code char}. Trims first when {@code importTrim} is enabled and returns a space {@code ' '} for
+     * Parses a string into a {@code char}. Trims first when {@code importTrim} is enabled and returns {@code (char) 0} for
      * empty input; otherwise returns the first character of the string (any remaining characters are ignored).
      *
      * @param s          the source string
      * @param columnMeta resolved import metadata for the column
-     * @return the first character, or a space for empty input
+     * @return the first character, or {@code (char) 0} for empty input
      * @throws PxlCellCodecException if the first character cannot be read
      */
     static char parsePrimitiveCharValue(final String s,
@@ -88,7 +91,7 @@ final class PxlPrimitiveCharCodec {
 
         final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
         if (StringUtils.isEmpty(stringValue)) {
-            return ' ';
+            return (char) 0;
         }
 
         char charValue;

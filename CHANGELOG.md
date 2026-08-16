@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An empty CSV value bound a space (`0x20`) to a `char` column instead of leaving it at the Java default. A blank
+  Excel cell never reaches the codec - the resolver drops it and the field keeps what it held - so the same absent
+  value meant two different things depending on the source, and `char` was the only primitive where that was
+  visible (`int` and `double` already yield `0`/`0.0`). An empty value now parses to `(char) 0` on both paths.
 - A `boolean`/`Boolean` column read a numeric cell through `Math.abs(value) > 0.0000001` instead of comparing it
   with zero, so a genuine small value such as `1e-8` bound as `false` with nothing to show for it. The cutoff had
   no recorded rationale and contradicted the REFERENCE, which has always said a numeric cell is `true` when it is

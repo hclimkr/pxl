@@ -565,6 +565,20 @@ public class PxlTypeConversionTests {
     }
 
     @Test
+    public void primitiveChar_emptyValue_isJavaDefault() throws Exception {
+        // An empty value leaves a char field at the Java default, the way the other primitives already behaved. A CSV
+        // empty token used to bind a space (0x20), so a blank Excel cell (which the resolver drops before the codec,
+        // leaving the field untouched) and an empty CSV field disagreed on the same absent value (issue L5 fix).
+        final byte[] excelBytes = stringSheet("E", new String[]{"PrimChar"}, new String[][]{{""}});
+        assertThat(importList(excelBytes, "E", AllTypesRow.class).get(0).getPrimChar()).isEqualTo((char) 0);
+
+        final List<AllTypesRow> csvRows = pxl.importCsv()
+                .sheet(AllTypesRow.class)
+                .fromStream("E", new ByteArrayInputStream("PrimChar\n\"\"\n".getBytes(StandardCharsets.UTF_8)));
+        assertThat(csvRows.get(0).getPrimChar()).isEqualTo((char) 0);
+    }
+
+    @Test
     public void boolean_numericCell_nonZeroIsTrue() throws Exception {
         // A numeric cell is true when it is not zero, which is the rule the REFERENCE states. The comparison used
         // to be against an epsilon (|x| > 1e-7), so a genuine small value such as 1e-8 read as false with nothing
