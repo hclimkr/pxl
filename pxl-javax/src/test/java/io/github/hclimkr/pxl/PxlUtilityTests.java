@@ -439,6 +439,27 @@ public class PxlUtilityTests {
     }
 
     @Test
+    public void rowUtils_copyRow_xlsDestinationBeforeSource_copiesValueAndRegion() throws Exception {
+        try (HSSFWorkbook workbook = new HSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            for (int rowIndex = 0; rowIndex <= 6; rowIndex++) {
+                sheet.createRow(rowIndex).createCell(0).setCellValue("r" + rowIndex);
+                sheet.getRow(rowIndex).createCell(1).setCellValue("x" + rowIndex);
+            }
+            sheet.addMergedRegion(new CellRangeAddress(5, 5, 0, 1));   // A6:B6, anchored on the source row
+
+            PxlRowUtils.copyRow(sheet, 5, 3);   // the shift pushes the source down to row 6
+
+            // HSSF's shiftRows empties the source Row object instead of moving it, so a reference taken before
+            // the shift would have no cells left and the destination would come out blank.
+            assertThat(sheet.getRow(3).getCell(0).getStringCellValue()).isEqualTo("r5");
+            assertThat(sheet.getRow(6).getCell(0).getStringCellValue()).isEqualTo("r5");   // the source itself
+            assertThat(sheet.getMergedRegions()).extracting(CellRangeAddress::formatAsString)
+                    .containsExactlyInAnyOrder("A7:B7", "A4:B4");
+        }
+    }
+
+    @Test
     public void rowUtils_copyRowMultiply_replicatesAcrossRange() throws Exception {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             final Sheet sheet = workbook.createSheet("S");
@@ -637,6 +658,16 @@ public class PxlUtilityTests {
 
             // A missing source cell -> null.
             assertThat(PxlCellUtils.copyCell(sheet, 50, 50, 60, 60, true)).isNull();
+
+            // createIfNone governs the destination: without it an absent destination is left alone.
+            assertThat(PxlCellUtils.copyCell(sheet, 0, 0, 4, 4, false)).isNull();
+            assertThat(sheet.getRow(4)).isNull();
+
+            // An existing destination is copied onto even when nothing may be created.
+            sheet.createRow(5).createCell(5).setCellValue("overwrite me");
+            final Cell dstCell3 = PxlCellUtils.copyCell(sheet, 0, 0, 5, 5, false);
+            assertThat(dstCell3).isNotNull();
+            assertThat(dstCell3.getStringCellValue()).isEqualTo("copyme");
         }
     }
 
@@ -965,6 +996,29 @@ public class PxlUtilityTests {
 
             // The shift moves the source row to index 8 first, so index 5 is an emptied destination that still
             // has to be filled - the guard compares shifted coordinates rather than the original index.
+            for (int rowIndex = 3; rowIndex <= 5; rowIndex++) {
+                assertThat(sheet.getRow(rowIndex).getCell(0).getStringCellValue()).isEqualTo("r5");
+            }
+            assertThat(sheet.getRow(8).getCell(0).getStringCellValue()).isEqualTo("r5");   // the source itself
+            assertThat(sheet.getMergedRegions()).extracting(CellRangeAddress::formatAsString)
+                    .containsExactlyInAnyOrder("A9:B9", "A4:B4", "A5:B5", "A6:B6");
+        }
+    }
+
+    @Test
+    public void rowUtils_copyRowMultiplyByRange_xlsRangeCoveringSourceRow_copiesEveryRow() throws Exception {
+        try (HSSFWorkbook workbook = new HSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            for (int rowIndex = 0; rowIndex <= 6; rowIndex++) {
+                sheet.createRow(rowIndex).createCell(0).setCellValue("r" + rowIndex);
+                sheet.getRow(rowIndex).createCell(1).setCellValue("x" + rowIndex);
+            }
+            sheet.addMergedRegion(new CellRangeAddress(5, 5, 0, 1));   // A6:B6, anchored on the source row
+
+            PxlRowUtils.copyRowMultiplyByRange(sheet, 5, 3, 5);   // the shift pushes the source down to row 8
+
+            // Same expectation as the XSSF case above: XLS used to produce three blank rows here, because
+            // HSSF's shiftRows moves the cells out of the source Row object rather than moving the object.
             for (int rowIndex = 3; rowIndex <= 5; rowIndex++) {
                 assertThat(sheet.getRow(rowIndex).getCell(0).getStringCellValue()).isEqualTo("r5");
             }

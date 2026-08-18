@@ -16,7 +16,7 @@ import java.util.Objects;
  * column letters, cell references and range addresses, plus a check for whether a styler class is
  * an effective (usable) cell styler.
  */
-public class PxlMiscUtils {
+public final class PxlMiscUtils {
 
     /**
      * Prevents instantiation.

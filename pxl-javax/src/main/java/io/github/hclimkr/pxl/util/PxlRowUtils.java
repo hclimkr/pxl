@@ -14,13 +14,15 @@ import java.util.stream.IntStream;
  * Row-level POI helpers: blank-row detection, fetching a row (optionally creating it), copying a row - once, over a
  * destination range, or a number of times - and removing rows by range or count.
  * <p>
- * A copy carries the source row's height, row style, every cell (through {@link PxlCellUtils#copyCell}) and the
- * merged regions anchored on it, shifting existing rows down when the destination is occupied. A removal closes the
- * gap by shifting the rows below up, dropping the merged regions contained in the removed range first, so the sheet
- * stays contiguous.
+ * A copy carries the source row's height, its row style when it has one, every cell (through
+ * {@link PxlCellUtils#copyCell}) and the merged regions anchored on it, shifting existing rows down when the
+ * destination is occupied. A removal closes the gap by shifting the rows below up, dropping the merged regions
+ * contained in the removed range first, so the sheet stays contiguous.
  * <p>
- * All of it rewrites sheet structure, which a streaming sheet ({@link StreamingSheet}) cannot do - every method
- * no-ops there, as it does on a {@code null} sheet or a missing source row.
+ * All of it rewrites sheet structure, which a streaming sheet ({@link StreamingSheet}) cannot do - every
+ * sheet-taking method no-ops there, as it does on a {@code null} sheet or a missing source row. The count-based
+ * overloads add nothing of their own beyond rejecting a non-positive count, and {@code isBlankRow} takes a row
+ * rather than a sheet, so neither is affected.
  */
 public final class PxlRowUtils {
 
@@ -85,12 +87,12 @@ public final class PxlRowUtils {
     }
 
     /**
-     * Copies a row to another position within the same sheet, including height, row style, every cell
-     * (via {@link PxlCellUtils#copyCell}) and any merged regions anchored on the source row. If the
-     * destination row already exists, existing rows from it downward are first shifted down by one to
-     * make room. A {@code null} sheet, a streaming sheet ({@link StreamingSheet}) or a missing source
-     * row makes this a no-op, as does a destination that resolves to the source row itself once the
-     * shift has been applied.
+     * Copies a row to another position within the same sheet, including height, the row style when the
+     * source has one, every cell (via {@link PxlCellUtils#copyCell}) and any merged regions anchored on
+     * the source row. If the destination row already exists, existing rows from it downward are first
+     * shifted down by one to make room, and the source is then read at wherever that shift left it. A
+     * {@code null} sheet, a streaming sheet ({@link StreamingSheet}) or a missing source row makes this
+     * a no-op, as does giving the same index for source and destination.
      *
      * @param sheet       the sheet to operate on
      * @param srcRowIndex the zero-based index of the source row
@@ -108,14 +110,26 @@ public final class PxlRowUtils {
             return;
         }
 
-        final Row srcRow = sheet.getRow(srcRowIndex);
-        if (Objects.isNull(srcRow)) {
+        if (Objects.isNull(sheet.getRow(srcRowIndex))) {
             return;
         }
 
+        int shiftedSrcRowIndex = srcRowIndex;
         if (dstRowIndex <= sheet.getLastRowNum()) {
             // If destination row exist, push down all rows by 1
             sheet.shiftRows(dstRowIndex, sheet.getLastRowNum(), 1);
+
+            if (srcRowIndex >= dstRowIndex) {
+                shiftedSrcRowIndex = srcRowIndex + 1;
+            }
+        }
+
+        // Read the source at its post-shift index rather than holding the reference taken before the shift:
+        // XSSF moves the Row object itself and renumbers it, while HSSF moves the cells into another Row
+        // object and empties this one, so only a re-read reference carries cells on both.
+        final Row srcRow = sheet.getRow(shiftedSrcRowIndex);
+        if (Objects.isNull(srcRow)) {
+            return;
         }
 
         final Row dstRow = Optional.ofNullable(sheet.getRow(dstRowIndex))
@@ -136,12 +150,13 @@ public final class PxlRowUtils {
     }
 
     /**
-     * Replicates a source row across an inclusive destination row range, copying height, row style and
-     * every cell into each target row, then re-applying the source row's merged regions across the
-     * range. If the range start already exists, existing rows are first shifted down to make room for
-     * the whole range. A {@code null} sheet, a streaming sheet ({@link StreamingSheet}), an inverted
-     * range ({@code dstStartRowIndex > dstEndRowIndex}) or a missing source row makes this a no-op, and
-     * a destination row that is the source row itself once the shift has been applied is skipped.
+     * Replicates a source row across an inclusive destination row range, copying height, the row style
+     * when the source has one, and every cell into each target row, then re-applying the source row's
+     * merged regions across the range. If the range start already exists, existing rows are first
+     * shifted down to make room for the whole range, and the source is then read at wherever that shift
+     * left it. A {@code null} sheet, a streaming sheet ({@link StreamingSheet}), an inverted range
+     * ({@code dstStartRowIndex > dstEndRowIndex}) or a missing source row makes this a no-op, and a
+     * destination row that is the source row itself once the shift has been applied is skipped.
      *
      * @param sheet            the sheet to operate on
      * @param srcRowIndex      the zero-based index of the source row
@@ -160,14 +175,27 @@ public final class PxlRowUtils {
             return;
         }
 
-        final Row srcRow = sheet.getRow(srcRowIndex);
-        if (Objects.isNull(srcRow)) {
+        if (Objects.isNull(sheet.getRow(srcRowIndex))) {
             return;
         }
 
+        int shiftedSrcRowIndex = srcRowIndex;
         if (dstStartRowIndex <= sheet.getLastRowNum()) {
             // If destination rows exist, push down all rows
-            sheet.shiftRows(dstStartRowIndex, sheet.getLastRowNum(), dstEndRowIndex - dstStartRowIndex + 1);
+            final int shiftedRowCount = dstEndRowIndex - dstStartRowIndex + 1;
+            sheet.shiftRows(dstStartRowIndex, sheet.getLastRowNum(), shiftedRowCount);
+
+            if (srcRowIndex >= dstStartRowIndex) {
+                shiftedSrcRowIndex = srcRowIndex + shiftedRowCount;
+            }
+        }
+
+        // Read the source at its post-shift index rather than holding the reference taken before the shift:
+        // XSSF moves the Row object itself and renumbers it, while HSSF moves the cells into another Row
+        // object and empties this one, so only a re-read reference carries cells on both.
+        final Row srcRow = sheet.getRow(shiftedSrcRowIndex);
+        if (Objects.isNull(srcRow)) {
+            return;
         }
 
         IntStream.range(dstStartRowIndex, dstEndRowIndex + 1)
@@ -189,11 +217,9 @@ public final class PxlRowUtils {
 
                                 PxlCellUtils.copyCell(srcCell, dstCell);
                             });
-
-//                    PxlMergedRegionUtils.copyMergedRegionsInRow(sheet, srcRow, dstRow);
                 });
 
-        // After shiftRows the row that srcRowIndex points to may have moved, so pass the srcRow object that reflects the shift.
+        // srcRow was read at its post-shift index, so its row number matches where the regions moved to.
         PxlRegionUtils.copyMergedRegionsInRow(sheet, srcRow, dstStartRowIndex, dstEndRowIndex);
     }
 
@@ -215,17 +241,6 @@ public final class PxlRowUtils {
             copyRowMultiplyByRange(sheet, srcRowIndex, dstStartRowIndex, dstStartRowIndex + rowCount - 1);
         }
     }
-
-//    public static void copyRowMultiplyByCount(final Sheet sheet,
-//                                              final int srcRowIndex,
-//                                              final int dstStartRowIndex,
-//                                              final int rowCount) {
-//
-//        if (rowCount > 0) {
-//            IntStream.range(0, rowCount)
-//                    .forEach(i -> PxlSheetUtils.copyRow(sheet, srcRowIndex, dstStartRowIndex));
-//        }
-//    }
 
     /**
      * Removes an inclusive range of rows and closes the gap by shifting the rows below up. Merged

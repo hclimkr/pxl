@@ -13,9 +13,10 @@ import java.util.stream.IntStream;
 /**
  * Merged-region helpers: looking up the merged region covering a cell, replicating a source row's
  * merged regions onto other rows, and removing merged regions within a row range. Streaming sheets
- * ({@link StreamingSheet}) do not expose merged regions, so every method treats them as a no-op.
+ * ({@link StreamingSheet}) do not expose merged regions, so the methods that write are a no-op there
+ * and {@code getMergedRegion} yields {@code null}, exactly as they do on a {@code null} sheet.
  */
-public class PxlRegionUtils {
+public final class PxlRegionUtils {
 
     /**
      * Prevents instantiation.

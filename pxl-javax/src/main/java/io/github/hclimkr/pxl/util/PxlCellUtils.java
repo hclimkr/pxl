@@ -178,18 +178,18 @@ public final class PxlCellUtils {
 
     /**
      * Copies a cell to another position within the same sheet, resolving both cells by index and
-     * delegating to {@link #copyCell(Cell, Cell)}. The destination cell is always created, while the
-     * source cell is never created. Returns {@code null} when the source cell does not exist (the
-     * {@code createIfNone} parameter governs whether the intermediate lookup would create it, but here
-     * the source is looked up without creation).
+     * delegating to {@link #copyCell(Cell, Cell)}. The source cell is looked up without creation, since
+     * copying from a cell that does not exist has nothing to read; {@code createIfNone} governs the
+     * destination, which is created when absent only if it is {@code true}. Returns {@code null} when
+     * the source cell does not exist, or when the destination is absent and not to be created.
      *
      * @param sheet          the sheet to operate on
      * @param srcRowIndex    the zero-based source row index
      * @param srcColumnIndex the zero-based source column index
      * @param dstRowIndex    the zero-based destination row index
      * @param dstColumnIndex the zero-based destination column index
-     * @param createIfNone   retained for call-site symmetry; the destination is always created
-     * @return the destination cell, or {@code null} if the source cell is absent
+     * @param createIfNone   whether to create the destination row and cell if they do not yet exist
+     * @return the destination cell, or {@code null} if either cell is unavailable
      */
     public static Cell copyCell(final Sheet sheet,
                                 final int srcRowIndex,
@@ -203,7 +203,7 @@ public final class PxlCellUtils {
             return null;
         }
 
-        final Cell dstCell = getCell(sheet, dstRowIndex, dstColumnIndex, true);
+        final Cell dstCell = getCell(sheet, dstRowIndex, dstColumnIndex, createIfNone);
         if (Objects.isNull(dstCell)) {
             return null;
         }
@@ -219,8 +219,9 @@ public final class PxlCellUtils {
      * from the source cell, only one destination would keep it when a template cell is copied repeatedly,
      * and across workbooks it would not attach to the destination at all while moving inside the source
      * workbook. The copy carries the source's text, author and visibility, and keeps the source anchor's
-     * size while sitting over the destination cell; rich-text runs are flattened to plain text. A source
-     * cell without a comment is a no-op.
+     * size - at least one column and one row wide, and one cell wide when the source reports no anchor -
+     * while sitting over the destination cell; rich-text runs are flattened to plain text. A source cell
+     * without a comment is a no-op.
      *
      * @param srcCell the cell to read the comment from
      * @param dstCell the cell to attach the copied comment to
@@ -1017,7 +1018,8 @@ public final class PxlCellUtils {
      * cell itself is non-blank it is returned as-is. Otherwise, when the position falls inside a merged
      * region, the region's top-left (first row/first column) cell is returned, since that is where a
      * merged region's value lives. For a streaming sheet ({@link StreamingSheet}), which cannot report
-     * merged regions, the plain cell is returned without merge resolution.
+     * merged regions, the plain cell is returned without merge resolution, and a {@code null} sheet
+     * yields {@code null}.
      *
      * @param sheet       the sheet to read from
      * @param rowIndex    the zero-based row index
@@ -1027,6 +1029,10 @@ public final class PxlCellUtils {
     public static Cell getCellWithMerges(final Sheet sheet,
                                          final int rowIndex,
                                          final int columnIndex) {
+
+        if (Objects.isNull(sheet)) {
+            return null;
+        }
 
         final Cell cell = getCell(sheet, rowIndex, columnIndex, false);
 
