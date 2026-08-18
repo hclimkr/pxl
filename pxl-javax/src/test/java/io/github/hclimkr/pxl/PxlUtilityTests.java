@@ -297,6 +297,42 @@ public class PxlUtilityTests {
     }
 
     @Test
+    public void regionUtils_copyMergedRegionsInRow_rangeWithMultiRowRegion_skipsOnlyThatRegion() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            sheet.createRow(5);
+            for (int rowIndex = 10; rowIndex <= 12; rowIndex++) {
+                sheet.createRow(rowIndex);
+            }
+            sheet.addMergedRegion(new CellRangeAddress(5, 7, 0, 0));   // A6:A8, three rows tall
+            sheet.addMergedRegion(new CellRangeAddress(5, 5, 1, 2));   // B6:C6, one row tall
+
+            PxlRegionUtils.copyMergedRegionsInRow(sheet, 5, 10, 12);
+
+            // Destinations are one row apart, so replicating the three-row region would overlap the copy made
+            // for the row before it; it is skipped, while the one-row region is copied onto every row.
+            assertThat(sheet.getMergedRegions()).extracting(CellRangeAddress::formatAsString)
+                    .containsExactlyInAnyOrder("A6:A8", "B6:C6", "B11:C11", "B12:C12", "B13:C13");
+        }
+    }
+
+    @Test
+    public void regionUtils_copyMergedRegionsInRow_singleDestination_replicatesMultiRowRegion() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            final Row srcRow = sheet.createRow(5);
+            final Row dstRow = sheet.createRow(20);
+            sheet.addMergedRegion(new CellRangeAddress(5, 7, 0, 0));   // A6:A8, three rows tall
+
+            // A single destination cannot collide with a copy of itself, so the row span is carried over.
+            PxlRegionUtils.copyMergedRegionsInRow(sheet, srcRow, dstRow);
+
+            assertThat(sheet.getMergedRegions()).extracting(CellRangeAddress::formatAsString)
+                    .containsExactlyInAnyOrder("A6:A8", "A21:A23");
+        }
+    }
+
+    @Test
     public void regionUtils_removeMergedRegionInRows_removesContainedRegions() throws Exception {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             final Sheet sheet = workbook.createSheet("S");
@@ -1025,6 +1061,27 @@ public class PxlUtilityTests {
             assertThat(sheet.getRow(8).getCell(0).getStringCellValue()).isEqualTo("r5");   // the source itself
             assertThat(sheet.getMergedRegions()).extracting(CellRangeAddress::formatAsString)
                     .containsExactlyInAnyOrder("A9:B9", "A4:B4", "A5:B5", "A6:B6");
+        }
+    }
+
+    @Test
+    public void rowUtils_copyRowMultiplyByRange_multiRowMergedRegion_copiesRowsWithoutThatRegion() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            for (int rowIndex = 0; rowIndex <= 7; rowIndex++) {
+                sheet.createRow(rowIndex).createCell(0).setCellValue("r" + rowIndex);
+            }
+            sheet.addMergedRegion(new CellRangeAddress(5, 7, 0, 0));   // A6:A8, anchored on the source row
+
+            // This used to fail: the second destination row got a region overlapping the first one's, and POI
+            // rejected it with an IllegalStateException once part of the range had already been merged.
+            PxlRowUtils.copyRowMultiplyByRange(sheet, 5, 10, 12);
+
+            for (int rowIndex = 10; rowIndex <= 12; rowIndex++) {
+                assertThat(sheet.getRow(rowIndex).getCell(0).getStringCellValue()).isEqualTo("r5");
+            }
+            assertThat(sheet.getMergedRegions()).extracting(CellRangeAddress::formatAsString)
+                    .containsExactly("A6:A8");
         }
     }
 

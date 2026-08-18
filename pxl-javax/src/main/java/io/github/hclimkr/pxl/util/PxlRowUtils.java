@@ -156,7 +156,9 @@ public final class PxlRowUtils {
      * shifted down to make room for the whole range, and the source is then read at wherever that shift
      * left it. A {@code null} sheet, a streaming sheet ({@link StreamingSheet}), an inverted range
      * ({@code dstStartRowIndex > dstEndRowIndex}) or a missing source row makes this a no-op, and a
-     * destination row that is the source row itself once the shift has been applied is skipped.
+     * destination row that is the source row itself once the shift has been applied is skipped. Of the
+     * source row's merged regions only those fitting in a single row are replicated - see
+     * {@link PxlRegionUtils#copyMergedRegionsInRow(Sheet, Row, int, int)}.
      *
      * @param sheet            the sheet to operate on
      * @param srcRowIndex      the zero-based index of the source row

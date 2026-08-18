@@ -1,9 +1,13 @@
 package io.github.hclimkr.pxl.util;
 
 import com.github.pjfanning.xlsx.impl.StreamingSheet;
+import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
+import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Objects;
@@ -15,8 +19,14 @@ import java.util.stream.IntStream;
  * merged regions onto other rows, and removing merged regions within a row range. Streaming sheets
  * ({@link StreamingSheet}) do not expose merged regions, so the methods that write are a no-op there
  * and {@code getMergedRegion} yields {@code null}, exactly as they do on a {@code null} sheet.
+ * <p>
+ * Replicating onto a range of rows carries only the regions that fit in a single row, since consecutive
+ * destinations are one row apart and a taller region would overlap the copy made for the row before it;
+ * replicating onto one named row has no such restriction.
  */
 public final class PxlRegionUtils {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PxlRegionUtils.class);
 
     /**
      * Prevents instantiation.
@@ -124,6 +134,7 @@ public final class PxlRegionUtils {
      * {@code [dstStartRowIndex, dstEndRowIndex]}, resolving the source row by index and delegating to
      * {@link #copyMergedRegionsInRow(Sheet, Row, int, int)}. A {@code null} sheet or a streaming sheet
      * ({@link StreamingSheet}) makes this a no-op, and a range covering the source row skips that one row.
+     * Merged regions taller than one row are skipped as well, as described on that method.
      *
      * @param sheet            the sheet to operate on
      * @param srcRowIndex      the zero-based index of the source row
@@ -145,12 +156,18 @@ public final class PxlRegionUtils {
     /**
      * Replicates every merged region anchored on the source row (i.e. whose first row equals the source
      * row's index) onto each existing row in the inclusive range {@code [dstStartRowIndex, dstEndRowIndex]},
-     * preserving each region's row span and column extent. A {@code null} sheet, a streaming sheet
+     * preserving each region's column extent. A {@code null} sheet, a streaming sheet
      * ({@link StreamingSheet}), a {@code null} source row, or an inverted range
      * ({@code dstStartRowIndex > dstEndRowIndex}) makes this a no-op; destination rows that do not exist
      * are skipped, as is the source row itself when the range covers it - re-creating a region at the
      * coordinates it already occupies would only overlap the original, and the rest of the range is
      * copied either way.
+     * <p>
+     * Only merged regions that fit in a single row (i.e. whose first and last row are the same) are
+     * replicated. The destination rows sit one row apart, so a taller region would overlap the copy made
+     * for the row before it, which POI rejects; such a region is skipped with a {@code WARN} log rather
+     * than left to fail once part of the range is already merged. To carry a multi-row region over,
+     * name a single destination with {@link #copyMergedRegionsInRow(Sheet, Row, Row)} instead.
      *
      * @param sheet            the sheet to operate on
      * @param srcRow           the row whose anchored merged regions are copied
@@ -177,6 +194,17 @@ public final class PxlRegionUtils {
         sheet.getMergedRegions()
                 .forEach(cellRangeAddress -> {
                     if (cellRangeAddress.getFirstRow() == srcRow.getRowNum()) {
+                        if (cellRangeAddress.getFirstRow() != cellRangeAddress.getLastRow()) {
+                            // The destination rows sit one row apart, so a region taller than one row would
+                            // always overlap the copy made for the row before it - POI rejects the second one
+                            // with an IllegalStateException. Skip such a region instead of failing halfway
+                            // through, having already merged part of the range.
+                            LOGGER.warn(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.LOG_MERGED_REGION_MULTI_ROW_SKIPPED,
+                                    cellRangeAddress.formatAsString(),
+                                    (dstStartRowIndex + 1) + ":" + (dstEndRowIndex + 1)));
+                            return;
+                        }
+
                         IntStream.range(dstStartRowIndex, dstEndRowIndex + 1)
                                 .forEach(dstRowIndex -> {
                                     final Row dstRow = sheet.getRow(dstRowIndex);

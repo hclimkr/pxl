@@ -519,5 +519,10 @@ public final class PxlI18nDiagnosticKeys {
      * Applying the date numeric style failed; {@code {0}}=error.
      */
     public static final String LOG_DATE_NUMERIC_STYLE_FAILED = "log.dateNumericStyleFailed";
+    /**
+     * A merged region spanning several rows cannot be replicated onto every row of a destination range;
+     * {@code {0}}=mergedRegion, {@code {1}}=destinationRowRange.
+     */
+    public static final String LOG_MERGED_REGION_MULTI_ROW_SKIPPED = "log.mergedRegionMultiRowSkipped";
 
 }
