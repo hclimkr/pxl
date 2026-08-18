@@ -16,8 +16,10 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.NumberToTextConverter;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
@@ -737,6 +739,128 @@ public class PxlUtilityTests {
                 PxlCellUtils.copyCell(row.getCell(0), dst);
                 assertThat(dst.getNumericCellValue()).isEqualTo(42.0);
             }
+        }
+    }
+
+    /**
+     * Attaches a comment spanning 2 columns and 3 rows, so a copy's anchor size can be checked against the source.
+     */
+    private static Comment attachComment(final Cell cell,
+                                         final String text,
+                                         final String author) {
+
+        final Sheet sheet = cell.getSheet();
+        final CreationHelper creationHelper = sheet.getWorkbook().getCreationHelper();
+
+        final ClientAnchor anchor = creationHelper.createClientAnchor();
+        anchor.setCol1(cell.getColumnIndex());
+        anchor.setCol2(cell.getColumnIndex() + 2);
+        anchor.setRow1(cell.getRowIndex());
+        anchor.setRow2(cell.getRowIndex() + 3);
+
+        final Comment comment = sheet.createDrawingPatriarch().createCellComment(anchor);
+        comment.setString(creationHelper.createRichTextString(text));
+        comment.setAuthor(author);
+        cell.setCellComment(comment);
+
+        return comment;
+    }
+
+    private static Hyperlink attachHyperlink(final Cell cell,
+                                             final String address,
+                                             final String label) {
+
+        final Hyperlink hyperlink = cell.getSheet()
+                .getWorkbook()
+                .getCreationHelper()
+                .createHyperlink(HyperlinkType.URL);
+        hyperlink.setAddress(address);
+        hyperlink.setLabel(label);
+        cell.setHyperlink(hyperlink);
+
+        return hyperlink;
+    }
+
+    @Test
+    public void cellUtils_copyCell_sameWorkbook_keepsCommentAndHyperlinkOnEveryCell() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            final Cell srcCell = sheet.createRow(0).createCell(0);
+            srcCell.setCellValue("template");
+            final Comment srcComment = attachComment(srcCell, "note", "author-A");
+            final Hyperlink srcHyperlink = attachHyperlink(srcCell, "https://example.com/x", "label");
+
+            final Cell dstCell1 = sheet.createRow(1).createCell(0);
+            final Cell dstCell2 = sheet.createRow(2).createCell(0);
+            PxlCellUtils.copyCell(srcCell, dstCell1);
+            PxlCellUtils.copyCell(srcCell, dstCell2);
+
+            // Handing POI the source's own objects would relocate them, emptying the source and every destination but one.
+            assertThat(srcCell.getCellComment()).isNotNull();
+            assertThat(srcCell.getHyperlink()).isNotNull();
+            assertThat(sheet.getCellComments().keySet()).containsExactlyInAnyOrder(
+                    new CellAddress(0, 0), new CellAddress(1, 0), new CellAddress(2, 0));
+
+            for (final Cell dstCell : Arrays.asList(dstCell1, dstCell2)) {
+                assertThat(dstCell.getCellComment()).isNotSameAs(srcComment);
+                assertThat(dstCell.getCellComment().getString().getString()).isEqualTo("note");
+                assertThat(dstCell.getCellComment().getAuthor()).isEqualTo("author-A");
+                assertThat(dstCell.getHyperlink()).isNotSameAs(srcHyperlink);
+                assertThat(dstCell.getHyperlink().getAddress()).isEqualTo("https://example.com/x");
+                assertThat(dstCell.getHyperlink().getLabel()).isEqualTo("label");
+            }
+
+            // The copied anchor keeps the source's size while sitting over the destination cell.
+            final ClientAnchor dstAnchor = dstCell1.getCellComment().getClientAnchor();
+            assertThat(dstAnchor.getCol1()).isZero();
+            assertThat(dstAnchor.getCol2() - dstAnchor.getCol1()).isEqualTo(2);
+            assertThat(dstAnchor.getRow1()).isEqualTo(1);
+            assertThat(dstAnchor.getRow2() - dstAnchor.getRow1()).isEqualTo(3);
+        }
+    }
+
+    @Test
+    public void cellUtils_copyCell_crossWorkbook_commentAndHyperlinkBelongToDestination() throws Exception {
+        try (XSSFWorkbook srcWorkbook = new XSSFWorkbook(); XSSFWorkbook dstWorkbook = new XSSFWorkbook()) {
+            final Sheet srcSheet = srcWorkbook.createSheet("S");
+            final Cell srcCell = srcSheet.createRow(0).createCell(0);
+            srcCell.setCellValue("template");
+            attachComment(srcCell, "note", "author-A");
+            attachHyperlink(srcCell, "https://example.com/x", "label");
+
+            final Sheet dstSheet = dstWorkbook.createSheet("T");
+            final Cell dstCell = dstSheet.createRow(4).createCell(2);
+            PxlCellUtils.copyCell(srcCell, dstCell);
+
+            // The source workbook keeps its comment where it was, rather than having it moved to the destination's address.
+            assertThat(srcSheet.getCellComments().keySet()).containsExactly(new CellAddress(0, 0));
+            assertThat(dstSheet.getCellComments().keySet()).containsExactly(new CellAddress(4, 2));
+            assertThat(dstCell.getCellComment().getString().getString()).isEqualTo("note");
+
+            // The hyperlink is not shared between the workbooks, so editing the copy leaves the source alone.
+            dstCell.getHyperlink().setAddress("https://example.com/changed");
+            assertThat(srcCell.getHyperlink().getAddress()).isEqualTo("https://example.com/x");
+        }
+    }
+
+    @Test
+    public void cellUtils_copyCell_hssf_anchorsOneCommentPerCell() throws Exception {
+        try (HSSFWorkbook workbook = new HSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            final Cell srcCell = sheet.createRow(0).createCell(0);
+            srcCell.setCellValue("template");
+            attachComment(srcCell, "note", "author-A");
+            attachHyperlink(srcCell, "https://example.com/x", "label");
+
+            PxlCellUtils.copyCell(srcCell, sheet.createRow(1).createCell(0));
+            PxlCellUtils.copyCell(srcCell, sheet.createRow(2).createCell(0));
+
+            // An HSSFCell answers with the comment reference it caches, so only the sheet's registry shows where the
+            // notes really sit - and that is what a saved file holds.
+            assertThat(sheet.getCellComments().keySet()).containsExactlyInAnyOrder(
+                    new CellAddress(0, 0), new CellAddress(1, 0), new CellAddress(2, 0));
+            assertThat(sheet.getRow(1).getCell(0).getHyperlink().getAddress()).isEqualTo("https://example.com/x");
+            assertThat(sheet.getRow(2).getCell(0).getHyperlink().getAddress()).isEqualTo("https://example.com/x");
         }
     }
 

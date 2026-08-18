@@ -25,6 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `PxlCellUtils.copyCell` moved a cell's comment and hyperlink instead of copying them. Both were passed to the
+  destination's setters as the source cell's own objects, and POI re-anchors what it is handed, so the note and the
+  link disappeared from the source cell. A second copy from the same source then found nothing left, which is what
+  `PxlRowUtils.copyRow` / `copyRowMultiplyByRange` do per cell: replicating one template cell left the note on a
+  single destination - the first for XLSX, the last for XLS, where an `HSSFCell` keeps answering with the reference
+  it caches even though the sheet anchors only one note, so the loss showed up only in the saved file. Across
+  workbooks the comment never reached the destination at all and instead moved to the destination's coordinates
+  *inside the source workbook*, while the hyperlink ended up shared by both workbooks, so editing one changed the
+  other. Both are now re-created as new objects owned by the destination sheet, carrying text, author, visibility,
+  link type, address and label, with the comment's anchor keeping its source size over the destination cell; a
+  comment's rich-text runs are flattened to plain text. Only the public `util/` helpers are affected - the
+  import/export core does not call them.
 - A `String` column with `exportStringAsPicture` wrote a value starting with `=` as quote-prefixed text instead of
   embedding a picture. The export checked the leading `=` before it looked at any option, so the picture branch was
   only reachable for values that did not start with one - and the same attribute on a `Collection` column had no

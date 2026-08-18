@@ -124,9 +124,12 @@ public final class PxlCellUtils {
     /**
      * Copies the content of one cell onto another. The style is reused directly when both cells belong
      * to the same workbook, otherwise it is cloned into the destination workbook via
-     * {@link #cloneCellStyle(Cell, Workbook)}. Any cell comment and hyperlink are copied, and the typed
-     * value is transferred according to the source cell type (numeric, string, boolean, blank, formula
-     * or error). A {@code null} source or destination cell is a no-op.
+     * {@link #cloneCellStyle(Cell, Workbook)}. Any cell comment and hyperlink are re-created as new
+     * objects owned by the destination sheet rather than handed over as-is, so the source keeps its own
+     * and a template cell can be copied to many destinations; a comment's rich-text runs are flattened
+     * to plain text in the process. The typed value is transferred according to the source cell type
+     * (numeric, string, boolean, blank, formula or error). A {@code null} source or destination cell is
+     * a no-op.
      *
      * @param srcCell the cell to copy from, may be {@code null}
      * @param dstCell the cell to copy to, may be {@code null}
@@ -148,11 +151,8 @@ public final class PxlCellUtils {
             dstCell.setCellStyle(cellStyle);
         }
 
-        Optional.ofNullable(srcCell.getCellComment())
-                .ifPresent(dstCell::setCellComment);
-
-        Optional.ofNullable(srcCell.getHyperlink())
-                .ifPresent(dstCell::setHyperlink);
+        copyCellComment(srcCell, dstCell);
+        copyCellHyperlink(srcCell, dstCell);
 
         switch (srcCell.getCellType()) {
             case NUMERIC:
@@ -211,6 +211,85 @@ public final class PxlCellUtils {
         copyCell(srcCell, dstCell);
 
         return dstCell;
+    }
+
+    /**
+     * Copies the source cell's comment onto the destination cell as a new comment owned by the destination
+     * sheet. Handing POI the source's own comment object instead would relocate it: the note would vanish
+     * from the source cell, only one destination would keep it when a template cell is copied repeatedly,
+     * and across workbooks it would not attach to the destination at all while moving inside the source
+     * workbook. The copy carries the source's text, author and visibility, and keeps the source anchor's
+     * size while sitting over the destination cell; rich-text runs are flattened to plain text. A source
+     * cell without a comment is a no-op.
+     *
+     * @param srcCell the cell to read the comment from
+     * @param dstCell the cell to attach the copied comment to
+     */
+    private static void copyCellComment(final Cell srcCell,
+                                        final Cell dstCell) {
+
+        final Comment srcComment = srcCell.getCellComment();
+        if (Objects.isNull(srcComment)) {
+            return;
+        }
+
+        final Sheet dstSheet = dstCell.getSheet();
+        final CreationHelper creationHelper = dstSheet.getWorkbook().getCreationHelper();
+
+        Drawing<?> drawing = dstSheet.getDrawingPatriarch();
+        if (Objects.isNull(drawing)) {
+            drawing = dstSheet.createDrawingPatriarch();
+        }
+
+        final ClientAnchor srcAnchor = srcComment.getClientAnchor();
+        final int columnSpan = Objects.isNull(srcAnchor) ? 1 : Math.max(1, srcAnchor.getCol2() - srcAnchor.getCol1());
+        final int rowSpan = Objects.isNull(srcAnchor) ? 1 : Math.max(1, srcAnchor.getRow2() - srcAnchor.getRow1());
+
+        final ClientAnchor dstAnchor = creationHelper.createClientAnchor();
+        dstAnchor.setCol1(dstCell.getColumnIndex());
+        dstAnchor.setCol2(dstCell.getColumnIndex() + columnSpan);
+        dstAnchor.setRow1(dstCell.getRowIndex());
+        dstAnchor.setRow2(dstCell.getRowIndex() + rowSpan);
+
+        final RichTextString srcString = srcComment.getString();
+        final Comment dstComment = drawing.createCellComment(dstAnchor);
+        dstComment.setAuthor(StringUtils.defaultString(srcComment.getAuthor()));
+        dstComment.setString(creationHelper.createRichTextString(Objects.isNull(srcString) ? StringUtils.EMPTY : StringUtils.defaultString(srcString.getString())));
+        dstComment.setVisible(srcComment.isVisible());
+
+        dstCell.setCellComment(dstComment);
+    }
+
+    /**
+     * Copies the source cell's hyperlink onto the destination cell as a new link owned by the destination
+     * workbook. Handing POI the source's own hyperlink object instead would re-point it at the destination,
+     * dropping it from the source cell and registering the very same object twice on the sheet, and across
+     * workbooks it would leave both cells sharing one link. Type, address and label are carried over. A
+     * source cell without a hyperlink is a no-op.
+     *
+     * @param srcCell the cell to read the hyperlink from
+     * @param dstCell the cell to attach the copied hyperlink to
+     */
+    private static void copyCellHyperlink(final Cell srcCell,
+                                          final Cell dstCell) {
+
+        final Hyperlink srcHyperlink = srcCell.getHyperlink();
+        if (Objects.isNull(srcHyperlink)) {
+            return;
+        }
+
+        final CreationHelper creationHelper = dstCell.getSheet().getWorkbook().getCreationHelper();
+        final Hyperlink dstHyperlink = creationHelper.createHyperlink(srcHyperlink.getType());
+
+        if (Objects.nonNull(srcHyperlink.getAddress())) {
+            dstHyperlink.setAddress(srcHyperlink.getAddress());
+        }
+
+        if (Objects.nonNull(srcHyperlink.getLabel())) {
+            dstHyperlink.setLabel(srcHyperlink.getLabel());
+        }
+
+        dstCell.setHyperlink(dstHyperlink);
     }
 
     /**
