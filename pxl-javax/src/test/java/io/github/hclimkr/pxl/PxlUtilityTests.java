@@ -732,6 +732,27 @@ public class PxlUtilityTests {
         }
     }
 
+    @Test
+    public void cellUtils_addNoteToCell_xls_setsComment() throws Exception {
+        try (HSSFWorkbook workbook = new HSSFWorkbook()) {
+            final Cell cell = workbook.createSheet("S").createRow(0).createCell(0);
+
+            // The note inset is given in pixels; XLS states an anchor offset as a fraction of the anchored cell
+            // instead, and POI rejects anything outside that fraction's range. Passing the pixel count through as
+            // if it were EMU used to fail here with "dx1 must be between 0 and 1023".
+            PxlCellUtils.addNoteToCell(cell, "hello");
+
+            assertThat(cell.getCellComment()).isNotNull();
+            assertThat(cell.getCellComment().getAuthor()).isEqualTo(PxlConstants.PXL_CREATOR);
+
+            final ClientAnchor anchor = cell.getCellComment().getClientAnchor();
+            assertThat(anchor.getDx1()).isBetween(0, 1023);
+            assertThat(anchor.getDx2()).isBetween(0, 1023);
+            assertThat(anchor.getDy1()).isBetween(0, 255);
+            assertThat(anchor.getDy2()).isBetween(0, 255);
+        }
+    }
+
     // ------------------------------------------------------------------
     // PxlCollectionUtils (duplicate / uniqueness / all-same detection)
     // ------------------------------------------------------------------

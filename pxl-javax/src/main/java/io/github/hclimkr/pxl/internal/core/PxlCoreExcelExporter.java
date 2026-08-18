@@ -545,7 +545,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         // Create a sheet using the given name.
         final Sheet sheet = workbookMeta.getWorkbook().createSheet(WorkbookUtil.createSafeSheetName(sheetName));
 
-        preBuildRows(sheet, sheetMeta);
+        preBuildRows(sheet, sheetMeta, rowObjects);
 
         // Create the header row as the first row.
         buildHeaderRow(sheet, columnMetas, actualExportHeaderRowIndex);
@@ -606,7 +606,8 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         // Create a sheet using the given name.
         final Sheet sheet = workbookMeta.getWorkbook().createSheet(WorkbookUtil.createSafeSheetName(sheetMeta.getActualExportSheetName()));
 
-        preBuildRows(sheet, sheetMeta);
+        // A sample sheet carries one image per picture column, whatever the column's type.
+        preBuildRows(sheet, sheetMeta, null);
 
         // Create the header row as the first row.
         buildHeaderRow(sheet, columnMetas, actualExportHeaderRowIndex);
@@ -781,14 +782,17 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
     /**
      * Prepares the sheet before rows are written. (export)
-     * Applies the default row height and, for streaming ({@link SXSSFSheet}) sheets, registers auto-sized
-     * columns for width tracking.
+     * Applies the default row height, widens the picture columns and, for streaming ({@link SXSSFSheet})
+     * sheets, registers auto-sized columns for width tracking.
      *
-     * @param sheet     the sheet being built
-     * @param sheetMeta the resolved sheet meta providing the column metas and row height
+     * @param sheet      the sheet being built
+     * @param sheetMeta  the resolved sheet meta providing the column metas and row height
+     * @param rowObjects the row objects about to be written, used to size the picture columns; {@code null}
+     *                   for a sample sheet, which carries one picture per column
      */
     private static void preBuildRows(final Sheet sheet,
-                                     final PxlExportSheetMeta sheetMeta) {
+                                     final PxlExportSheetMeta sheetMeta,
+                                     final Collection<?> rowObjects) {
 
         final List<PxlExportColumnMeta> columnMetas = sheetMeta.getExportColumnMetas();
 
@@ -796,6 +800,10 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         if (exportRowHeightInPoints > 0.F) {
             sheet.setDefaultRowHeightInPoints(exportRowHeightInPoints);
         }
+
+        // Before the rows, because the pictures written into them are anchored against the width the column
+        // has at that moment - see fitPictureColumnWidth.
+        fitPictureColumnWidth(sheet, columnMetas, rowObjects);
 
         if (sheet instanceof SXSSFSheet) {
             for (final PxlExportColumnMeta columnMeta : columnMetas) {
@@ -922,8 +930,9 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
     /**
      * Adjusts the width of each mapped column. (export)
-     * String/collection picture columns get a fixed image-based width; other columns are auto-sized,
-     * left untouched (negative width), or set to the explicit width (capped at 255 characters).
+     * Columns are auto-sized, left untouched (negative width), or set to the explicit width (capped at 255
+     * characters). Picture columns are skipped here - unlike auto-sizing, their width can be worked out before
+     * a single cell is written, and {@link #fitPictureColumnWidth(Sheet, List, Collection)} has already set it.
      *
      * @param sheet       the sheet being built
      * @param columnMetas the per-column export metadata providing widths and picture flags
@@ -937,35 +946,108 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
                 continue;
             }
 
-            final boolean isExportStringAsPicture = columnMeta.isExportStringAsPicture();
-            if (isExportStringAsPicture) {
-                final Field columnField = columnMeta.getColumnField();
-                final Class<?> columnClass = columnField.getType();
+            if (columnMeta.isExportStringAsPicture()) {
+                // Already sized by fitPictureColumnWidth(), before the rows were written.
+                continue;
+            }
 
-                if (columnClass == String.class) {
-                    final int pictureWidthPx = PxlConstants.EXPORT_PICTURE_SCREEN_WIDTH_IN_PIXELS;
-                    final int picturePaddingPx = PxlConstants.EXPORT_PICTURE_SCREEN_PADDING_IN_PIXELS;
-                    final int horizontalImageNum = 1;
-                    final int columnWidthPx = (pictureWidthPx + picturePaddingPx) * horizontalImageNum + picturePaddingPx;
-                    sheet.setColumnWidth(exportColumnIndex, (int) ((float) columnWidthPx / Units.DEFAULT_CHARACTER_WIDTH * 256.f));
-                } else if (PxlClassSupport.isCollectionClass(columnClass)) {
-                    final int pictureWidthPx = PxlConstants.EXPORT_PICTURE_SCREEN_WIDTH_IN_PIXELS;
-                    final int picturePaddingPx = PxlConstants.EXPORT_PICTURE_SCREEN_PADDING_IN_PIXELS;
-                    final int horizontalImageNum = PxlConstants.EXPORT_HORIZONTAL_NUMBER_OF_PICTURE;
-                    final int columnWidthPx = (pictureWidthPx + picturePaddingPx) * horizontalImageNum + picturePaddingPx;
-                    sheet.setColumnWidth(exportColumnIndex, (int) ((float) columnWidthPx / Units.DEFAULT_CHARACTER_WIDTH * 256.f));
-                }
+            final int exportColumnWidth = columnMeta.getExportColumnWidth();
+            if (exportColumnWidth == PxlConstants.EXPORT_AUTO_COLUMN_WIDTH) {
+                PxlColumnUtils.autoSizeColumns(sheet, exportColumnIndex);
+            } else if (exportColumnWidth < 0) {
+                // don't set column width
             } else {
-                final int exportColumnWidth = columnMeta.getExportColumnWidth();
-                if (exportColumnWidth == PxlConstants.EXPORT_AUTO_COLUMN_WIDTH) {
-                    PxlColumnUtils.autoSizeColumns(sheet, exportColumnIndex);
-                } else if (exportColumnWidth < 0) {
-                    // don't set column width
-                } else {
-                    sheet.setColumnWidth(exportColumnIndex, Math.min(255 * 256, exportColumnWidth));
+                sheet.setColumnWidth(exportColumnIndex, Math.min(255 * 256, exportColumnWidth));
+            }
+        }
+    }
+
+    /**
+     * Widens every picture column to hold the grid of images it will carry, before any row is written. (export)
+     * <p>
+     * A String column carries one image, and a collection column as many as its longest row holds, up to the
+     * {@link PxlConstants#EXPORT_HORIZONTAL_NUMBER_OF_PICTURE} that fit on one line before the grid wraps. That
+     * count is all the width depends on, so it can be settled from the row objects without writing anything.
+     * <p>
+     * Doing it here rather than alongside the other column widths is what makes the images land where they
+     * should on XLS: an XLS anchor states its offset as a fraction of the column it sits on, so an image
+     * anchored while the column is still at its default width keeps that column's proportions and drifts once
+     * the column is widened. XLSX is unaffected either way, as its offsets are absolute distances.
+     *
+     * @param sheet       the sheet being built
+     * @param columnMetas the per-column export metadata providing the picture flags and field types
+     * @param rowObjects  the row objects about to be written, or {@code null} for a sample sheet
+     */
+    private static void fitPictureColumnWidth(final Sheet sheet,
+                                              final List<PxlExportColumnMeta> columnMetas,
+                                              final Collection<?> rowObjects) {
+
+        for (final PxlExportColumnMeta columnMeta : columnMetas) {
+            final int exportColumnIndex = columnMeta.getActualExportColumnIndex();
+            if (exportColumnIndex < 0 || !columnMeta.isExportStringAsPicture()) {
+                continue;
+            }
+
+            final Field columnField = columnMeta.getColumnField();
+            final Class<?> columnClass = columnField.getType();
+
+            final int horizontalImageNum;
+            if (columnClass == String.class) {
+                horizontalImageNum = 1;
+            } else if (PxlClassSupport.isCollectionClass(columnClass)) {
+                horizontalImageNum = countWidestPictureRow(columnField, rowObjects);
+            } else {
+                continue;
+            }
+
+            final int pictureWidthPx = PxlConstants.EXPORT_PICTURE_SCREEN_WIDTH_IN_PIXELS;
+            final int picturePaddingPx = PxlConstants.EXPORT_PICTURE_SCREEN_PADDING_IN_PIXELS;
+            final int columnWidthPx = (pictureWidthPx + picturePaddingPx) * horizontalImageNum + picturePaddingPx;
+
+            sheet.setColumnWidth(exportColumnIndex, (int) ((float) columnWidthPx / Units.DEFAULT_CHARACTER_WIDTH * 256.f));
+        }
+    }
+
+    /**
+     * Counts how many images the widest row puts on one line of a collection picture column. (export)
+     * <p>
+     * The grid wraps after {@link PxlConstants#EXPORT_HORIZONTAL_NUMBER_OF_PICTURE} images, so a row holding
+     * more than that still only needs that many columns of room, and a row holding fewer needs no more than it
+     * has. The result is never below one: a column of empty collections is still a picture column, and a
+     * zero-width one would leave the anchors of any later row nothing to be a fraction of. A row whose field
+     * cannot be read is passed over rather than failing the export - the value is read again when that row is
+     * written, and that is where the failure belongs.
+     *
+     * @param columnField the field backing the picture column
+     * @param rowObjects  the row objects about to be written, may be {@code null} or empty
+     * @return the number of images to leave room for, between one and {@code EXPORT_HORIZONTAL_NUMBER_OF_PICTURE}
+     */
+    private static int countWidestPictureRow(final Field columnField,
+                                             final Collection<?> rowObjects) {
+
+        int widest = 1;
+
+        for (final Object rowObject : PxlCollectionUtils.emptyIfNull(rowObjects)) {
+            if (Objects.isNull(rowObject)) {
+                continue;
+            }
+
+            final Object cellObject;
+            try {
+                cellObject = PxlReflectionSupport.getFieldValue(columnField, rowObject);
+            } catch (Exception ignored) {
+                continue;
+            }
+
+            if (cellObject instanceof Collection) {
+                widest = Math.max(widest, ((Collection<?>) cellObject).size());
+                if (widest >= PxlConstants.EXPORT_HORIZONTAL_NUMBER_OF_PICTURE) {
+                    return PxlConstants.EXPORT_HORIZONTAL_NUMBER_OF_PICTURE;
                 }
             }
         }
+
+        return widest;
     }
 
     /**

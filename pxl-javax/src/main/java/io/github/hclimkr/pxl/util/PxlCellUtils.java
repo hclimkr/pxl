@@ -5,6 +5,7 @@ import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
+import io.github.hclimkr.pxl.type.PxlFileFormat;
 import net.coobird.thumbnailator.Thumbnails;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.BooleanUtils;
@@ -12,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.sl.usermodel.PictureData.PictureType;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.ImageUtils;
 import org.apache.poi.util.Units;
 import org.imgscalr.Scalr;
 import org.slf4j.Logger;
@@ -48,6 +50,29 @@ import java.util.*;
 public final class PxlCellUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PxlCellUtils.class);
+
+    /**
+     * The margin left around a note so that it does not sit flush against its cell's border, in pixels.
+     */
+    private static final int NOTE_ANCHOR_INSET_IN_PIXELS = 10;
+
+    /**
+     * An XLS (Escher) anchor states its x-offset as a fraction of the start column's width, in 1/1024 units,
+     * so the largest offset that still falls inside that column is one below the divisor. XLSX measures the
+     * same offset in EMU instead, as an absolute distance that may run past the column.
+     * <p>
+     * POI reads anchors back with the same divisor - {@code ImageUtils.WIDTH_UNITS} - but keeps it private,
+     * hence this copy.
+     */
+    private static final int XLS_ANCHOR_DX_PER_COLUMN = 1024;
+
+    /**
+     * An XLS (Escher) anchor states its y-offset as a fraction of the start row's height, in 1/256 units.
+     * POI's private {@code ImageUtils.HEIGHT_UNITS} holds the same value.
+     *
+     * @see #XLS_ANCHOR_DX_PER_COLUMN
+     */
+    private static final int XLS_ANCHOR_DY_PER_ROW = 256;
 
     /**
      * Prevents instantiation.
@@ -1087,7 +1112,9 @@ public final class PxlCellUtils {
 
     /**
      * Attaches a comment (note) to the cell, anchored over the cell's own area and authored as
-     * {@link PxlConstants#PXL_CREATOR}. A {@code null} cell or a blank note is a no-op.
+     * {@link PxlConstants#PXL_CREATOR}. The note is inset from the cell's border by a fixed pixel margin,
+     * converted to whichever anchor unit the workbook's format takes - EMU for XLSX, a fraction of the
+     * cell for XLS. A {@code null} cell or a blank note is a no-op.
      *
      * @param cell the cell to annotate
      * @param note the comment text; ignored if blank
@@ -1109,15 +1136,20 @@ public final class PxlCellUtils {
         //TODO: need to adjust the font size
         //richTextString.applyFont(font);
 
+        final Pair<Integer, Integer> startColumn = resolveAnchorColumn(sheet, colIndex, NOTE_ANCHOR_INSET_IN_PIXELS);
+        final Pair<Integer, Integer> startRow = resolveAnchorRow(sheet, rowIndex, NOTE_ANCHOR_INSET_IN_PIXELS);
+        final Pair<Integer, Integer> endColumn = resolveAnchorColumn(sheet, colIndex + 1, NOTE_ANCHOR_INSET_IN_PIXELS);
+        final Pair<Integer, Integer> endRow = resolveAnchorRow(sheet, rowIndex + 1, NOTE_ANCHOR_INSET_IN_PIXELS);
+
         final ClientAnchor anchor = drawing.createAnchor(
-                Units.pixelToEMU(10),   // TODO: HSSF
-                Units.pixelToEMU(10),   // TODO: HSSF
-                Units.pixelToEMU(10),   // TODO: HSSF
-                Units.pixelToEMU(10),   // TODO: HSSF
-                colIndex,
-                rowIndex,
-                colIndex + 1,
-                rowIndex + 1);
+                startColumn.getRight(),
+                startRow.getRight(),
+                endColumn.getRight(),
+                endRow.getRight(),
+                startColumn.getLeft(),
+                startRow.getLeft(),
+                endColumn.getLeft(),
+                endRow.getLeft());
 
         final Comment comment = drawing.createCellComment(anchor);
         comment.setAuthor(PxlConstants.PXL_CREATOR);
@@ -1162,6 +1194,10 @@ public final class PxlCellUtils {
      * to fit the resulting grid. Each image is fetched from its URL and anchored with
      * {@link ClientAnchor.AnchorType#MOVE_AND_RESIZE}; an image that fails to load is skipped with a
      * warning logged via SLF4J rather than aborting the rest. A {@code null} sheet is a no-op.
+     * <p>
+     * The grid positions are given in pixels and converted to the anchor unit of the workbook's format:
+     * XLSX takes an absolute EMU distance, while XLS takes a fraction of the anchored cell and therefore
+     * has each picture anchored on the column and row its offset actually falls in.
      *
      * @param sheet              the sheet to add pictures to
      * @param imageFileUrls      the image source URLs; each is loaded and embedded
@@ -1226,18 +1262,23 @@ public final class PxlCellUtils {
     /**
      * Loads a single image from its URL and embeds it into the sheet at the given anchor bounds. The picture bytes and
      * type are resolved via {@link #getPictureBytes(String)} and added to the workbook. A {@code null} sheet is a no-op.
+     * <p>
+     * The offsets are pixel distances from the edge of the cell they are counted from, and may run past it - a grid
+     * of pictures anchored on one cell is laid out this way. They are converted into the unit the workbook's format
+     * expects, which for XLS can move the anchor onto a later column or row; see
+     * {@link #resolveAnchorColumn(Sheet, int, int)}.
      *
      * @param sheet        the sheet to add the picture to
      * @param imageFileUrl the image source URL
      * @param anchorType   the anchor behavior (for example {@link ClientAnchor.AnchorType#MOVE_AND_RESIZE})
-     * @param col1         the zero-based start column of the anchor
-     * @param row1         the zero-based start row of the anchor
-     * @param col2         the zero-based end column of the anchor
-     * @param row2         the zero-based end row of the anchor
-     * @param dx1          the start x-offset within the start cell, in pixels
-     * @param dy1          the start y-offset within the start cell, in pixels
-     * @param dx2          the end x-offset within the end cell, in pixels
-     * @param dy2          the end y-offset within the end cell, in pixels
+     * @param col1         the zero-based column the start offsets are counted from
+     * @param row1         the zero-based row the start offsets are counted from
+     * @param col2         the zero-based column the end offsets are counted from
+     * @param row2         the zero-based row the end offsets are counted from
+     * @param dx1          the start x-offset from that column's left edge, in pixels
+     * @param dy1          the start y-offset from that row's top edge, in pixels
+     * @param dx2          the end x-offset from that column's left edge, in pixels
+     * @param dy2          the end y-offset from that row's top edge, in pixels
      * @throws IOException if the image cannot be loaded
      */
     private static void addPictureToCell(final Sheet sheet,
@@ -1262,27 +1303,131 @@ public final class PxlCellUtils {
         final ClientAnchor anchor = helper.createClientAnchor();
         anchor.setAnchorType(anchorType);
 
+        // Place the anchor before the picture is created: an XLS anchor cannot hold an offset wider than its
+        // start cell, so the resolvers may have to move the anchor onto a later column or row to express one.
+        final Pair<Integer, Integer> startColumn = resolveAnchorColumn(sheet, col1, dx1);
+        final Pair<Integer, Integer> startRow = resolveAnchorRow(sheet, row1, dy1);
+        final Pair<Integer, Integer> endColumn = resolveAnchorColumn(sheet, col2, dx2);
+        final Pair<Integer, Integer> endRow = resolveAnchorRow(sheet, row2, dy2);
+
+        anchor.setCol1(startColumn.getLeft());
+        anchor.setDx1(startColumn.getRight());
+        anchor.setRow1(startRow.getLeft());
+        anchor.setDy1(startRow.getRight());
+        anchor.setCol2(endColumn.getLeft());
+        anchor.setDx2(endColumn.getRight());
+        anchor.setRow2(endRow.getLeft());
+        anchor.setDy2(endRow.getRight());
+
         final Pair<byte[], Integer> picturePair = getPictureBytes(imageFileUrl);
 
         final int pictureId = workbook.addPicture(picturePair.getLeft(), picturePair.getRight());
 
         final Drawing drawing = sheet.createDrawingPatriarch();
 
-        final Picture picture = drawing.createPicture(anchor, pictureId);
+        drawing.createPicture(anchor, pictureId);
+    }
 
-        /*
-        final int pictureOriginalWidthInPx = picture.getImageDimension().width;
-        final int pictureOriginalHeightInPx = picture.getImageDimension().height;
-        */
+    /**
+     * Resolves a horizontal pixel offset measured from the start column's left edge into the (column,
+     * x-offset) pair the workbook's format expects.
+     * <p>
+     * XLSX (and its streaming variant) states the offset in EMU as an absolute distance, so the column is
+     * returned unchanged and the offset may well run past its right edge - that is how a picture laid out in
+     * a grid reaches beyond the cell it is anchored on. XLS instead states it as a fraction of the start
+     * column's own width ({@link #XLS_ANCHOR_DX_PER_COLUMN}ths of it), which cannot express anything outside
+     * that column, so the offset is walked across the columns it spans and only the remainder within the
+     * column it lands in is converted. A column of zero width consumes nothing of the offset and is stepped
+     * over rather than walked forever, and the walk stops at the last column the format allows.
+     *
+     * @param sheet            the sheet the anchor belongs to
+     * @param startColumnIndex the zero-based column the offset is measured from
+     * @param offsetInPixels   the offset from that column's left edge, in pixels
+     * @return a pair of (zero-based column index, x-offset in the format's own unit)
+     */
+    private static Pair<Integer, Integer> resolveAnchorColumn(final Sheet sheet,
+                                                              final int startColumnIndex,
+                                                              final int offsetInPixels) {
 
-        anchor.setCol1(col1);
-        anchor.setDx1(Units.pixelToEMU(dx1));   // TODO: HSSF
-        anchor.setRow1(row1);
-        anchor.setDy1(Units.pixelToEMU(dy1));   // TODO: HSSF
-        anchor.setCol2(col2);
-        anchor.setDx2(Units.pixelToEMU(dx2));   // TODO: HSSF
-        anchor.setRow2(row2);
-        anchor.setDy2(Units.pixelToEMU(dy2));   // TODO: HSSF
+        if (PxlFileFormat.fromPoiWorkbook(sheet.getWorkbook()) != PxlFileFormat.XLS) {
+            return Pair.of(startColumnIndex, Units.pixelToEMU(offsetInPixels));
+        }
+
+        final int lastColumnIndex = PxlFileFormat.XLS.getMaxExportColumns() - 1;
+
+        int columnIndex = Math.min(Math.max(0, startColumnIndex), lastColumnIndex);
+        double remainingInPixels = Math.max(0, offsetInPixels);
+
+        while (columnIndex < lastColumnIndex) {
+            final double columnWidthInPixels = sheet.getColumnWidthInPixels(columnIndex);
+            if (columnWidthInPixels > 0.D && remainingInPixels < columnWidthInPixels) {
+                break;
+            }
+
+            remainingInPixels -= Math.max(0.D, columnWidthInPixels);
+            columnIndex++;
+        }
+
+        return Pair.of(columnIndex, toAnchorFraction(remainingInPixels, sheet.getColumnWidthInPixels(columnIndex), XLS_ANCHOR_DX_PER_COLUMN));
+    }
+
+    /**
+     * Resolves a vertical pixel offset measured from the start row's top edge into the (row, y-offset) pair
+     * the workbook's format expects, the way {@link #resolveAnchorColumn(Sheet, int, int)} does for columns.
+     * XLS states the offset in {@link #XLS_ANCHOR_DY_PER_ROW}ths of the start row's height. Row heights come
+     * from POI's own {@code ImageUtils.getRowHeightInPixels}, which falls back to the sheet's default height
+     * for a row that does not exist yet - the same measurement POI uses when it reads an anchor back.
+     *
+     * @param sheet          the sheet the anchor belongs to
+     * @param startRowIndex  the zero-based row the offset is measured from
+     * @param offsetInPixels the offset from that row's top edge, in pixels
+     * @return a pair of (zero-based row index, y-offset in the format's own unit)
+     */
+    private static Pair<Integer, Integer> resolveAnchorRow(final Sheet sheet,
+                                                           final int startRowIndex,
+                                                           final int offsetInPixels) {
+
+        if (PxlFileFormat.fromPoiWorkbook(sheet.getWorkbook()) != PxlFileFormat.XLS) {
+            return Pair.of(startRowIndex, Units.pixelToEMU(offsetInPixels));
+        }
+
+        final int lastRowIndex = PxlFileFormat.XLS.getMaxExportRows() - 1;
+
+        int rowIndex = Math.min(Math.max(0, startRowIndex), lastRowIndex);
+        double remainingInPixels = Math.max(0, offsetInPixels);
+
+        while (rowIndex < lastRowIndex) {
+            final double rowHeightInPixels = ImageUtils.getRowHeightInPixels(sheet, rowIndex);
+            if (rowHeightInPixels > 0.D && remainingInPixels < rowHeightInPixels) {
+                break;
+            }
+
+            remainingInPixels -= Math.max(0.D, rowHeightInPixels);
+            rowIndex++;
+        }
+
+        return Pair.of(rowIndex, toAnchorFraction(remainingInPixels, ImageUtils.getRowHeightInPixels(sheet, rowIndex), XLS_ANCHOR_DY_PER_ROW));
+    }
+
+    /**
+     * Converts an offset that lies within one cell into the fraction of that cell an XLS anchor stores,
+     * clamped to the range POI accepts (zero up to one below {@code fractionsPerCell}). A cell with no
+     * measurable extent leaves no room for an offset, so it yields zero.
+     *
+     * @param offsetInPixels   the offset within the cell, in pixels
+     * @param cellSizeInPixels the cell's width or height, in pixels
+     * @param fractionsPerCell the number of fractions the cell is divided into
+     * @return the offset as a fraction of the cell
+     */
+    private static int toAnchorFraction(final double offsetInPixels,
+                                        final double cellSizeInPixels,
+                                        final int fractionsPerCell) {
+
+        if (cellSizeInPixels <= 0.D || offsetInPixels <= 0.D) {
+            return 0;
+        }
+
+        return (int) Math.min(fractionsPerCell - 1L, Math.round(fractionsPerCell * offsetInPixels / cellSizeInPixels));
     }
 
     /**
