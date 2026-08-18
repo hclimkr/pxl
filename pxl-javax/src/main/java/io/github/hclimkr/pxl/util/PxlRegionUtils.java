@@ -57,7 +57,8 @@ public class PxlRegionUtils {
      * Replicates every merged region anchored on the source row (i.e. whose first row equals the source
      * row's index) onto the destination row, preserving each region's row span and column extent. A
      * {@code null} sheet, a streaming sheet ({@link StreamingSheet}) or a {@code null} source/destination
-     * row makes this a no-op.
+     * row makes this a no-op, as does a destination row that is the source row itself - re-creating a
+     * region at the coordinates it already occupies would only overlap the original.
      *
      * @param sheet  the sheet to operate on
      * @param srcRow the row whose anchored merged regions are copied
@@ -72,6 +73,10 @@ public class PxlRegionUtils {
         }
 
         if (Objects.isNull(srcRow) || Objects.isNull(dstRow)) {
+            return;
+        }
+
+        if (srcRow.getRowNum() == dstRow.getRowNum()) {
             return;
         }
 
@@ -93,7 +98,7 @@ public class PxlRegionUtils {
     /**
      * Replicates merged regions anchored on one row onto another, resolving both rows by index and
      * delegating to {@link #copyMergedRegionsInRow(Sheet, Row, Row)}. A {@code null} sheet or a
-     * streaming sheet ({@link StreamingSheet}) makes this a no-op.
+     * streaming sheet ({@link StreamingSheet}) makes this a no-op, as does naming the same row twice.
      *
      * @param sheet       the sheet to operate on
      * @param srcRowIndex the zero-based index of the source row
@@ -117,7 +122,7 @@ public class PxlRegionUtils {
      * Replicates the merged regions anchored on the source row onto every row in the inclusive range
      * {@code [dstStartRowIndex, dstEndRowIndex]}, resolving the source row by index and delegating to
      * {@link #copyMergedRegionsInRow(Sheet, Row, int, int)}. A {@code null} sheet or a streaming sheet
-     * ({@link StreamingSheet}) makes this a no-op.
+     * ({@link StreamingSheet}) makes this a no-op, and a range covering the source row skips that one row.
      *
      * @param sheet            the sheet to operate on
      * @param srcRowIndex      the zero-based index of the source row
@@ -142,7 +147,9 @@ public class PxlRegionUtils {
      * preserving each region's row span and column extent. A {@code null} sheet, a streaming sheet
      * ({@link StreamingSheet}), a {@code null} source row, or an inverted range
      * ({@code dstStartRowIndex > dstEndRowIndex}) makes this a no-op; destination rows that do not exist
-     * are skipped.
+     * are skipped, as is the source row itself when the range covers it - re-creating a region at the
+     * coordinates it already occupies would only overlap the original, and the rest of the range is
+     * copied either way.
      *
      * @param sheet            the sheet to operate on
      * @param srcRow           the row whose anchored merged regions are copied
@@ -173,6 +180,10 @@ public class PxlRegionUtils {
                                 .forEach(dstRowIndex -> {
                                     final Row dstRow = sheet.getRow(dstRowIndex);
                                     if (Objects.isNull(dstRow)) {
+                                        return;
+                                    }
+
+                                    if (dstRow.getRowNum() == srcRow.getRowNum()) {
                                         return;
                                     }
 

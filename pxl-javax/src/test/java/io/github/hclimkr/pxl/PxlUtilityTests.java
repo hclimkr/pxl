@@ -263,6 +263,40 @@ public class PxlUtilityTests {
     }
 
     @Test
+    public void regionUtils_copyMergedRegionsInRow_sameRow_isNoOp() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            final Row srcRow = sheet.createRow(5);
+            sheet.addMergedRegion(new CellRangeAddress(5, 5, 0, 1));   // A6:B6, anchored on row 5
+
+            // Re-creating a region where it already sits would overlap the original, so both overloads no-op
+            // instead of letting POI throw.
+            PxlRegionUtils.copyMergedRegionsInRow(sheet, srcRow, srcRow);
+            PxlRegionUtils.copyMergedRegionsInRow(sheet, 5, 5);
+
+            assertThat(sheet.getMergedRegions()).extracting(CellRangeAddress::formatAsString)
+                    .containsExactly("A6:B6");
+        }
+    }
+
+    @Test
+    public void regionUtils_copyMergedRegionsInRow_rangeCoveringSourceRow_skipsThatRowOnly() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            for (int rowIndex = 4; rowIndex <= 7; rowIndex++) {
+                sheet.createRow(rowIndex);
+            }
+            sheet.addMergedRegion(new CellRangeAddress(5, 5, 0, 1));   // A6:B6, anchored on row 5
+
+            PxlRegionUtils.copyMergedRegionsInRow(sheet, 5, 4, 7);   // the range covers the source row
+
+            // Row 5 is skipped; the rest of the range is copied rather than the whole call failing on it.
+            assertThat(sheet.getMergedRegions()).extracting(CellRangeAddress::formatAsString)
+                    .containsExactlyInAnyOrder("A6:B6", "A5:B5", "A7:B7", "A8:B8");
+        }
+    }
+
+    @Test
     public void regionUtils_removeMergedRegionInRows_removesContainedRegions() throws Exception {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             final Sheet sheet = workbook.createSheet("S");
@@ -364,6 +398,43 @@ public class PxlUtilityTests {
             // A missing source row is a no-op.
             PxlRowUtils.copyRow(sheet, 99, 100);
             assertThat(sheet.getRow(100)).isNull();
+        }
+    }
+
+    @Test
+    public void rowUtils_copyRow_sameRowIndex_isNoOp() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            for (int rowIndex = 0; rowIndex <= 2; rowIndex++) {
+                sheet.createRow(rowIndex).createCell(0).setCellValue("r" + rowIndex);
+            }
+            sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 1));
+
+            PxlRowUtils.copyRow(sheet, 1, 1);   // copying a row onto itself has nothing to do
+
+            assertThat(sheet.getLastRowNum()).isEqualTo(2);
+            assertThat(sheet.getRow(1).getCell(0).getStringCellValue()).isEqualTo("r1");
+            assertThat(sheet.getRow(2).getCell(0).getStringCellValue()).isEqualTo("r2");
+            assertThat(sheet.getMergedRegions()).extracting(CellRangeAddress::formatAsString)
+                    .containsExactly("A2:B2");
+        }
+    }
+
+    @Test
+    public void rowUtils_copyRow_rowWithoutRowStyle_copiesOnXls() throws Exception {
+        try (HSSFWorkbook workbook = new HSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            for (int rowIndex = 0; rowIndex <= 2; rowIndex++) {
+                sheet.createRow(rowIndex).createCell(0).setCellValue("r" + rowIndex);
+            }
+
+            // HSSFRow.setRowStyle(null) throws, unlike its XSSF counterpart, so a row that never got a style
+            // must not be handed one.
+            assertThat(sheet.getRow(0).getRowStyle()).isNull();
+
+            PxlRowUtils.copyRow(sheet, 0, 2);
+
+            assertThat(sheet.getRow(2).getCell(0).getStringCellValue()).isEqualTo("r0");
         }
     }
 
@@ -878,6 +949,28 @@ public class PxlUtilityTests {
 
             // an inverted range is a no-op
             PxlRowUtils.copyRowMultiplyByRange(sheet, 0, 9, 8);
+        }
+    }
+
+    @Test
+    public void rowUtils_copyRowMultiplyByRange_rangeCoveringSourceRow_fillsEveryRow() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            for (int rowIndex = 0; rowIndex <= 6; rowIndex++) {
+                sheet.createRow(rowIndex).createCell(0).setCellValue("r" + rowIndex);
+            }
+            sheet.addMergedRegion(new CellRangeAddress(5, 5, 0, 1));   // A6:B6, anchored on the source row
+
+            PxlRowUtils.copyRowMultiplyByRange(sheet, 5, 3, 5);   // the range covers the source row index
+
+            // The shift moves the source row to index 8 first, so index 5 is an emptied destination that still
+            // has to be filled - the guard compares shifted coordinates rather than the original index.
+            for (int rowIndex = 3; rowIndex <= 5; rowIndex++) {
+                assertThat(sheet.getRow(rowIndex).getCell(0).getStringCellValue()).isEqualTo("r5");
+            }
+            assertThat(sheet.getRow(8).getCell(0).getStringCellValue()).isEqualTo("r5");   // the source itself
+            assertThat(sheet.getMergedRegions()).extracting(CellRangeAddress::formatAsString)
+                    .containsExactlyInAnyOrder("A9:B9", "A4:B4", "A5:B5", "A6:B6");
         }
     }
 

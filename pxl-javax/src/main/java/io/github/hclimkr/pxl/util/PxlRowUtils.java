@@ -89,7 +89,8 @@ public final class PxlRowUtils {
      * (via {@link PxlCellUtils#copyCell}) and any merged regions anchored on the source row. If the
      * destination row already exists, existing rows from it downward are first shifted down by one to
      * make room. A {@code null} sheet, a streaming sheet ({@link StreamingSheet}) or a missing source
-     * row makes this a no-op.
+     * row makes this a no-op, as does a destination that resolves to the source row itself once the
+     * shift has been applied.
      *
      * @param sheet       the sheet to operate on
      * @param srcRowIndex the zero-based index of the source row
@@ -100,6 +101,10 @@ public final class PxlRowUtils {
                                final int dstRowIndex) {
 
         if (Objects.isNull(sheet) || sheet instanceof StreamingSheet) {
+            return;
+        }
+
+        if (dstRowIndex == srcRowIndex) {
             return;
         }
 
@@ -117,7 +122,7 @@ public final class PxlRowUtils {
                 .orElseGet(() -> sheet.createRow(dstRowIndex));
 
         dstRow.setHeight(srcRow.getHeight());
-        dstRow.setRowStyle(srcRow.getRowStyle());
+        Optional.ofNullable(srcRow.getRowStyle()).ifPresent(dstRow::setRowStyle);
 
         IntStream.range(0, srcRow.getLastCellNum())
                 .forEach(columnIndex -> {
@@ -135,7 +140,8 @@ public final class PxlRowUtils {
      * every cell into each target row, then re-applying the source row's merged regions across the
      * range. If the range start already exists, existing rows are first shifted down to make room for
      * the whole range. A {@code null} sheet, a streaming sheet ({@link StreamingSheet}), an inverted
-     * range ({@code dstStartRowIndex > dstEndRowIndex}) or a missing source row makes this a no-op.
+     * range ({@code dstStartRowIndex > dstEndRowIndex}) or a missing source row makes this a no-op, and
+     * a destination row that is the source row itself once the shift has been applied is skipped.
      *
      * @param sheet            the sheet to operate on
      * @param srcRowIndex      the zero-based index of the source row
@@ -169,8 +175,12 @@ public final class PxlRowUtils {
                     final Row dstRow = Optional.ofNullable(sheet.getRow(dstRowIndex))
                             .orElseGet(() -> sheet.createRow(dstRowIndex));
 
+                    if (dstRow.getRowNum() == srcRow.getRowNum()) {
+                        return;
+                    }
+
                     dstRow.setHeight(srcRow.getHeight());
-                    dstRow.setRowStyle(srcRow.getRowStyle());
+                    Optional.ofNullable(srcRow.getRowStyle()).ifPresent(dstRow::setRowStyle);
 
                     IntStream.range(0, srcRow.getLastCellNum())
                             .forEach(columnIndex -> {
