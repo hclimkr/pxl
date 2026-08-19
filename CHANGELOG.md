@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Some public `util/` methods now declare a checked exception they did not declare before, which is a
+  source-breaking change** - the only one in this release. `PxlWorkbookUtils.createFormulaEvaluator`,
+  `PxlSheetUtils.cloneSheet` and `PxlMiscUtils.convertColumnStringToColumnIndex` gain
+  `throws PxlNullPointerException`; `PxlMiscUtils.convertCellReferenceStringToIndexes` and, through it,
+  `PxlCellUtils.getCell(Sheet, String, boolean)` and the thirteen public helpers that address a cell by an A1-style
+  reference gain it alongside the `PxlArgumentException` they already declared; and both
+  `PxlCellUtils.addPicturesToCell` overloads gain `throws PxlArgumentException`. A call site that already catches
+  `PxlException` compiles unchanged; one that catches only `PxlArgumentException`, or nothing at all, has to widen.
+  Nothing moves for annotation-driven import/export - the core reaches none of these signatures from user code.
+
 - **`@Valid` on a `@PxlSheet` field no longer gets the same row validated twice.** In the workbook form the binder
   validates each row on its own, tagging the violation with the sheet name and - on import - the row index. Marking
   the sheet field `@Valid` made bean validation walk those very rows a second time while validating the workbook
@@ -38,6 +48,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `PxlCellUtils.cloneCellStyle` swallowed a style-creation failure without a word. When the target workbook has no
+  room for another cell style POI raises `IllegalStateException`, and the helper caught it, discarded it and
+  returned `null`; `copyCell` reads that `null` as "no style to set" and skips the call, so the cell was copied
+  with its value and none of its formatting, and nothing anywhere said so. The reach is narrow - `copyCell` clones
+  a style only across workbooks, since two cells in one workbook share the style object outright - but it is the
+  quietest kind of loss inside it: rows past the limit come out unformatted and the file looks finished. The
+  failure is now reported as an SLF4J `WARN` carrying POI's message, the way the export path already reports a
+  style it cannot create, and the copy still goes ahead unstyled rather than aborting. A style created before the
+  failure is discarded too, so a partial clone is no longer handed back as if it were a copy of the source.
+- Public `util/` entry points let raw POI and JDK exceptions out instead of `PxlException`. Passing `null` to
+  `PxlWorkbookUtils.createFormulaEvaluator`, `PxlSheetUtils.cloneSheet`,
+  `PxlMiscUtils.convertColumnStringToColumnIndex` or `convertCellReferenceStringToIndexes` produced a bare
+  `NullPointerException` from inside POI or the JDK, and `PxlCellUtils.addPicturesToCell` with
+  `horizontalImageNum = 0` produced `ArithmeticException: / by zero` - it sizes the grid with
+  `(imageNum + n - 1) / n` before it looks at whether there are any images at all, so even an empty list failed.
+  Each is now checked with `PxlAssertSupport` and raises `PxlNullPointerException` or `PxlArgumentException`, the
+  way the builders and the rest of `util/` already do. `convertColumnStringToColumnIndex` also stops trusting POI
+  to reject what is not column letters: `CellReference.convertColStringToIndex` folds every character into the
+  same running total and answers a nonsense index rather than failing (`"1"` came back as `-16`), so the shape is
+  settled before the call and anything else raises `PxlArgumentException`.
 - `PxlSheetUtils.cloneSheet` re-pointed only the first range of a print area at the clone. POI's two calls are not
   symmetric - `getPrintArea` names the sheet in front of every range, while `setPrintArea` wants the ranges bare and
   puts the destination sheet's name on each one itself - and the bridge between them cut the string at its first

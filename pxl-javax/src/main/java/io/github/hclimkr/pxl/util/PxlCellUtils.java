@@ -3,8 +3,10 @@ package io.github.hclimkr.pxl.util;
 import com.github.pjfanning.xlsx.impl.StreamingSheet;
 import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
+import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
+import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.type.PxlFileFormat;
 import net.coobird.thumbnailator.Thumbnails;
 import org.apache.commons.io.IOUtils;
@@ -132,12 +134,13 @@ public final class PxlCellUtils {
      * @param cellRefStr   the A1-style cell reference
      * @param createIfNone whether to create the row and cell if they do not yet exist
      * @return the (possibly newly created) cell, or {@code null} if unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell getCell(final Sheet sheet,
                                final String cellRefStr,
                                final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         final Pair<Integer, Integer> cellIndexes = PxlMiscUtils.convertCellReferenceStringToIndexes(cellRefStr);
         final int rowIndex = cellIndexes.getLeft();
@@ -149,7 +152,8 @@ public final class PxlCellUtils {
     /**
      * Copies the content of one cell onto another. The style is reused directly when both cells belong
      * to the same workbook, otherwise it is cloned into the destination workbook via
-     * {@link #cloneCellStyle(Cell, Workbook)}. Any cell comment and hyperlink are re-created as new
+     * {@link #cloneCellStyle(Cell, Workbook)}; a clone the destination workbook cannot take leaves the copy
+     * unstyled, and says so through an SLF4J {@code WARN}. Any cell comment and hyperlink are re-created as new
      * objects owned by the destination sheet rather than handed over as-is, so the source keeps its own
      * and a template cell can be copied to many destinations; a comment's rich-text runs are flattened
      * to plain text in the process. The typed value is transferred according to the source cell type
@@ -434,13 +438,14 @@ public final class PxlCellUtils {
      * @param value        the value to write, may be {@code null}
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellValue(final Sheet sheet,
                                     final String cellRefStr,
                                     final Object value,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -490,13 +495,14 @@ public final class PxlCellUtils {
      * @param value        the numeric value to write
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellValue(final Sheet sheet,
                                     final String cellRefStr,
                                     final double value,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -542,13 +548,14 @@ public final class PxlCellUtils {
      * @param value        the boolean value to write, or {@code null} to blank the cell
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellValue(final Sheet sheet,
                                     final String cellRefStr,
                                     final Boolean value,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -594,13 +601,14 @@ public final class PxlCellUtils {
      * @param value        the boolean value to write
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellValue(final Sheet sheet,
                                     final String cellRefStr,
                                     final boolean value,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -642,13 +650,14 @@ public final class PxlCellUtils {
      * @param value        the date value to write
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellValue(final Sheet sheet,
                                     final String cellRefStr,
                                     final Date value,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -690,13 +699,14 @@ public final class PxlCellUtils {
      * @param value        the date-time value to write
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellValue(final Sheet sheet,
                                     final String cellRefStr,
                                     final LocalDateTime value,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -738,13 +748,14 @@ public final class PxlCellUtils {
      * @param value        the date value to write
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellValue(final Sheet sheet,
                                     final String cellRefStr,
                                     final LocalDate value,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -786,13 +797,14 @@ public final class PxlCellUtils {
      * @param value        the calendar value to write
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellValue(final Sheet sheet,
                                     final String cellRefStr,
                                     final Calendar value,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -834,13 +846,14 @@ public final class PxlCellUtils {
      * @param value        the rich-text value to write
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellValue(final Sheet sheet,
                                     final String cellRefStr,
                                     final RichTextString value,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -882,13 +895,14 @@ public final class PxlCellUtils {
      * @param value        the string value to write
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellValue(final Sheet sheet,
                                     final String cellRefStr,
                                     final String value,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -930,13 +944,14 @@ public final class PxlCellUtils {
      * @param formula      the formula text (without a leading {@code =})
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellFormula(final Sheet sheet,
                                       final String cellRefStr,
                                       final String formula,
                                       final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -978,13 +993,14 @@ public final class PxlCellUtils {
      * @param value        the POI error code (see {@link FormulaError})
      * @param createIfNone whether to create the row and cell if absent
      * @return the written cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellErrorValue(final Sheet sheet,
                                          final String cellRefStr,
                                          final byte value,
                                          final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -1023,12 +1039,13 @@ public final class PxlCellUtils {
      * @param cellRefStr   the A1-style cell reference
      * @param createIfNone whether to create the row and cell if absent
      * @return the blanked cell, or {@code null} if the cell is unavailable
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if the reference does not include both a row and a column
      */
     public static Cell setCellBlank(final Sheet sheet,
                                     final String cellRefStr,
                                     final boolean createIfNone)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         return Optional.ofNullable(getCell(sheet, cellRefStr, createIfNone))
                 .map(cell -> {
@@ -1080,7 +1097,7 @@ public final class PxlCellUtils {
      * {@link #cloneCellStyle(Cell, Workbook)}.
      *
      * @param cell the cell whose style is cloned
-     * @return the newly created style, or {@code null} if the workbook's style limit is exceeded
+     * @return the newly created style, or {@code null} if the style cannot be created in the workbook
      */
     public static CellStyle cloneCellStyle(final Cell cell) {
 
@@ -1090,11 +1107,15 @@ public final class PxlCellUtils {
     /**
      * Creates a new cell style in the target workbook copied from the given cell's style. If the target
      * workbook's maximum number of cell styles has been reached (POI raises {@link IllegalStateException}),
-     * the exception is swallowed and {@code null} is returned.
+     * the failure is reported as an SLF4J {@code WARN} and {@code null} is returned, so a copy carries no
+     * style rather than aborting - the same way the export path handles a style it cannot create.
+     * <p>
+     * A style already created before the failure is discarded as well: half a style is not a copy of the
+     * source, so the caller is told there is none rather than handed a blank one.
      *
      * @param cell           the cell whose style is used as the source
      * @param targetWorkbook the workbook in which to create the cloned style
-     * @return the newly created style, or {@code null} if the workbook's style limit is exceeded
+     * @return the newly created style, or {@code null} if the style cannot be created in the target workbook
      */
     public static CellStyle cloneCellStyle(final Cell cell,
                                            final Workbook targetWorkbook) {
@@ -1104,7 +1125,11 @@ public final class PxlCellUtils {
         try {
             cellStyle = targetWorkbook.createCellStyle();
             cellStyle.cloneStyleFrom(cell.getCellStyle());
-        } catch (IllegalStateException ignored) {
+        } catch (IllegalStateException e) {
+            // Style creation failed, e.g. because the workbook cell-style count limit is exhausted. Log the
+            // diagnostic and hand back nothing, so the caller copies the cell without a style instead of failing.
+            LOGGER.warn(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.LOG_CLONE_CELL_STYLE_FAILED, e.getMessage()));
+            cellStyle = null;
         }
 
         return cellStyle;
@@ -1161,21 +1186,27 @@ public final class PxlCellUtils {
 
     /**
      * Adds one or more pictures over a cell, resolving the cell's position and delegating to
-     * {@link #addPicturesToCell(Sheet, List, int, int, int, int, int, int)}. A {@code null} cell is a no-op.
+     * {@link #addPicturesToCell(Sheet, List, int, int, int, int, int, int)}. A {@code null} cell is a no-op,
+     * but the grid width is checked before that, so an unusable one is rejected either way.
      *
      * @param cell               the target cell whose row/column locates the pictures
      * @param imageFileUrls      the image source URLs; each is loaded and embedded
      * @param pictureWidthPx     the width of each picture in pixels
      * @param pictureHeightPx    the height of each picture in pixels
      * @param picturePaddingPx   the padding between and around pictures in pixels
-     * @param horizontalImageNum the number of pictures per row before wrapping to the next line
+     * @param horizontalImageNum the number of pictures per row before wrapping to the next line; must be 1 or greater
+     * @throws PxlArgumentException if {@code horizontalImageNum} is not positive
      */
     public static void addPicturesToCell(final Cell cell,
                                          final List<String> imageFileUrls,
                                          final int pictureWidthPx,
                                          final int pictureHeightPx,
                                          final int picturePaddingPx,
-                                         final int horizontalImageNum) {
+                                         final int horizontalImageNum)
+            throws PxlArgumentException {
+
+        PxlAssertSupport.isTrue(horizontalImageNum > 0,
+                PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.UTIL_PICTURE_HORIZONTAL_NUM_NOT_POSITIVE, String.valueOf(horizontalImageNum)));
 
         if (Objects.isNull(cell)) {
             return;
@@ -1193,7 +1224,8 @@ public final class PxlCellUtils {
      * {@code horizontalImageNum} columns. The target row is created if absent and its height is raised
      * to fit the resulting grid. Each image is fetched from its URL and anchored with
      * {@link ClientAnchor.AnchorType#MOVE_AND_RESIZE}; an image that fails to load is skipped with a
-     * warning logged via SLF4J rather than aborting the rest. A {@code null} sheet is a no-op.
+     * warning logged via SLF4J rather than aborting the rest. A {@code null} sheet is a no-op, but the grid
+     * width is checked before that, so an unusable one is rejected either way.
      * <p>
      * The grid positions are given in pixels and converted to the anchor unit of the workbook's format:
      * XLSX takes an absolute EMU distance, while XLS takes a fraction of the anchored cell and therefore
@@ -1206,7 +1238,8 @@ public final class PxlCellUtils {
      * @param picturePaddingPx   the padding between and around pictures in pixels
      * @param colIndex           the zero-based column index the pictures are anchored on
      * @param rowIndex           the zero-based row index the pictures are anchored on
-     * @param horizontalImageNum the number of pictures per row before wrapping to the next line
+     * @param horizontalImageNum the number of pictures per row before wrapping to the next line; must be 1 or greater
+     * @throws PxlArgumentException if {@code horizontalImageNum} is not positive
      */
     public static void addPicturesToCell(final Sheet sheet,
                                          final List<String> imageFileUrls,
@@ -1215,7 +1248,11 @@ public final class PxlCellUtils {
                                          final int picturePaddingPx,
                                          final int colIndex,
                                          final int rowIndex,
-                                         final int horizontalImageNum) {
+                                         final int horizontalImageNum)
+            throws PxlArgumentException {
+
+        PxlAssertSupport.isTrue(horizontalImageNum > 0,
+                PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.UTIL_PICTURE_HORIZONTAL_NUM_NOT_POSITIVE, String.valueOf(horizontalImageNum)));
 
         if (Objects.isNull(sheet)) {
             return;

@@ -2,14 +2,17 @@ package io.github.hclimkr.pxl.util;
 
 import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
+import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
+import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.styler.PxlStyler;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellReference;
 
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * Miscellaneous spreadsheet helpers: conversions between numeric row/column indexes and A1-style
@@ -17,6 +20,12 @@ import java.util.Objects;
  * an effective (usable) cell styler.
  */
 public final class PxlMiscUtils {
+
+    /**
+     * The shape of A1-style column letters: the letters themselves, optionally behind an absolute-reference
+     * marker ({@code $}).
+     */
+    private static final Pattern COLUMN_STRING_PATTERN = Pattern.compile("\\$?[A-Za-z]+");
 
     /**
      * Prevents instantiation.
@@ -40,11 +49,24 @@ public final class PxlMiscUtils {
 
     /**
      * Converts A1-style column letters (for example {@code "A"}, {@code "AA"}) to a zero-based column index.
+     * An absolute-reference marker ({@code $}) is accepted and ignored.
      *
      * @param columnString the column letters
      * @return the zero-based column index
+     * @throws PxlNullPointerException if {@code columnString} is {@code null}
+     * @throws PxlArgumentException    if {@code columnString} is blank or is not made of column letters
      */
-    public static int convertColumnStringToColumnIndex(final String columnString) {
+    public static int convertColumnStringToColumnIndex(final String columnString)
+            throws PxlNullPointerException, PxlArgumentException {
+
+        PxlAssertSupport.notBlank(columnString, "columnString");
+
+        // POI does not check that what it is given is column letters: it folds every character into the running
+        // total the same way and answers a nonsense (often negative) index for anything else, so the shape is
+        // settled here before it gets there.
+        if (!COLUMN_STRING_PATTERN.matcher(columnString).matches()) {
+            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.UTIL_COLUMN_STRING_INVALID, columnString));
+        }
 
         return CellReference.convertColStringToIndex(columnString);
     }
@@ -91,12 +113,21 @@ public final class PxlMiscUtils {
      *
      * @param cellRefStr the A1-style cell reference
      * @return a pair of (zero-based row index, zero-based column index)
-     * @throws PxlArgumentException if the reference does not include both a row and a column
+     * @throws PxlNullPointerException if {@code cellRefStr} is {@code null}
+     * @throws PxlArgumentException    if {@code cellRefStr} is blank, cannot be read as a cell reference at all,
+     *                                 or does not include both a row and a column
      */
     public static Pair<Integer, Integer> convertCellReferenceStringToIndexes(final String cellRefStr)
-            throws PxlArgumentException {
+            throws PxlNullPointerException, PxlArgumentException {
 
-        final CellReference cellRef = new CellReference(cellRefStr);
+        PxlAssertSupport.notBlank(cellRefStr, "cellRefStr");
+
+        final CellReference cellRef;
+        try {
+            cellRef = new CellReference(cellRefStr);
+        } catch (IllegalArgumentException e) {
+            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.UTIL_CELL_REF_INVALID, cellRefStr), e);
+        }
 
         if (cellRef.getRow() < 0 || cellRef.getCol() < 0) {
             throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.UTIL_CELL_REF_INVALID, cellRefStr));

@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl.internal.codec;
 
 import io.github.hclimkr.pxl.PxlConstants;
+import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlCellCodecException;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
@@ -126,10 +127,12 @@ final class PxlStringCodec {
      * @param object     the source value (a {@link String})
      * @param columnMeta the resolved export metadata for this column
      * @return the exported string
+     * @throws PxlArgumentException if the picture form is asked for with an unusable pictures-per-row count
      */
     static String buildStringCell(final Cell cell,
                                   final Object object,
-                                  final PxlExportColumnMeta columnMeta) {
+                                  final PxlExportColumnMeta columnMeta)
+            throws PxlArgumentException {
 
         final String cellString = makeExportString(object, columnMeta);
         if (Objects.nonNull(cell)) {

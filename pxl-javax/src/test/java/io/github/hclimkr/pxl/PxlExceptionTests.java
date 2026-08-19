@@ -5,6 +5,9 @@ import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.option.*;
 import io.github.hclimkr.pxl.tcdata.*;
+import io.github.hclimkr.pxl.util.PxlCellUtils;
+import io.github.hclimkr.pxl.util.PxlMiscUtils;
+import io.github.hclimkr.pxl.util.PxlSheetUtils;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -1125,6 +1128,20 @@ public class PxlExceptionTests {
         assertThrows(PxlNullPointerException.class, () -> PxlWorkbookUtils.openWorkbook((InputStream) null, null));
         assertThrows(PxlNullPointerException.class, () -> PxlWorkbookUtils.writeToStream(null, new ByteArrayOutputStream(), null));
         assertThrows(PxlNullPointerException.class, () -> PxlWorkbookUtils.writeToStream(new XSSFWorkbook(), null, null));
+        assertThrows(PxlNullPointerException.class, () -> PxlWorkbookUtils.createFormulaEvaluator(null));
+    }
+
+    @Test
+    public void publicUtils_missingOrUnusableArgs_throwPxlException() {
+        // Each of these used to let a raw POI/JDK exception out of a public util entry point.
+        assertThrows(PxlNullPointerException.class, () -> PxlSheetUtils.cloneSheet(null, 0, "Cloned"));
+        assertThrows(PxlNullPointerException.class, () -> PxlMiscUtils.convertColumnStringToColumnIndex(null));
+        assertThrows(PxlNullPointerException.class, () -> PxlMiscUtils.convertCellReferenceStringToIndexes(null));
+        // A pictures-per-row count of 0 divided by zero while sizing the grid, even for an empty picture list.
+        assertThrows(PxlArgumentException.class,
+                () -> PxlCellUtils.addPicturesToCell((Sheet) null, new ArrayList<>(), 100, 100, 5, 0, 0, 0));
+        assertThrows(PxlArgumentException.class,
+                () -> PxlCellUtils.addPicturesToCell((Cell) null, new ArrayList<>(), 100, 100, 5, 0));
     }
 
     // ------------------------------------------------------------------

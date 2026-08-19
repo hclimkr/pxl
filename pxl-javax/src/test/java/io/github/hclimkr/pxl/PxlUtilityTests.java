@@ -2,6 +2,8 @@ package io.github.hclimkr.pxl;
 
 import com.github.pjfanning.xlsx.StreamingReader;
 import io.github.hclimkr.pxl.exception.PxlArgumentException;
+import io.github.hclimkr.pxl.exception.PxlException;
+import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.styler.PxlStyler;
 import io.github.hclimkr.pxl.styler.PxlVoidStyler;
 import io.github.hclimkr.pxl.styler.data.PxlDataCommaSeparatedNumericStyler;
@@ -178,11 +180,25 @@ public class PxlUtilityTests {
     // ------------------------------------------------------------------
 
     @Test
-    public void miscUtils_columnIndexAndLetters_convertBothWays() {
+    public void miscUtils_columnIndexAndLetters_convertBothWays() throws PxlException {
         assertThat(PxlMiscUtils.convertColumnIndexToColumnString(0)).isEqualTo("A");
         assertThat(PxlMiscUtils.convertColumnIndexToColumnString(26)).isEqualTo("AA");
         assertThat(PxlMiscUtils.convertColumnStringToColumnIndex("A")).isEqualTo(0);
         assertThat(PxlMiscUtils.convertColumnStringToColumnIndex("AA")).isEqualTo(26);
+        // An absolute-reference marker is part of the letters POI accepts.
+        assertThat(PxlMiscUtils.convertColumnStringToColumnIndex("$B")).isEqualTo(1);
+    }
+
+    @Test
+    public void miscUtils_columnStringToIndex_missingOrMalformed_throws() {
+        // A required argument is checked before POI sees it.
+        assertThrows(PxlNullPointerException.class, () -> PxlMiscUtils.convertColumnStringToColumnIndex(null));
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertColumnStringToColumnIndex(" "));
+        // POI answers a nonsense index for anything that is not column letters ("1" -> -16), so the shape is
+        // rejected up front instead.
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertColumnStringToColumnIndex("1"));
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertColumnStringToColumnIndex("A1"));
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertColumnStringToColumnIndex("A$B"));
     }
 
     @Test
@@ -192,12 +208,15 @@ public class PxlUtilityTests {
     }
 
     @Test
-    public void miscUtils_cellReferenceToIndexes_parsedAndValidated() throws PxlArgumentException {
+    public void miscUtils_cellReferenceToIndexes_parsedAndValidated() throws PxlException {
         final Pair<Integer, Integer> indexes = PxlMiscUtils.convertCellReferenceStringToIndexes("B3");
         assertThat(indexes.getLeft()).isEqualTo(2);
         assertThat(indexes.getRight()).isEqualTo(1);
         // A column-only reference has no row -> rejected.
         assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertCellReferenceStringToIndexes("B"));
+        // A required argument is checked before POI sees it.
+        assertThrows(PxlNullPointerException.class, () -> PxlMiscUtils.convertCellReferenceStringToIndexes(null));
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertCellReferenceStringToIndexes(" "));
     }
 
     @Test
@@ -712,6 +731,25 @@ public class PxlUtilityTests {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             final Cell cell = workbook.createSheet("S").createRow(0).createCell(0);
             assertThat(PxlCellUtils.cloneCellStyle(cell)).isNotNull();
+        }
+    }
+
+    @Test
+    public void cellUtils_cloneCellStyle_styleLimitExhausted_returnsNullWithoutThrowing() throws Exception {
+        try (HSSFWorkbook srcWorkbook = new HSSFWorkbook();
+             HSSFWorkbook dstWorkbook = new HSSFWorkbook()) {
+
+            final Cell srcCell = srcWorkbook.createSheet("S").createRow(0).createCell(0);
+
+            // Use up the destination workbook's cell-style pool so POI refuses to hand out another style.
+            assertThrows(IllegalStateException.class, () -> {
+                for (int i = 0; i < 5000; i++) {
+                    dstWorkbook.createCellStyle();
+                }
+            });
+
+            // The refusal is reported through an SLF4J WARN instead of escaping, and nothing half-built comes back.
+            assertThat(PxlCellUtils.cloneCellStyle(srcCell, dstWorkbook)).isNull();
         }
     }
 

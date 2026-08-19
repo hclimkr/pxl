@@ -1,6 +1,8 @@
 package io.github.hclimkr.pxl.util;
 
 import com.github.pjfanning.xlsx.impl.StreamingSheet;
+import io.github.hclimkr.pxl.exception.PxlNullPointerException;
+import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.PrintSetup;
@@ -70,10 +72,14 @@ public final class PxlSheetUtils {
      * @param srcSheetIndex   the zero-based index of the sheet to clone
      * @param clonedSheetName the desired name for the cloned sheet
      * @return the cloned sheet
+     * @throws PxlNullPointerException if {@code workbook} is {@code null}
      */
     public static Sheet cloneSheet(final Workbook workbook,
                                    final int srcSheetIndex,
-                                   final String clonedSheetName) {
+                                   final String clonedSheetName)
+            throws PxlNullPointerException {
+
+        PxlAssertSupport.notNull(workbook, "workbook");
 
         final Sheet srcSheet = workbook.getSheetAt(srcSheetIndex);
         final PrintSetup srcPrintSetup = srcSheet.getPrintSetup();

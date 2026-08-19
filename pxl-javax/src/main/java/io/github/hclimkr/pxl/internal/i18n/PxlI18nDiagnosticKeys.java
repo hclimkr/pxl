@@ -437,6 +437,14 @@ public final class PxlI18nDiagnosticKeys {
      */
     public static final String UTIL_CELL_REF_INVALID = "util.cellRef.invalid";
     /**
+     * Invalid A1-style column letters; {@code {0}}=columnString.
+     */
+    public static final String UTIL_COLUMN_STRING_INVALID = "util.columnString.invalid";
+    /**
+     * The pictures-per-row count is not positive; {@code {0}}=horizontalImageNum.
+     */
+    public static final String UTIL_PICTURE_HORIZONTAL_NUM_NOT_POSITIVE = "util.picture.horizontalNumNotPositive";
+    /**
      * Workbook decryption failed.
      */
     public static final String UTIL_WORKBOOK_DECRYPT_FAILED = "util.workbook.decryptFailed";
@@ -519,6 +527,10 @@ public final class PxlI18nDiagnosticKeys {
      * Applying the date numeric style failed; {@code {0}}=error.
      */
     public static final String LOG_DATE_NUMERIC_STYLE_FAILED = "log.dateNumericStyleFailed";
+    /**
+     * Cloning a cell style into a target workbook failed; {@code {0}}=error.
+     */
+    public static final String LOG_CLONE_CELL_STYLE_FAILED = "log.cloneCellStyleFailed";
     /**
      * A merged region spanning several rows cannot be replicated onto every row of a destination range;
      * {@code {0}}=mergedRegion, {@code {1}}=destinationRowRange.

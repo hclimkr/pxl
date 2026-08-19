@@ -4,6 +4,7 @@ import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.annotation.PxlWorkbook;
 import io.github.hclimkr.pxl.exception.PxlDataException;
 import io.github.hclimkr.pxl.exception.PxlI18nException;
+import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nContent;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
@@ -161,12 +162,13 @@ public final class PxlExportWorkbookMeta {
      * @param workbookClass  the {@link PxlWorkbook}-annotated workbook class supplying annotation defaults; may be {@code null}
      * @param workbookOption runtime overrides taking precedence over the class annotation; may be {@code null}
      * @return the assembled export workbook metadata, holding the newly created workbook, formula evaluator, resolved engine/format/password/validation settings, cascaded stylers, i18n bundle and sheet options
-     * @throws PxlDataException if the workbook name field type is invalid
-     * @throws PxlI18nException if the export content i18n bundle cannot be found for the configured base name and locale
+     * @throws PxlDataException        if the workbook name field type is invalid
+     * @throws PxlI18nException        if the export content i18n bundle cannot be found for the configured base name and locale
+     * @throws PxlNullPointerException if the created POI workbook is unexpectedly absent
      */
     public static PxlExportWorkbookMeta makeExportWorkbookMeta(@Nullable final Class<?> workbookClass,
                                                                @Nullable final PxlExportWorkbookOption workbookOption)
-            throws PxlDataException, PxlI18nException {
+            throws PxlDataException, PxlI18nException, PxlNullPointerException {
 
         return makeExportWorkbookMetaInternally(workbookClass, workbookOption, false);
     }
@@ -183,12 +185,13 @@ public final class PxlExportWorkbookMeta {
      * @param workbookClass  the {@link PxlWorkbook}-annotated workbook class supplying annotation defaults; may be {@code null}
      * @param workbookOption runtime overrides taking precedence over the class annotation; may be {@code null}
      * @return the assembled export workbook metadata, carrying no POI workbook and the CSV file format
-     * @throws PxlDataException if the workbook name field type is invalid
-     * @throws PxlI18nException if the export content i18n bundle cannot be found for the configured base name and locale
+     * @throws PxlDataException        if the workbook name field type is invalid
+     * @throws PxlI18nException        if the export content i18n bundle cannot be found for the configured base name and locale
+     * @throws PxlNullPointerException never on this path - CSV creates no workbook and no formula evaluator
      */
     public static PxlExportWorkbookMeta makeExportWorkbookMetaForCsv(@Nullable final Class<?> workbookClass,
                                                                      @Nullable final PxlExportWorkbookOption workbookOption)
-            throws PxlDataException, PxlI18nException {
+            throws PxlDataException, PxlI18nException, PxlNullPointerException {
 
         return makeExportWorkbookMetaInternally(workbookClass, workbookOption, true);
     }
@@ -201,13 +204,14 @@ public final class PxlExportWorkbookMeta {
      * @param workbookOption runtime overrides taking precedence over the class annotation; may be {@code null}
      * @param forCsv         {@code true} to assemble metadata for a CSV destination (no POI workbook, CSV file format)
      * @return the assembled export workbook metadata
-     * @throws PxlDataException if the workbook name field type is invalid
-     * @throws PxlI18nException if the export content i18n bundle cannot be found for the configured base name and locale
+     * @throws PxlDataException        if the workbook name field type is invalid
+     * @throws PxlI18nException        if the export content i18n bundle cannot be found for the configured base name and locale
+     * @throws PxlNullPointerException if the created POI workbook is unexpectedly absent
      */
     private static PxlExportWorkbookMeta makeExportWorkbookMetaInternally(@Nullable final Class<?> workbookClass,
                                                                           @Nullable final PxlExportWorkbookOption workbookOption,
                                                                           final boolean forCsv)
-            throws PxlDataException, PxlI18nException {
+            throws PxlDataException, PxlI18nException, PxlNullPointerException {
 
         PxlWorkbookSupport.validateWorkbookNameFieldType(workbookClass);
 
