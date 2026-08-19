@@ -38,6 +38,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `PxlSheetUtils.cloneSheet` re-pointed only the first range of a print area at the clone. POI's two calls are not
+  symmetric - `getPrintArea` names the sheet in front of every range, while `setPrintArea` wants the ranges bare and
+  puts the destination sheet's name on each one itself - and the bridge between them cut the string at its first
+  `!`. A print area of several ranges (`S!$A$1:$B$2,S!$D$1:$E$2`) therefore kept `S!` on every range after the
+  first, leaving the clone pointing at the source sheet's cells wherever the resulting reference was accepted at
+  all; and since `!` is not a character Excel forbids in a sheet name, a sheet named `A!B` has its name quoted
+  rather than rejected, so the cut landed inside the quotes and broke the reference. Ranges are now separated on
+  the commas outside a quoted name and each loses everything up to the first `!` outside the quotes, so a name
+  holding a comma, a `!` or an escaped quote (`O'Brien`) comes through whole. The clone is also given its final
+  name before the print area is set, because `setPrintArea` stamps the name the sheet carries at that moment. Only
+  the public `util/` helper is affected - the import/export core does not call it.
 - `PxlCellUtils.copyCell` moved a cell's comment and hyperlink instead of copying them. Both were passed to the
   destination's setters as the source cell's own objects, and POI re-anchors what it is handed, so the note and the
   link disappeared from the source cell. A second copy from the same source then found nothing left, which is what

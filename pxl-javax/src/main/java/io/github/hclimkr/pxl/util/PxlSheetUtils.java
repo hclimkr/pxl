@@ -1,11 +1,14 @@
 package io.github.hclimkr.pxl.util;
 
 import com.github.pjfanning.xlsx.impl.StreamingSheet;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.PrintSetup;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.WorkbookUtil;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -23,6 +26,22 @@ import java.util.Objects;
 public final class PxlSheetUtils {
 
     /**
+     * The character Excel wraps a sheet name in whenever the name holds something that would otherwise break the
+     * reference around it - a space, a comma, an exclamation mark. A quote inside such a name is doubled.
+     */
+    private static final char SHEET_NAME_QUOTE = '\'';
+
+    /**
+     * The character that separates a reference's sheet name from its cell range.
+     */
+    private static final char SHEET_NAME_SEPARATOR = '!';
+
+    /**
+     * The character that separates the ranges of a non-contiguous print area.
+     */
+    private static final char PRINT_AREA_RANGE_SEPARATOR = ',';
+
+    /**
      * Prevents instantiation.
      */
     private PxlSheetUtils() {
@@ -36,6 +55,10 @@ public final class PxlSheetUtils {
      * orientation, fit width/height, scale, header/footer margins), its fit-to-page and repeating
      * row/column settings, and its print area. The requested name is sanitized with
      * {@link WorkbookUtil#createSafeSheetName(String)} before being applied.
+     * <p>
+     * A print area of several ranges is carried over whole, and each range is re-pointed at the clone: POI reports
+     * a print area with the source sheet's name in front of every range, while {@code setPrintArea} wants the
+     * ranges bare and prefixes them with the destination sheet's name itself.
      *
      * @param workbook        the workbook that owns the source sheet and will hold the clone
      * @param srcSheetIndex   the zero-based index of the sheet to clone
@@ -65,13 +88,79 @@ public final class PxlSheetUtils {
         clonedSheet.setRepeatingRows(srcSheet.getRepeatingRows());
         clonedSheet.setRepeatingColumns(srcSheet.getRepeatingColumns());
 
-        final String printArea = workbook.getPrintArea(srcSheetIndex);
-        if (Objects.nonNull(printArea) && printArea.contains("!")) {
-            workbook.setPrintArea(clonedSheetIndex, printArea.substring(printArea.indexOf("!") + 1));
-        }
         workbook.setSheetName(clonedSheetIndex, WorkbookUtil.createSafeSheetName(clonedSheetName));
 
+        // The rename comes first because setPrintArea stamps the sheet's name, as it stands at that moment, into
+        // the reference it stores. Renaming afterwards would leave POI to rewrite that reference on its own.
+        final String printArea = workbook.getPrintArea(srcSheetIndex);
+        if (StringUtils.isNotBlank(printArea)) {
+            workbook.setPrintArea(clonedSheetIndex, removeSheetNamesFromPrintArea(printArea));
+        }
+
         return clonedSheet;
+    }
+
+    /**
+     * Strips the sheet name from every range of a print area, leaving the bare ranges
+     * {@link Workbook#setPrintArea(int, String)} expects.
+     * <p>
+     * The ranges are split on the separators that sit outside a quoted sheet name, so a name holding a comma
+     * keeps its range in one piece.
+     * <p>
+     * POI splits and renders references itself, but neither half is usable here. {@code AreaReference}'s splitter
+     * decides where a quoted name ends by counting the quotes in the segment so far and calling it closed at two,
+     * which a doubled quote - the escape for a name such as {@code O'Brien} - pushes past; two such ranges are
+     * then read as one and rejected. And rebuilding the survivors through {@code CellReference} would go through
+     * {@code AreaReference}, which stores a whole-column reference as rows 1 to 65536 whatever the format, turning
+     * an XLSX one into a range 16 times too short. Passing the text through untouched avoids both.
+     *
+     * @param printArea the print area as {@link Workbook#getPrintArea(int)} reports it
+     * @return the same ranges, in the same order, without their sheet names
+     */
+    private static String removeSheetNamesFromPrintArea(final String printArea) {
+
+        final List<String> ranges = new ArrayList<>();
+        boolean quoted = false;
+        int rangeStart = 0;
+
+        for (int i = 0; i < printArea.length(); i++) {
+            final char character = printArea.charAt(i);
+
+            if (character == SHEET_NAME_QUOTE) {
+                quoted = !quoted;
+            } else if (!quoted && character == PRINT_AREA_RANGE_SEPARATOR) {
+                ranges.add(removeSheetNameFromRange(printArea.substring(rangeStart, i)));
+                rangeStart = i + 1;
+            }
+        }
+        ranges.add(removeSheetNameFromRange(printArea.substring(rangeStart)));
+
+        return StringUtils.join(ranges, PRINT_AREA_RANGE_SEPARATOR);
+    }
+
+    /**
+     * Strips the sheet name from a single range of a print area. The name ends at the first separator that sits
+     * outside a quoted name, so a name holding the separator itself is not cut through the middle. A range that
+     * names no sheet is returned as it came.
+     *
+     * @param range one range of a print area, sheet name included
+     * @return the range without its sheet name
+     */
+    private static String removeSheetNameFromRange(final String range) {
+
+        boolean quoted = false;
+
+        for (int i = 0; i < range.length(); i++) {
+            final char character = range.charAt(i);
+
+            if (character == SHEET_NAME_QUOTE) {
+                quoted = !quoted;
+            } else if (!quoted && character == SHEET_NAME_SEPARATOR) {
+                return range.substring(i + 1);
+            }
+        }
+
+        return range;
     }
 
     /**

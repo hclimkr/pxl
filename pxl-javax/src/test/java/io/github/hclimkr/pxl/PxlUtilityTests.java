@@ -1126,12 +1126,44 @@ public class PxlUtilityTests {
     public void sheetUtils_cloneSheet_copiesPrintArea() throws Exception {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             workbook.createSheet("Src");
-            workbook.setPrintArea(0, "$A$1:$B$2");   // getPrintArea now contains "!" -> the print-area copy branch runs
+            workbook.setPrintArea(0, "$A$1:$B$2");   // POI keeps this as "Src!$A$1:$B$2"
 
             final Sheet cloned = PxlSheetUtils.cloneSheet(workbook, 0, "Cloned");
 
             assertThat(workbook.getSheetName(workbook.getSheetIndex(cloned))).isEqualTo("Cloned");
-            assertThat(workbook.getPrintArea(workbook.getSheetIndex(cloned))).isNotNull();
+            // The range comes over pointing at the clone, not at the sheet it was read from.
+            assertThat(workbook.getPrintArea(workbook.getSheetIndex(cloned))).isEqualTo("Cloned!$A$1:$B$2");
+        }
+    }
+
+    @Test
+    public void sheetUtils_cloneSheet_multiRangePrintArea_pointsEveryRangeAtTheClone() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            workbook.createSheet("Src");
+            workbook.setPrintArea(0, "$A$1:$B$2,$D$1:$E$2");   // POI names the source sheet in front of each range
+
+            final Sheet cloned = PxlSheetUtils.cloneSheet(workbook, 0, "Cloned");
+
+            // Dropping only the first sheet name would leave the second range printing the source sheet's cells.
+            assertThat(workbook.getPrintArea(workbook.getSheetIndex(cloned)))
+                    .isEqualTo("Cloned!$A$1:$B$2,Cloned!$D$1:$E$2");
+        }
+    }
+
+    @Test
+    public void sheetUtils_cloneSheet_quotedSheetNamePrintArea_survives() throws Exception {
+        // Excel forbids none of ',', '!' and a non-leading, non-trailing '\'' in a sheet name, so POI quotes the
+        // name instead of rejecting it and doubles the quote inside: the print area reads
+        // 'A,B!C''D'!$A$1:$B$2,'A,B!C''D'!$D$1:$E$2. Every separator inside those quotes, the doubled quote
+        // included, has to be told apart from the ones doing the actual separating.
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            workbook.createSheet("A,B!C'D");
+            workbook.setPrintArea(0, "$A$1:$B$2,$D$1:$E$2");
+
+            final Sheet cloned = PxlSheetUtils.cloneSheet(workbook, 0, "Cloned");
+
+            assertThat(workbook.getPrintArea(workbook.getSheetIndex(cloned)))
+                    .isEqualTo("Cloned!$A$1:$B$2,Cloned!$D$1:$E$2");
         }
     }
 
