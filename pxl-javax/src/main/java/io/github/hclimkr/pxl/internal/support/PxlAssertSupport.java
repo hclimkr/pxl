@@ -32,6 +32,11 @@ import java.util.function.Supplier;
  * {@code notEmpty(tags, () -> new IllegalArgumentException("at least one tag is required"))} - letting the caller
  * raise a non-Pxl exception of their own choosing. {@code isTrue} validates a condition rather than a named argument,
  * so its second form takes a message.</p>
+ *
+ * <p>{@code notNegative} guards the index arguments of the public {@code util/} helpers. It comes in the named form
+ * only, since an index failure that does not say which of several index arguments was rejected is of little use, and
+ * it checks the lower bound alone - an upper bound is a property of the sheet's format rather than of the argument,
+ * and POI rejects an index past its own limit with a message that names that limit.</p>
  */
 public final class PxlAssertSupport {
 
@@ -430,6 +435,27 @@ public final class PxlAssertSupport {
         if (!expression) {
             throw exceptionSupplier.get();
         }
+    }
+
+    /**
+     * Validates that the index is not negative, building the message from the given parameter name.
+     * <p>
+     * Only the lower bound is checked. An upper bound belongs to the format the sheet is in rather than to the
+     * argument, and POI already turns an index past its own limit down with a message that names the limit.
+     *
+     * @param index         the index to check
+     * @param parameterName the name of the checked parameter, embedded into the message
+     * @return the validated index (never negative)
+     * @throws PxlArgumentException if {@code index} is negative
+     */
+    public static int notNegative(final int index, final String parameterName)
+            throws PxlArgumentException {
+
+        if (index < 0) {
+            throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.ASSERT_NOT_NEGATIVE_NAMED, parameterName, String.valueOf(index)));
+        }
+
+        return index;
     }
 
     /**

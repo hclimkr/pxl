@@ -15,7 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `throws PxlNullPointerException`; `PxlMiscUtils.convertCellReferenceStringToIndexes` and, through it,
   `PxlCellUtils.getCell(Sheet, String, boolean)` and the thirteen public helpers that address a cell by an A1-style
   reference gain it alongside the `PxlArgumentException` they already declared; and both
-  `PxlCellUtils.addPicturesToCell` overloads gain `throws PxlArgumentException`. A call site that already catches
+  `PxlCellUtils.addPicturesToCell` overloads gain `throws PxlArgumentException`. The index-argument sweep (see
+  Fixed) adds `throws PxlArgumentException` to the rest of that surface: `PxlRowUtils.getRow`, `copyRow`,
+  `copyRowMultiplyByRange`/`ByCount` and `removeRowsByRange`/`ByCount`; `PxlCellUtils.getCell(Sheet, int, int,
+  boolean)`, the ten index-form `setCellValue` overloads, `setCellFormula`, `setCellErrorValue`, `setCellBlank` and
+  the index form of `copyCell`; `PxlSheetUtils.setPrintArea(Sheet, int, int, int, int)`; and the three
+  `PxlMiscUtils` index-to-text conversions. `getCellWithMerges` is deliberately not among them - it only ever
+  reads, so its read path was split off to keep it free of the declaration. A call site that already catches
   `PxlException` compiles unchanged; one that catches only `PxlArgumentException`, or nothing at all, has to widen.
   Nothing moves for annotation-driven import/export - the core reaches none of these signatures from user code.
 
@@ -48,6 +54,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The index-taking `util/` helpers let a negative index through to POI, which answers one with a raw
+  `IllegalArgumentException` - or, worse, with a value. `PxlRowUtils.getRow(sheet, -1, true)` and everything built
+  on it (`copyRow`, `copyRowMultiplyByRange`/`ByCount`, `removeRowsByRange`/`ByCount`, and through
+  `PxlCellUtils.getCell` the whole `setCellValue` family, `setCellFormula`, `setCellErrorValue`, `setCellBlank` and
+  the index form of `copyCell`) reached `createRow(-1)`; `PxlSheetUtils.cloneSheet` and `setPrintArea` and
+  `PxlCellUtils.addPicturesToCell` did the same for sheet, row and column indexes. The `PxlMiscUtils` conversions
+  were the quiet ones: POI renders a negative column index as an empty string, and reads row or column `-1` as
+  "not stated" rather than as an error, so `convertIndexesToCellReferenceString(-1, 0)` came back as `"A"` and
+  `(0, -1)` as `"1"` - half a reference, which reads as a reference until it is used as one. This is the mirror of
+  `convertColumnStringToColumnIndex` answering `"1"` with `-16`, fixed earlier in this release.
+  The rule now is **lenient on reads, strict on writes**: a read (`createIfNone = false`, and `getCellWithMerges`,
+  which only ever reads) answers a negative index with `null`, the way it answers an absent row or cell, while
+  anything that changes the sheet - or builds a reference to hand back - raises `PxlArgumentException` naming the
+  parameter. Only the lower bound is checked; an index past the format's last row or column is still POI's to
+  refuse, since it names the limit in its message. Two consequences worth noting: those helpers now declare a
+  checked `PxlArgumentException` (see Changed), and `PxlColumnUtils.autoSizeColumns` is left as it stands, its
+  negative index still a documented no-op.
+- `PxlCellUtils.cloneCellStyle` let a `null` argument out as a raw `NullPointerException`. Both overloads
+  dereferenced what they were handed - `cloneCellStyle(Cell)` to reach the cell's own workbook,
+  `cloneCellStyle(Cell, Workbook)` to create the style in the target - so a missing cell or target workbook left a
+  public utility as a bare JDK exception instead of a `PxlException`. Both now answer `null`, which is already what
+  the method returns for a style the target workbook has no room for, so a caller that handles "no style came back"
+  needs no new branch. Returning rather than raising is deliberate: `copyCell` reaches this method from inside the
+  `IntStream.forEach` lambda that `PxlRowUtils.copyRow` and `copyRowMultiplyByRange` copy cells with, where a
+  checked `PxlNullPointerException` cannot be thrown, and both of those already treat a missing cell as a no-op.
+  One unchecked path in `util/` is left as it stands: an out-of-range sheet index handed to
+  `PxlSheetUtils.cloneSheet` still surfaces POI's `IllegalArgumentException`, since no index-taking helper checks
+  its bounds and they are worth settling together rather than one at a time.
 - `PxlCellUtils.cloneCellStyle` swallowed a style-creation failure without a word. When the target workbook has no
   room for another cell style POI raises `IllegalStateException`, and the helper caught it, discarded it and
   returned `null`; `copyCell` reads that `null` as "no style to set" and skips the call, so the cell was copied
@@ -129,6 +163,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rather than import them; and `PxlColumnSupport` named `exportDropdownList`, which does not exist, instead of
   `exportOptionItems` / `exportEnumDropDownListStyle`. Two `{@link}` references to `PxlSheet` in
   `PxlExportWorkbookOption` now resolve. Comments only — no signature, default or behavior changed.
+- More of the same in `util/`, found by reading the package through after the index-argument sweep.
+  `PxlCellUtils.getCellWithMerges` was documented as falling back to "the plain cell" on a streaming sheet; it
+  cannot, since such a sheet reports neither merged regions nor a row looked up by index, so it yields `null`
+  there - the class comment said the same thing and is corrected with it. Three descriptions were short of what
+  the code does: the one-argument `getCellStringValue` did not say a blank cell also yields `null`, neither
+  overload mentioned that an error cell does, and the fourteen A1-reference helpers documented
+  `PxlArgumentException` only for a reference missing its row or column, when a blank one and one POI cannot read
+  raise it too. The rest is wording: `cloneCellStyle` misnamed which call sits inside the lambda,
+  `PxlSheetUtils`'s class comment opened on a "Both concerns" with no antecedent and described the streaming
+  no-op too broadly, and `addNoteToCell` and `addPicturesToCell` did not mark their nullable `cell` parameter the
+  way the rest of the class does. Comments only.
 
 ## [0.9.4] - 2026-08-11
 

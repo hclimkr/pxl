@@ -3,8 +3,8 @@ package io.github.hclimkr.pxl.exception;
 import io.github.hclimkr.pxl.Pxl;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
-import io.github.hclimkr.pxl.util.PxlMiscUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.ss.util.CellReference;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -129,7 +129,8 @@ public abstract class PxlException extends Exception {
      * Builds a location-tagged message by joining the present sheet/row/column tags with commas and
      * prefixing them to {@code message} (as {@code "tag: message"}). When no location is present, the
      * message is returned unchanged. The row index is rendered one-based; when {@code columnName} is
-     * absent, {@code columnIndex} is converted to a spreadsheet column string (A, B, ...).
+     * absent, {@code columnIndex} is converted to a spreadsheet column string (A, B, ...) - unless it is
+     * negative, in which case the column is left out of the tag rather than risking the conversion.
      *
      * <p>The tag words and the join format are localized through the diagnostic message bundle
      * ({@code pxl-messages}): English by default, overridable process-wide via
@@ -160,9 +161,8 @@ public abstract class PxlException extends Exception {
 
         if (Objects.nonNull(columnName)) {
             tags.add(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.TAG_COLUMN_NAME, columnName));
-        } else if (Objects.nonNull(columnIndex)) {
-            tags.add(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.TAG_COLUMN_INDEX,
-                    PxlMiscUtils.convertColumnIndexToColumnString(columnIndex)));
+        } else if (Objects.nonNull(columnIndex) && columnIndex >= 0) {
+            tags.add(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.TAG_COLUMN_INDEX, CellReference.convertNumToColString(columnIndex)));
         }
 
         final String tag = StringUtils.join(tags, ", ");

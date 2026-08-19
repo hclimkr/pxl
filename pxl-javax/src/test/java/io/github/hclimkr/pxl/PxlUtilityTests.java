@@ -202,9 +202,23 @@ public class PxlUtilityTests {
     }
 
     @Test
-    public void miscUtils_cellReferenceAndRange_formatted() {
+    public void miscUtils_cellReferenceAndRange_formatted() throws PxlException {
         assertThat(PxlMiscUtils.convertIndexesToCellReferenceString(2, 1)).isEqualTo("B3");
         assertThat(PxlMiscUtils.convertIndexesToCellRangeAddressString(0, 0, 9, 3)).isEqualTo("A1:D10");
+    }
+
+    @Test
+    public void miscUtils_negativeIndexes_rejectedBeforePoiAnswersWithAValue() {
+        // POI reads -1 as "not stated" and builds half a reference from it - (-1, 0) as "A", (0, -1) as "1" -
+        // and answers a negative column index with an empty string. A wrong reference is harder to notice than
+        // a refusal, so the shape is settled before POI sees it.
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertColumnIndexToColumnString(-1));
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertIndexesToCellReferenceString(-1, 0));
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertIndexesToCellReferenceString(0, -1));
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertIndexesToCellRangeAddressString(-1, 0, 9, 3));
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertIndexesToCellRangeAddressString(0, -1, 9, 3));
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertIndexesToCellRangeAddressString(0, 0, -1, 3));
+        assertThrows(PxlArgumentException.class, () -> PxlMiscUtils.convertIndexesToCellRangeAddressString(0, 0, 9, -1));
     }
 
     @Test
@@ -436,6 +450,21 @@ public class PxlUtilityTests {
     }
 
     @Test
+    public void rowUtils_getRow_negativeIndex_nullWhenReadingAndThrowsWhenCreating() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+
+            // Reading answers a bad index the way it answers an absent row.
+            assertThat(PxlRowUtils.getRow(sheet, -1, false)).isNull();
+
+            // Creating a row at one is a change to the sheet, so it is refused rather than left to POI - and the
+            // refusal does not depend on the sheet being there.
+            assertThrows(PxlArgumentException.class, () -> PxlRowUtils.getRow(sheet, -1, true));
+            assertThrows(PxlArgumentException.class, () -> PxlRowUtils.getRow(null, -1, true));
+        }
+    }
+
+    @Test
     public void rowUtils_copyRow_duplicatesCellsToNewPosition() throws Exception {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             final Sheet sheet = workbook.createSheet("S");
@@ -578,6 +607,32 @@ public class PxlUtilityTests {
             assertThat(byRef).isNotNull();
             assertThat(byRef.getRowIndex()).isEqualTo(2);
             assertThat(byRef.getColumnIndex()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    public void cellUtils_getCell_negativeIndex_nullWhenReadingAndThrowsWhenCreating() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            sheet.createRow(0).createCell(0).setCellValue("v");
+
+            // A read yields null for either index - POI answers a negative column with a raw
+            // IllegalArgumentException even when it is only being read.
+            assertThat(PxlCellUtils.getCell(sheet, -1, 0, false)).isNull();
+            assertThat(PxlCellUtils.getCell(sheet, 0, -1, false)).isNull();
+            assertThat(PxlCellUtils.getCellWithMerges(sheet, -1, -1)).isNull();
+
+            // Creating one is refused, and the row index is reported first.
+            assertThat(assertThrows(PxlArgumentException.class, () -> PxlCellUtils.getCell(sheet, -1, -1, true)))
+                    .hasMessageContaining("rowIndex");
+            assertThat(assertThrows(PxlArgumentException.class, () -> PxlCellUtils.getCell(sheet, 0, -1, true)))
+                    .hasMessageContaining("columnIndex");
+
+            // The whole setCellValue family reaches the sheet through that one lookup.
+            assertThrows(PxlArgumentException.class, () -> PxlCellUtils.setCellValue(sheet, 0, -1, "x", true));
+            assertThrows(PxlArgumentException.class, () -> PxlCellUtils.setCellFormula(sheet, -1, 0, "1+2", true));
+            assertThrows(PxlArgumentException.class, () -> PxlCellUtils.setCellBlank(sheet, -1, 0, true));
+            assertThrows(PxlArgumentException.class, () -> PxlCellUtils.copyCell(sheet, 0, 0, -1, 0, true));
         }
     }
 
@@ -731,6 +786,19 @@ public class PxlUtilityTests {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             final Cell cell = workbook.createSheet("S").createRow(0).createCell(0);
             assertThat(PxlCellUtils.cloneCellStyle(cell)).isNotNull();
+        }
+    }
+
+    @Test
+    public void cellUtils_cloneCellStyle_nullArgument_returnsNull() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Cell cell = workbook.createSheet("S").createRow(0).createCell(0);
+
+            // A missing cell or target workbook is answered the way a style the workbook cannot take is: with
+            // null, rather than a raw NullPointerException escaping a public utility.
+            assertThat(PxlCellUtils.cloneCellStyle(null)).isNull();
+            assertThat(PxlCellUtils.cloneCellStyle(null, workbook)).isNull();
+            assertThat(PxlCellUtils.cloneCellStyle(cell, null)).isNull();
         }
     }
 

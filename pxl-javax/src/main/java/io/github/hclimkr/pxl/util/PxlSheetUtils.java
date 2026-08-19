@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl.util;
 
 import com.github.pjfanning.xlsx.impl.StreamingSheet;
+import io.github.hclimkr.pxl.exception.PxlArgumentException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
@@ -24,8 +25,13 @@ import java.util.Objects;
  * first, so neither an over-long name, nor one holding characters Excel forbids, nor one another sheet already
  * holds can fail the clone.
  * <p>
- * Both concerns are page-layout metadata a streaming sheet ({@link StreamingSheet}) does not carry, so setting a
- * print area no-ops there, as it does on a {@code null} sheet.
+ * A print area is page-layout metadata a streaming sheet ({@link StreamingSheet}) does not carry, so both
+ * {@code setPrintArea} overloads no-op there, as they do on a {@code null} sheet. Cloning makes no such test: it
+ * works from the workbook and a sheet index rather than from a sheet object.
+ * <p>
+ * Every method here writes, so an index it is handed is refused with {@link PxlArgumentException} when negative,
+ * rather than carried into POI, which answers one with a bare {@link IllegalArgumentException}. Only the lower
+ * bound is checked; an index past the end of the workbook or of the sheet's format is left to POI.
  */
 public final class PxlSheetUtils {
 
@@ -73,13 +79,15 @@ public final class PxlSheetUtils {
      * @param clonedSheetName the desired name for the cloned sheet
      * @return the cloned sheet
      * @throws PxlNullPointerException if {@code workbook} is {@code null}
+     * @throws PxlArgumentException    if {@code srcSheetIndex} is negative
      */
     public static Sheet cloneSheet(final Workbook workbook,
                                    final int srcSheetIndex,
                                    final String clonedSheetName)
-            throws PxlNullPointerException {
+            throws PxlNullPointerException, PxlArgumentException {
 
         PxlAssertSupport.notNull(workbook, "workbook");
+        PxlAssertSupport.notNegative(srcSheetIndex, "srcSheetIndex");
 
         final Sheet srcSheet = workbook.getSheetAt(srcSheetIndex);
         final PrintSetup srcPrintSetup = srcSheet.getPrintSetup();
@@ -188,12 +196,19 @@ public final class PxlSheetUtils {
      * @param startColumnIndex the zero-based first column of the print area
      * @param endRowIndex      the zero-based last row of the print area
      * @param endColumnIndex   the zero-based last column of the print area
+     * @throws PxlArgumentException if any of the indexes is negative
      */
     public static void setPrintArea(final Sheet sheet,
                                     final int startRowIndex,
                                     final int startColumnIndex,
                                     final int endRowIndex,
-                                    final int endColumnIndex) {
+                                    final int endColumnIndex)
+            throws PxlArgumentException {
+
+        PxlAssertSupport.notNegative(startRowIndex, "startRowIndex");
+        PxlAssertSupport.notNegative(startColumnIndex, "startColumnIndex");
+        PxlAssertSupport.notNegative(endRowIndex, "endRowIndex");
+        PxlAssertSupport.notNegative(endColumnIndex, "endColumnIndex");
 
         if (Objects.isNull(sheet) || sheet instanceof StreamingSheet) {
             return;

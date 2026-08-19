@@ -5,10 +5,7 @@ import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.option.*;
 import io.github.hclimkr.pxl.tcdata.*;
-import io.github.hclimkr.pxl.util.PxlCellUtils;
-import io.github.hclimkr.pxl.util.PxlMiscUtils;
-import io.github.hclimkr.pxl.util.PxlSheetUtils;
-import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
+import io.github.hclimkr.pxl.util.*;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeAll;
@@ -1142,6 +1139,37 @@ public class PxlExceptionTests {
                 () -> PxlCellUtils.addPicturesToCell((Sheet) null, new ArrayList<>(), 100, 100, 5, 0, 0, 0));
         assertThrows(PxlArgumentException.class,
                 () -> PxlCellUtils.addPicturesToCell((Cell) null, new ArrayList<>(), 100, 100, 5, 0));
+    }
+
+    @Test
+    public void publicUtils_negativeIndexes_throwPxlArgumentException() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            sheet.createRow(0).createCell(0).setCellValue("v");
+
+            // Everything that writes refuses a negative index rather than carrying it into POI, which answers
+            // one with a bare IllegalArgumentException.
+            assertThrows(PxlArgumentException.class, () -> PxlRowUtils.copyRow(sheet, 0, -1));
+            assertThrows(PxlArgumentException.class, () -> PxlRowUtils.copyRowMultiplyByRange(sheet, -1, 0, 1));
+            assertThrows(PxlArgumentException.class, () -> PxlRowUtils.copyRowMultiplyByCount(sheet, 0, -1, 3));
+            assertThrows(PxlArgumentException.class, () -> PxlRowUtils.removeRowsByRange(sheet, -1, 2));
+            assertThrows(PxlArgumentException.class, () -> PxlRowUtils.removeRowsByCount(sheet, -1, 2));
+            assertThrows(PxlArgumentException.class, () -> PxlSheetUtils.cloneSheet(workbook, -1, "Cloned"));
+            assertThrows(PxlArgumentException.class, () -> PxlSheetUtils.setPrintArea(sheet, -1, 0, 9, 3));
+            assertThrows(PxlArgumentException.class, () -> PxlSheetUtils.setPrintArea(sheet, 0, 0, 9, -1));
+            assertThrows(PxlArgumentException.class,
+                    () -> PxlCellUtils.addPicturesToCell(sheet, new ArrayList<>(), 100, 100, 5, -1, 0, 1));
+
+            // The count-based overloads still no-op on a non-positive count, but the index is checked first.
+            assertThrows(PxlArgumentException.class, () -> PxlRowUtils.removeRowsByCount(sheet, -1, 0));
+
+            // The message names the parameter that was rejected.
+            assertThat(assertThrows(PxlArgumentException.class, () -> PxlRowUtils.copyRow(sheet, 0, -1)))
+                    .hasMessageContaining("dstRowIndex");
+
+            // An index past the format's limit stays POI's to refuse - only the lower bound is checked here.
+            assertThrows(IllegalArgumentException.class, () -> PxlRowUtils.getRow(sheet, 1048576, true));
+        }
     }
 
     // ------------------------------------------------------------------

@@ -18,6 +18,13 @@ import java.util.regex.Pattern;
  * Miscellaneous spreadsheet helpers: conversions between numeric row/column indexes and A1-style
  * column letters, cell references and range addresses, plus a check for whether a styler class is
  * an effective (usable) cell styler.
+ * <p>
+ * The conversions settle the shape of what they are given before POI sees it, in both directions: letters that are
+ * not column letters and a negative index alike raise {@link PxlArgumentException}. Left to itself POI answers
+ * some of these with a value rather than a refusal - {@code "1"} as column {@code -16}, column {@code -1} as an
+ * empty string, row {@code -1} as a reference with no row in it - and a wrong reference is harder to notice than a
+ * failure. Only the lower bound is checked; an index past a format's limit still converts, since these methods
+ * build text and are not told which format it is for.
  */
 public final class PxlMiscUtils {
 
@@ -38,11 +45,20 @@ public final class PxlMiscUtils {
     /**
      * Converts a zero-based column index to its A1-style column letters (for example {@code 0 -> "A"},
      * {@code 26 -> "AA"}).
+     * <p>
+     * A negative index is refused rather than converted: POI answers one with an empty string, which reads as a
+     * column reference right up until it is used as one. This is the mirror of
+     * {@link #convertColumnStringToColumnIndex}, which likewise settles the shape of its argument before POI sees
+     * it.
      *
      * @param columnIndex the zero-based column index
      * @return the column letters
+     * @throws PxlArgumentException if {@code columnIndex} is negative
      */
-    public static String convertColumnIndexToColumnString(final int columnIndex) {
+    public static String convertColumnIndexToColumnString(final int columnIndex)
+            throws PxlArgumentException {
+
+        PxlAssertSupport.notNegative(columnIndex, "columnIndex");
 
         return CellReference.convertNumToColString(columnIndex);
     }
@@ -74,13 +90,23 @@ public final class PxlMiscUtils {
     /**
      * Builds an A1-style cell reference (for example {@code "B3"}) from zero-based row/column indexes,
      * formatted without absolute-reference (`$`) markers.
+     * <p>
+     * A negative index is refused. POI reads {@code -1} as "not stated" rather than as an error and builds half a
+     * reference from it - {@code (-1, 0)} comes back as {@code "A"} and {@code (0, -1)} as {@code "1"} - which is
+     * a worse answer than none; anything below that it turns down itself, with a bare
+     * {@link IllegalArgumentException}.
      *
      * @param rowIndex    the zero-based row index
      * @param columnIndex the zero-based column index
      * @return the A1-style cell reference
+     * @throws PxlArgumentException if either index is negative
      */
     public static String convertIndexesToCellReferenceString(final int rowIndex,
-                                                             final int columnIndex) {
+                                                             final int columnIndex)
+            throws PxlArgumentException {
+
+        PxlAssertSupport.notNegative(rowIndex, "rowIndex");
+        PxlAssertSupport.notNegative(columnIndex, "columnIndex");
 
         final CellReference cellRef = new CellReference(rowIndex, columnIndex);
 
@@ -96,11 +122,18 @@ public final class PxlMiscUtils {
      * @param endRowIndex      the zero-based last row of the range
      * @param endColumnIndex   the zero-based last column of the range
      * @return the A1-style range address
+     * @throws PxlArgumentException if any of the indexes is negative
      */
     public static String convertIndexesToCellRangeAddressString(final int startRowIndex,
                                                                 int startColumnIndex,
                                                                 int endRowIndex,
-                                                                int endColumnIndex) {
+                                                                int endColumnIndex)
+            throws PxlArgumentException {
+
+        PxlAssertSupport.notNegative(startRowIndex, "startRowIndex");
+        PxlAssertSupport.notNegative(startColumnIndex, "startColumnIndex");
+        PxlAssertSupport.notNegative(endRowIndex, "endRowIndex");
+        PxlAssertSupport.notNegative(endColumnIndex, "endColumnIndex");
 
         final CellRangeAddress cellRangeAddress = new CellRangeAddress(startRowIndex, endRowIndex, startColumnIndex, endColumnIndex);
 

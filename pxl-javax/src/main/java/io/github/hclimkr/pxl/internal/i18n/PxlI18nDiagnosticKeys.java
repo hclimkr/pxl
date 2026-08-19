@@ -72,6 +72,10 @@ public final class PxlI18nDiagnosticKeys {
      * Boolean condition precondition failure.
      */
     public static final String ASSERT_IS_TRUE = "assert.isTrue";
+    /**
+     * Named non-negative precondition failure; {@code {0}}=parameter name, {@code {1}}=the rejected value.
+     */
+    public static final String ASSERT_NOT_NEGATIVE_NAMED = "assert.notNegative.named";
 
     // Type codecs (internal/codec). Most are parameterized shared templates reused across ~30 codecs.
 
