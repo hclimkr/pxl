@@ -1167,6 +1167,46 @@ public class PxlUtilityTests {
         }
     }
 
+    @Test
+    public void sheetUtils_cloneSheet_nameAlreadyTaken_suffixesInsteadOfFailing() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            workbook.createSheet("Src");
+            workbook.createSheet("Copy");
+
+            final Sheet cloned = PxlSheetUtils.cloneSheet(workbook, 0, "Copy");
+
+            // POI's setSheetName turns down a name another sheet holds; the clone takes the next free number.
+            assertThat(workbook.getSheetName(workbook.getSheetIndex(cloned))).isEqualTo("Copy (2)");
+            assertThat(workbook.getSheetName(1)).isEqualTo("Copy");
+        }
+    }
+
+    @Test
+    public void sheetUtils_cloneSheet_nameTakenInAnotherCase_suffixesInsteadOfFailing() throws Exception {
+        // POI turns the name down whatever case it is asked in, so the uniqueness check ignores case as well.
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            workbook.createSheet("Src");
+            workbook.createSheet("Copy");
+
+            final Sheet cloned = PxlSheetUtils.cloneSheet(workbook, 0, "copy");
+
+            assertThat(workbook.getSheetName(workbook.getSheetIndex(cloned))).isEqualTo("copy (2)");
+        }
+    }
+
+    @Test
+    public void sheetUtils_cloneSheet_nameMatchingTheClonesInterimName_keepsIt() throws Exception {
+        // POI names the clone "Src (2)" as it joins the workbook. Settling the name only afterwards would read that
+        // interim name as a collision and push the requested one on to "Src (2) (2)".
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            workbook.createSheet("Src");
+
+            final Sheet cloned = PxlSheetUtils.cloneSheet(workbook, 0, "Src (2)");
+
+            assertThat(workbook.getSheetName(workbook.getSheetIndex(cloned))).isEqualTo("Src (2)");
+        }
+    }
+
     // ==================================================================
     // PxlFileFormat (root public type) - the physical format axis
     // ==================================================================

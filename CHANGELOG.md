@@ -49,6 +49,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   holding a comma, a `!` or an escaped quote (`O'Brien`) comes through whole. The clone is also given its final
   name before the print area is set, because `setPrintArea` stamps the name the sheet carries at that moment. Only
   the public `util/` helper is affected - the import/export core does not call it.
+- `PxlSheetUtils.cloneSheet` failed with POI's raw `IllegalArgumentException` when it was given a name the workbook
+  already held. The requested name was only run through `WorkbookUtil.createSafeSheetName`, which replaces invalid
+  characters and truncates to 31 chars but says nothing about uniqueness, and POI's `setSheetName` turns down a
+  name another sheet holds, in whatever case it is asked in. The failure also came too late to undo anything: the
+  clone had joined the workbook two calls earlier, so the caller was left with an extra sheet carrying POI's
+  interim name and no print area, and with no `PxlException` to say so. The name is now made unique the way the
+  names of the sheets an export creates are - a `" (2)"`, `" (3)"` ... suffix within the 31-char limit, compared
+  ignoring case - so the clone succeeds and the name it ends up with is no longer guaranteed to be the one asked
+  for; read it back with `workbook.getSheetName(workbook.getSheetIndex(clone))` where that matters. The name is
+  settled before the clone joins the workbook, so the interim name POI gives the clone is not itself read as a
+  collision, and a name no other sheet holds is applied unchanged. Only the public `util/` helper is affected - the
+  import/export core does not call it.
 - `PxlCellUtils.copyCell` moved a cell's comment and hyperlink instead of copying them. Both were passed to the
   destination's setters as the source cell's own objects, and POI re-anchors what it is handed, so the note and the
   link disappeared from the source cell. A second copy from the same source then found nothing left, which is what

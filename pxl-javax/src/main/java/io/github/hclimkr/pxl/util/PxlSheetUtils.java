@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl.util;
 
 import com.github.pjfanning.xlsx.impl.StreamingSheet;
+import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.PrintSetup;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -17,8 +18,9 @@ import java.util.Objects;
  * <p>
  * Cloning goes beyond POI's {@link Workbook#cloneSheet(int)}, which drops page setup: the copy also carries the
  * source sheet's print setup, its fit-to-page and repeating row/column settings, and its print area. The requested
- * name is sanitized with {@link WorkbookUtil#createSafeSheetName(String)} first, so an over-long name or one
- * holding characters Excel forbids cannot fail the clone.
+ * name is sanitized with {@link WorkbookUtil#createSafeSheetName(String)} and then made unique within the workbook
+ * first, so neither an over-long name, nor one holding characters Excel forbids, nor one another sheet already
+ * holds can fail the clone.
  * <p>
  * Both concerns are page-layout metadata a streaming sheet ({@link StreamingSheet}) does not carry, so setting a
  * print area no-ops there, as it does on a {@code null} sheet.
@@ -54,7 +56,11 @@ public final class PxlSheetUtils {
      * {@link Workbook#cloneSheet(int)}, this also copies the source sheet's print setup (paper size,
      * orientation, fit width/height, scale, header/footer margins), its fit-to-page and repeating
      * row/column settings, and its print area. The requested name is sanitized with
-     * {@link WorkbookUtil#createSafeSheetName(String)} before being applied.
+     * {@link WorkbookUtil#createSafeSheetName(String)} and then made unique within the workbook before being
+     * applied, the way the names of the sheets an export creates are: a name another sheet already holds (POI
+     * compares names ignoring case) takes a " (2)", " (3)" ... suffix instead of failing the clone. The name the
+     * clone ends up with is therefore not always the one asked for - read it back with
+     * {@code workbook.getSheetName(workbook.getSheetIndex(clone))} where it matters.
      * <p>
      * A print area of several ranges is carried over whole, and each range is re-pointed at the clone: POI reports
      * a print area with the source sheet's name in front of every range, while {@code setPrintArea} wants the
@@ -72,6 +78,10 @@ public final class PxlSheetUtils {
         final Sheet srcSheet = workbook.getSheetAt(srcSheetIndex);
         final PrintSetup srcPrintSetup = srcSheet.getPrintSetup();
 
+        // The name is settled before the clone joins the workbook: POI hands the clone an interim name of its own
+        // ("Src (2)"), and reading that as a collision would push the requested name one number further along.
+        final String uniqueSheetName = PxlWorkbookSupport.makeUniqueSafeSheetName(workbook, clonedSheetName);
+
         final Sheet clonedSheet = workbook.cloneSheet(srcSheetIndex);
         final int clonedSheetIndex = workbook.getSheetIndex(clonedSheet);
         final PrintSetup clonedPrintSetup = clonedSheet.getPrintSetup();
@@ -88,7 +98,7 @@ public final class PxlSheetUtils {
         clonedSheet.setRepeatingRows(srcSheet.getRepeatingRows());
         clonedSheet.setRepeatingColumns(srcSheet.getRepeatingColumns());
 
-        workbook.setSheetName(clonedSheetIndex, WorkbookUtil.createSafeSheetName(clonedSheetName));
+        workbook.setSheetName(clonedSheetIndex, uniqueSheetName);
 
         // The rename comes first because setPrintArea stamps the sheet's name, as it stands at that moment, into
         // the reference it stores. Renaming afterwards would leave POI to rewrite that reference on its own.
