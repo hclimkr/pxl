@@ -593,20 +593,23 @@ Export is configured the same way with `exportSheetOptions`/`exportColumnOptions
 ### Standard Constraint
 
 If you put validation annotations (`@NotNull`, `@NotEmpty`, `@NotBlank`, `@Valid`, ...) on fields, the import result object is validated,
-and on failure a `PxlValidationException` is raised.  
-Nested objects (sheet lists) propagate via `@Valid`.
+and on failure a `PxlValidationException` is raised.
 
 ```java
 @NotBlank
 @PxlColumn(name = "Name")
 private String name;
 
-// Nested lists of the workbook/sheet propagate via @Valid
+// A constraint on the collection itself; the rows are validated whether or not @Valid is present
 @NotEmpty
-@Valid
 @PxlSheet(name = "Employees")
 private List<Employee> employees;
 ```
+
+Row objects are always validated by PXL itself, one row at a time, with the sheet name — and, on import, the row index — attached to the
+exception. A `@PxlSheet` field therefore needs no `@Valid` for its rows to be checked. Conversely, a sheet PXL does not process —
+`exportEnabled = false` on export, `importEnabled = false` on import — has its rows left unchecked even with `@Valid`: validation follows the
+sheets that are actually written or read.
 
 Validation is controlled by `@PxlWorkbook(importDataValidation = ...)` (default `true`); turning it off means validation is not performed.
 However, this attribute only concerns whether a field's value satisfies the constraints.  

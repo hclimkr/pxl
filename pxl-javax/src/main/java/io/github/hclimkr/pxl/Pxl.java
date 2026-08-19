@@ -1,11 +1,14 @@
 package io.github.hclimkr.pxl;
 
+import io.github.hclimkr.pxl.annotation.PxlSheet;
 import io.github.hclimkr.pxl.builder.*;
+import io.github.hclimkr.pxl.internal.constraint.PxlSheetCascadeSkippingResolver;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.validation.Configuration;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import java.util.Locale;
@@ -34,23 +37,40 @@ public final class Pxl {
     private final Validator validator;
 
     /**
-     * Creates a {@link Pxl} instance, initializing the default bean-validation {@link Validator} shared
-     * by the import/export builders it creates.
+     * Creates a {@link Pxl} instance, initializing the bean-validation {@link Validator} shared by the
+     * import/export builders it creates.
      *
      * <p>Bean validation is <strong>optional</strong>: if no provider (e.g. hibernate-validator) or no EL
      * implementation (e.g. jakarta.el) is on the classpath, initialization is skipped gracefully - a warning
      * is logged and the {@link Validator} is left {@code null}, so import/export proceeds with bean validation
      * simply disabled (no exception is thrown). Add a provider and EL to enable it.</p>
+     *
+     * <p>The validator skips one kind of cascade: validating a workbook object does not descend into the rows of a
+     * {@link PxlSheet} field, even when that field is also marked {@code @Valid}. The binder validates those rows
+     * itself, one at a time and with the sheet name - and, on import, the row index - attached, so cascading would
+     * repeat the same work and report any violation without a location. Sheet rows are therefore validated exactly
+     * where the binder processes them: a sheet it skips ({@code exportEnabled = false} on export,
+     * {@code importEnabled = false} on import) has its rows left unvalidated, {@code @Valid} or not. Constraints on
+     * the collection itself ({@code @NotEmpty}, {@code @Size}, ...) and a {@code @Valid} on any other field are
+     * unaffected.</p>
      */
     public Pxl() {
 
         // Bean validation is optional. If neither a provider (NoProviderFoundException) nor an EL implementation
-        // (ValidationException HV000183) is present, buildDefaultValidatorFactory() throws at construction time in
-        // both cases, so we catch it here, disable validation only (validator=null), and continue. (Every validation
+        // (ValidationException HV000183) is present, building the factory throws at construction time in both
+        // cases, so we catch it here, disable validation only (validator=null), and continue. (Every validation
         // call site skips a null validator.)
         Validator resolvedValidator;
         try {
-            resolvedValidator = Validation.buildDefaultValidatorFactory().getValidator();
+            // resolvedValidator = Validation.buildDefaultValidatorFactory().getValidator();
+
+            final Configuration<?> configuration = Validation.byDefaultProvider().configure();
+
+            // The resolver decides per root type, and a row class has no @PxlSheet field, so the same validator
+            // serves the row pass too - there it has nothing to skip.
+            configuration.traversableResolver(new PxlSheetCascadeSkippingResolver(configuration.getDefaultTraversableResolver()));
+
+            resolvedValidator = configuration.buildValidatorFactory().getValidator();
         } catch (Exception e) {
             resolvedValidator = null;
             LOGGER.warn(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.LOG_BEAN_VALIDATION_INIT_FAILED, e.getMessage()));

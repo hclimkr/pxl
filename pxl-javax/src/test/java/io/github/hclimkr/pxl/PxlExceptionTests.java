@@ -6,10 +6,7 @@ import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.option.*;
 import io.github.hclimkr.pxl.tcdata.*;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.FormulaError;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Exception scenario tests - file/validation/special double/duplicate sheet/password/stream-reader formula, plus type parsing failures (bool/bigdecimal/biginteger/localdate/duration/period), integer/byte out-of-range, ERROR cell, no default constructor, RowIndex type/unsupported type/grouping field typo.
+ * Exception scenario tests - file/validation/special double/duplicate sheet/password/stream-reader formula, plus type parsing failures (bool/bigdecimal/biginteger/localdate/duration/period), integer/byte out-of-range, ERROR cell, no default constructor, RowIndex type/unsupported type/grouping field typo, and which validation pass reports a violation when a @PxlSheet field carries @Valid.
  */
 public class PxlExceptionTests {
 
@@ -120,6 +117,276 @@ public class PxlExceptionTests {
                         .sheet(ValidatedRow.class, Arrays.asList(row), "V")
                         .toStream(outputStream));
     }
+
+    // ------------------------------------------------------------------
+    // @Valid on a @PxlSheet field: which of the two validation passes reports the violation
+    // ------------------------------------------------------------------
+
+    // Sheet bytes with a "Name","Age" header row + 1 data row, matching CountingRow.
+    private static byte[] nameAgeSheet(final String sheetName, final String name, final String age) throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            final Sheet sheet = workbook.createSheet(sheetName);
+
+            final Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Name");
+            header.createCell(1).setCellValue("Age");
+
+            final Row data = sheet.createRow(1);
+            data.createCell(0).setCellValue(name);
+            data.createCell(1).setCellValue(age);
+
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        }
+    }
+
+    // Sheet bytes with the "Name","Age" header row and no data row at all.
+    private static byte[] headerOnlySheet(final String sheetName) throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            final Sheet sheet = workbook.createSheet(sheetName);
+
+            final Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Name");
+            header.createCell(1).setCellValue("Age");
+
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        }
+    }
+
+    private static CountingRow blankNameRow() {
+        final CountingRow row = new CountingRow();
+        row.setName("   ");     // @CountedNotBlank violation
+        row.setAge(30);
+
+        return row;
+    }
+
+    @Test
+    public void exportWorkbook_cascadingSheetField_violatingRow_throwsWithSheetTag() {
+        final CascadeWorkbook workbook = new CascadeWorkbook();
+        workbook.setWorkbookName("Cascade");
+        workbook.setRows(Arrays.asList(blankNameRow()));
+
+        try {
+            // The location tag is localized against the JVM default locale, so pin it to read the tag itself.
+            Pxl.setMessageLocale(Locale.ENGLISH);
+
+            // The workbook-object pass runs first on export and carries no location, so it used to report this one
+            // untagged. With the cascade skipped it no longer sees the row, and the tagged pass reports it instead.
+            final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                    pxl.exportExcel()
+                            .workbook(workbook)
+                            .toStream(new ByteArrayOutputStream()));
+            assertThat(ex.getMessage()).contains("sheet 'Rows'");
+        } finally {
+            Pxl.resetMessageLocale();
+        }
+    }
+
+    @Test
+    public void exportWorkbook_nonCascadingSheetField_violatingRow_throwsWithSheetTag() {
+        final NoCascadeWorkbook workbook = new NoCascadeWorkbook();
+        workbook.setWorkbookName("NoCascade");
+        workbook.setRows(Arrays.asList(blankNameRow()));
+
+        try {
+            Pxl.setMessageLocale(Locale.ENGLISH);
+
+            // Without the cascade the row collection pass is the one that catches it, and it does tag the sheet.
+            final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                    pxl.exportExcel()
+                            .workbook(workbook)
+                            .toStream(new ByteArrayOutputStream()));
+            assertThat(ex.getMessage()).contains("sheet 'Rows'");
+            assertThat(ex.getMessage()).doesNotContain("row ");
+        } finally {
+            Pxl.resetMessageLocale();
+        }
+    }
+
+    @Test
+    public void importWorkbook_cascadingSheetField_violatingRow_throwsWithRowTag() throws Exception {
+        final byte[] bytes = nameAgeSheet("Rows", "   ", "30");
+
+        try {
+            Pxl.setMessageLocale(Locale.ENGLISH);
+
+            // On import the per-row pass runs first, so the violation is reported with sheet and row. The header is
+            // row 1, hence the data row is reported as row 2.
+            final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                    pxl.importExcel()
+                            .workbook(CascadeWorkbook.class)
+                            .fromStream(new ByteArrayInputStream(bytes)));
+            assertThat(ex.getMessage()).contains("sheet 'Rows'");
+            assertThat(ex.getMessage()).contains("row 2");
+        } finally {
+            Pxl.resetMessageLocale();
+        }
+    }
+
+    @Test
+    public void importWorkbook_nonCascadingSheetField_violatingRow_throwsWithRowTag() throws Exception {
+        final byte[] bytes = nameAgeSheet("Rows", "   ", "30");
+
+        try {
+            Pxl.setMessageLocale(Locale.ENGLISH);
+
+            // @Valid changes nothing here: on import the per-row pass is first either way.
+            final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                    pxl.importExcel()
+                            .workbook(NoCascadeWorkbook.class)
+                            .fromStream(new ByteArrayInputStream(bytes)));
+            assertThat(ex.getMessage()).contains("sheet 'Rows'");
+            assertThat(ex.getMessage()).contains("row 2");
+        } finally {
+            Pxl.resetMessageLocale();
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Skipping the sheet cascade must not take any other constraint away
+    // ------------------------------------------------------------------
+
+    @Test
+    public void exportWorkbook_sheetCollectionConstraint_stillValidated() {
+        final ConstrainedCascadeWorkbook workbook = new ConstrainedCascadeWorkbook();
+        workbook.setWorkbookName("Constrained");
+        workbook.setRows(Collections.emptyList());      // @NotEmpty violation on the sheet field itself
+
+        // The skipped cascade is only the descent into the elements. A constraint on the collection is a constraint
+        // of the workbook object, and the workbook-object pass still checks it.
+        final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                pxl.exportExcel()
+                        .workbook(workbook)
+                        .toStream(new ByteArrayOutputStream()));
+        assertThat(ex.getMessage()).contains("'Rows' must not be empty.");
+    }
+
+    @Test
+    public void exportWorkbook_exportDisabledSheet_violatingRow_doesNotThrow() throws Exception {
+        final CountingRow exported = new CountingRow();
+        exported.setName("Alice");
+        exported.setAge(30);
+
+        final DisabledCascadeWorkbook workbook = new DisabledCascadeWorkbook();
+        workbook.setWorkbookName("Disabled");
+        workbook.setRows(Arrays.asList(exported));
+        workbook.setSkippedRows(Arrays.asList(blankNameRow()));      // exportEnabled=false, so the binder skips it
+
+        // A sheet that is not written is not validated either, @Valid on the field notwithstanding - so a violating
+        // row there cannot fail an export that never includes it.
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+    }
+
+    @Test
+    public void exportWorkbook_ownFieldConstraint_stillValidated() {
+        final CountingRow row = new CountingRow();
+        row.setName("Alice");
+        row.setAge(30);
+
+        final ConstrainedCascadeWorkbook workbook = new ConstrainedCascadeWorkbook();
+        workbook.setWorkbookName("   ");                // @NotBlank violation on the workbook's own field
+        workbook.setRows(Arrays.asList(row));
+
+        // Nothing about the sheet rule touches a plain constraint on the workbook object itself.
+        final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                pxl.exportExcel()
+                        .workbook(workbook)
+                        .toStream(new ByteArrayOutputStream()));
+        assertThat(ex.getMessage()).contains("'WorkbookName' must not be blank.");
+    }
+
+    @Test
+    public void exportWorkbook_nonSheetFieldCascade_stillValidated() {
+        final CountingRow row = new CountingRow();
+        row.setName("Alice");
+        row.setAge(30);
+
+        final CascadeMeta meta = new CascadeMeta();
+        meta.setLabel("   ");                           // violation behind a @Valid on a non-sheet field
+
+        final ConstrainedCascadeWorkbook workbook = new ConstrainedCascadeWorkbook();
+        workbook.setWorkbookName("Constrained");
+        workbook.setRows(Arrays.asList(row));
+        workbook.setMeta(meta);
+
+        // Only @PxlSheet fields are exempt from cascading; every other @Valid still descends as the user declared.
+        final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                pxl.exportExcel()
+                        .workbook(workbook)
+                        .toStream(new ByteArrayOutputStream()));
+        assertThat(ex.getMessage()).contains("'Label' must not be blank.");
+    }
+
+    @Test
+    public void importWorkbook_ownFieldConstraint_stillValidated() throws Exception {
+        // The export side has several of these; import needs its own, because there the workbook-object pass runs
+        // last instead of first and could have been dropped without any export test noticing.
+        final byte[] bytes = nameAgeSheet("Rows", "Alice", "30");
+
+        // fromStream supplies no workbook name, so the field stays null and its @NotBlank is violated - by the pass
+        // that runs after the rows are bound.
+        final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                pxl.importExcel()
+                        .workbook(ConstrainedCascadeWorkbook.class)
+                        .fromStream(new ByteArrayInputStream(bytes)));
+        assertThat(ex.getMessage()).contains("'WorkbookName' must not be blank.");
+    }
+
+    @Test
+    public void importWorkbook_sheetCollectionConstraint_stillValidated() throws Exception {
+        // Header row only: the sheet binds to an empty collection, which its @NotEmpty rejects.
+        final byte[] bytes = headerOnlySheet("Rows");
+
+        final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                pxl.importExcel()
+                        .workbookName("Constrained")
+                        .workbook(ConstrainedCascadeWorkbook.class)
+                        .fromStream(new ByteArrayInputStream(bytes)));
+        assertThat(ex.getMessage()).contains("'Rows' must not be empty.");
+    }
+
+    @Test
+    public void importCsvWorkbook_ownFieldConstraint_stillValidated() throws Exception {
+        // The CSV importer wires the same two passes, so the same guarantee has to hold there.
+        final String csv = "Name,Age\nAlice,30\n";
+
+        final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                pxl.importCsv()
+                        .workbook(ConstrainedCascadeWorkbook.class)
+                        .fromStreams(Arrays.asList("Rows"), Arrays.asList(stream(csv))));
+        assertThat(ex.getMessage()).contains("'WorkbookName' must not be blank.");
+    }
+
+    @Test
+    public void exportWorkbook_nestedRowListCascade_stillValidated() {
+        final CountingRow row = new CountingRow();
+        row.setName("Alice");
+        row.setAge(30);
+
+        // The same row class, but reached below the root through a plain @Valid list rather than a sheet. The
+        // binder never walks these, so the cascade has to reach them.
+        final CascadeMeta meta = new CascadeMeta();
+        meta.setLabel("Meta");
+        meta.setNestedRows(Arrays.asList(blankNameRow()));
+
+        final ConstrainedCascadeWorkbook workbook = new ConstrainedCascadeWorkbook();
+        workbook.setWorkbookName("Constrained");
+        workbook.setRows(Arrays.asList(row));
+        workbook.setMeta(meta);
+
+        final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
+                pxl.exportExcel()
+                        .workbook(workbook)
+                        .toStream(new ByteArrayOutputStream()));
+        assertThat(ex.getMessage()).contains("'Name' must not be blank.");
+    }
+
 
     // ------------------------------------------------------------------
     // export: double NaN / Infinity fails fast

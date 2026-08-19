@@ -17,6 +17,8 @@ import org.junit.jupiter.api.TestInfo;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
@@ -26,7 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Workbook/option-level behavior tests - importDataValidation, sheet/column exportOrder, superclass override,
  * stream-reader cache buffer, SXSSF window, conditional sheets, column export on/off, enum dropdown, importColumnRange,
- * and the same workbook attributes declared on @PxlWorkbook instead of a runtime option.
+ * the same workbook attributes declared on @PxlWorkbook instead of a runtime option, and how many times bean
+ * validation visits a row when the sheet field carries @Valid.
  */
 public class PxlWorkbookOptionTests {
 
@@ -435,6 +438,657 @@ public class PxlWorkbookOptionTests {
                 .workbook(workbook)
                 .override(PxlExportWorkbookOption.builder().exportDataValidation(true).build())
                 .toStream(new ByteArrayOutputStream()));
+    }
+
+    // ------------------------------------------------------------------
+    // @Valid on a @PxlSheet field: the cascade into the rows is skipped, so a row is still validated exactly once
+    // ------------------------------------------------------------------
+
+    private static List<CountingRow> twoCountingRows() {
+        final CountingRow alice = new CountingRow();
+        alice.setName("Alice");
+        alice.setAge(30);
+
+        final CountingRow bob = new CountingRow();
+        bob.setName("Bob");
+        bob.setAge(42);
+
+        return Arrays.asList(alice, bob);
+    }
+
+    @Test
+    public void exportWorkbook_cascadingSheetField_validatesEachRowOnce() throws Exception {
+        final CascadeWorkbook workbook = new CascadeWorkbook();
+        workbook.setWorkbookName("Cascade");
+        workbook.setRows(twoCountingRows());
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        // The workbook-object pass does not descend into the sheet field, so only the row collection pass reaches
+        // the rows - the same count the control below gets without @Valid.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportWorkbook_nonCascadingSheetField_validatesEachRowOnce() throws Exception {
+        final NoCascadeWorkbook workbook = new NoCascadeWorkbook();
+        workbook.setWorkbookName("NoCascade");
+        workbook.setRows(twoCountingRows());
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        // Without @Valid the workbook-object pass stops at the workbook's own constraints, so only the row
+        // collection pass reaches the rows.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportSheet_rowCollection_validatesEachRowOnce() throws Exception {
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .sheet(CountingRow.class, twoCountingRows(), "Rows")
+                .toStream(new ByteArrayOutputStream());
+
+        // The sheet form has no workbook object at all, so there is only ever one validation pass.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void importWorkbook_cascadingSheetField_validatesEachRowOnce() throws Exception {
+        final byte[] bytes = buildStringSheet("Rows", new String[]{"Name", "Age"}, new String[][]{{"Alice", "30"}, {"Bob", "42"}});
+
+        CountedNotBlankValidator.resetEvaluations();
+        final CascadeWorkbook imported = pxl.importExcel()
+                .workbook(CascadeWorkbook.class)
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(imported.getRows()).hasSize(2);
+        // Import validates each row as it is bound; the workbook-object pass that follows would otherwise walk the
+        // now-populated collection a second time.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void importWorkbook_nonCascadingSheetField_validatesEachRowOnce() throws Exception {
+        final byte[] bytes = buildStringSheet("Rows", new String[]{"Name", "Age"}, new String[][]{{"Alice", "30"}, {"Bob", "42"}});
+
+        CountedNotBlankValidator.resetEvaluations();
+        final NoCascadeWorkbook imported = pxl.importExcel()
+                .workbook(NoCascadeWorkbook.class)
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(imported.getRows()).hasSize(2);
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void importSheet_rowCollection_validatesEachRowOnce() throws Exception {
+        final byte[] bytes = buildStringSheet("Rows", new String[]{"Name", "Age"}, new String[][]{{"Alice", "30"}, {"Bob", "42"}});
+
+        CountedNotBlankValidator.resetEvaluations();
+        final List<CountingRow> rows = pxl.importExcel()
+                .sheet(CountingRow.class, Arrays.asList("Rows"))
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(rows).hasSize(2);
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void importCsvWorkbook_cascadingSheetField_validatesEachRowOnce() throws Exception {
+        final String csv = "Name,Age\nAlice,30\nBob,42\n";
+
+        CountedNotBlankValidator.resetEvaluations();
+        final CascadeWorkbook imported = pxl.importCsv()
+                .workbook(CascadeWorkbook.class)
+                .fromStreams(Arrays.asList("Rows"),
+                        Arrays.<InputStream>asList(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8))));
+
+        assertThat(imported.getRows()).hasSize(2);
+        // The CSV importer wires the two passes exactly like the Excel one, resolver included.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void importCsvWorkbook_nonCascadingSheetField_validatesEachRowOnce() throws Exception {
+        final String csv = "Name,Age\nAlice,30\nBob,42\n";
+
+        CountedNotBlankValidator.resetEvaluations();
+        final NoCascadeWorkbook imported = pxl.importCsv()
+                .workbook(NoCascadeWorkbook.class)
+                .fromStreams(Arrays.asList("Rows"),
+                        Arrays.<InputStream>asList(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8))));
+
+        assertThat(imported.getRows()).hasSize(2);
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportWorkbook_typeUseCascadingSheetField_validatesEachRowOnce() throws Exception {
+        final TypeUseCascadeWorkbook workbook = new TypeUseCascadeWorkbook();
+        workbook.setWorkbookName("TypeUseCascade");
+        workbook.setRows(twoCountingRows());
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        // Bean Validation 2.0 also accepts the cascade as a container element constraint (List<@Valid Row>). It has
+        // to be skipped just like the field form, otherwise the resolver has a hole.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportWorkbook_exportDisabledSheet_validatesNothingForThatSheet() throws Exception {
+        final CountingRow third = new CountingRow();
+        third.setName("Carol");
+        third.setAge(51);
+
+        final DisabledCascadeWorkbook workbook = new DisabledCascadeWorkbook();
+        workbook.setWorkbookName("Disabled");
+        workbook.setRows(twoCountingRows());                                    // exported -> validated
+        workbook.setSkippedRows(Arrays.asList(third));                          // exportEnabled=false -> not validated
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        // Only the exported sheet's 2 rows. The disabled sheet carries @Valid, but its cascade is skipped like any
+        // other sheet's, so validation follows what is actually written.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportWorkbook_importDisabledSheet_stillValidatedOnExport() throws Exception {
+        final CountingRow third = new CountingRow();
+        third.setName("Carol");
+        third.setAge(51);
+
+        // Mirror of the case above: this sheet is importEnabled=false but exports normally, so on export the binder
+        // does process it - and validates its rows.
+        final ImportDisabledCascadeWorkbook workbook = new ImportDisabledCascadeWorkbook();
+        workbook.setWorkbookName("ImportDisabled");
+        workbook.setRows(twoCountingRows());
+        workbook.setSkippedRows(Arrays.asList(third));
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        // 3 rows, each validated exactly once. The flag that matters here is exportEnabled, not importEnabled.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(3);
+    }
+
+    @Test
+    public void importWorkbook_importDisabledSheet_validatesOnlyTheBoundSheet() throws Exception {
+        final byte[] bytes = buildStringSheet("Rows", new String[]{"Name", "Age"}, new String[][]{{"Alice", "30"}, {"Bob", "42"}});
+
+        CountedNotBlankValidator.resetEvaluations();
+        final ImportDisabledCascadeWorkbook imported = pxl.importExcel()
+                .workbook(ImportDisabledCascadeWorkbook.class)
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(imported.getRows()).hasSize(2);
+        // The disabled sheet is never read, so its field stays null and its kept cascade has nothing to walk.
+        assertThat(imported.getSkippedRows()).isNull();
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportWorkbook_inheritedCascadingSheetField_validatesEachRowOnce() throws Exception {
+        // The @Valid @PxlSheet field is inherited, not declared, so the resolver has to find it up the chain.
+        final SubCascadeWorkbook workbook = new SubCascadeWorkbook();
+        workbook.setWorkbookName("SubCascade");
+        workbook.setRows(twoCountingRows());
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportCsvSheet_rowCollection_validatesEachRowOnce() throws Exception {
+        // CSV export has no workbook form at all, so there is only ever the one pass.
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportCsv()
+                .sheet(CountingRow.class, twoCountingRows(), "Rows")
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportSampleExcelWorkbook_validatesNothing() throws Exception {
+        // A sample carries no data objects, so its builder holds no validator to begin with.
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportSampleExcel()
+                .workbook(CascadeWorkbook.class)
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isZero();
+    }
+
+    @Test
+    public void roundTripWorkbook_cascadingSheetField_validatesEachRowOncePerDirection() throws Exception {
+        final CascadeWorkbook workbook = new CascadeWorkbook();
+        workbook.setWorkbookName("Cascade");
+        workbook.setRows(twoCountingRows());
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(outputStream);
+        assertThat(CountedNotBlankValidator.evaluations()).as("export").isEqualTo(2);
+
+        CountedNotBlankValidator.resetEvaluations();
+        final CascadeWorkbook imported = pxl.importExcel()
+                .workbook(CascadeWorkbook.class)
+                .fromStream(new ByteArrayInputStream(outputStream.toByteArray()));
+        assertThat(CountedNotBlankValidator.evaluations()).as("import").isEqualTo(2);
+
+        assertThat(imported.getRows()).extracting(CountingRow::getName).containsExactly("Alice", "Bob");
+    }
+
+    @Test
+    public void importWorkbook_streamReader_cascadingSheetField_validatesEachRowOnce() throws Exception {
+        final byte[] bytes = buildStringSheet("Rows", new String[]{"Name", "Age"}, new String[][]{{"Alice", "30"}, {"Bob", "42"}});
+
+        CountedNotBlankValidator.resetEvaluations();
+        final StreamCascadeWorkbook imported = pxl.importExcel()
+                .workbook(StreamCascadeWorkbook.class)
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(imported.getRows()).hasSize(2);
+        // A different reader, the same binder: the streaming path must not reintroduce the second pass.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void importCsvSheet_rowCollection_validatesEachRowOnce() throws Exception {
+        final String csv = "Name,Age\nAlice,30\nBob,42\n";
+
+        CountedNotBlankValidator.resetEvaluations();
+        final List<CountingRow> rows = pxl.importCsv()
+                .sheet(CountingRow.class)
+                .fromStream("Rows", new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(rows).hasSize(2);
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void importCsvWorkbook_importDisabledSheet_validatesOnlyTheBoundSheet() throws Exception {
+        final String csv = "Name,Age\nAlice,30\nBob,42\n";
+
+        CountedNotBlankValidator.resetEvaluations();
+        final ImportDisabledCascadeWorkbook imported = pxl.importCsv()
+                .workbook(ImportDisabledCascadeWorkbook.class)
+                .fromStreams(Arrays.asList("Rows"),
+                        Arrays.<InputStream>asList(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8))));
+
+        assertThat(imported.getRows()).hasSize(2);
+        assertThat(imported.getSkippedRows()).isNull();
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void importSheet_intoSet_validatesEachRowOnce() throws Exception {
+        final byte[] bytes = buildStringSheet("Rows", new String[]{"Name", "Age"}, new String[][]{{"Alice", "30"}, {"Bob", "42"}});
+
+        CountedNotBlankValidator.resetEvaluations();
+        @SuppressWarnings("unchecked") final Set<CountingRow> rows = pxl.importExcel()
+                .sheet(CountingRow.class, Set.class, Arrays.asList("Rows"))
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(rows).hasSize(2);
+        // The collection type is the caller's choice; validation counts rows either way.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportSheets_multipleSheetForms_validateEachRowOnce() throws Exception {
+        final CountingRow third = new CountingRow();
+        third.setName("Carol");
+        third.setAge(51);
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .sheet(CountingRow.class, twoCountingRows(), "First")
+                .sheet(CountingRow.class, Arrays.asList(third), "Second")
+                .toStream(new ByteArrayOutputStream());
+
+        // Chained sheet(...) calls take the multi-sheet form, which validates each collection separately.
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(3);
+    }
+
+    @Test
+    public void exportWorkbook_nullSheetCollection_validatesNothing() throws Exception {
+        final CascadeWorkbook empty = new CascadeWorkbook();
+        empty.setWorkbookName("Empty");
+        empty.setRows(null);
+
+        CountedNotBlankValidator.resetEvaluations();
+        // A null sheet collection produces no sheet at all, so the export ends with "no data" - unlike an empty
+        // collection, which still yields a header-only sheet (see the test below). What this pins down is that
+        // neither validation pass dereferenced it on the way there.
+        assertThrows(PxlDataException.class, () -> pxl.exportExcel()
+                .workbook(empty)
+                .toStream(new ByteArrayOutputStream()));
+
+        assertThat(CountedNotBlankValidator.evaluations()).isZero();
+    }
+
+    @Test
+    public void exportWorkbook_emptySheetCollection_validatesNothing() throws Exception {
+        final CascadeWorkbook empty = new CascadeWorkbook();
+        empty.setWorkbookName("Empty");
+        empty.setRows(Collections.<CountingRow>emptyList());
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(empty)
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isZero();
+    }
+
+    @Test
+    public void exportWorkbook_differentWorkbookClasses_decideIndependently() throws Exception {
+        // The resolver caches the sheet field names per class. Alternating a one-sheet class with a two-sheet one is
+        // what would expose a cache leaking across them: were the two-sheet class served the one-sheet entry, its
+        // second sheet would lose its skip and that sheet's row would be validated twice (4 instead of 3).
+        final CascadeWorkbook oneSheet = new CascadeWorkbook();
+        oneSheet.setWorkbookName("Cascade");
+        oneSheet.setRows(twoCountingRows());
+
+        final CountingRow third = new CountingRow();
+        third.setName("Carol");
+        third.setAge(51);
+
+        // Both sheets export (importEnabled=false only affects import), so all three rows are validated once each.
+        final ImportDisabledCascadeWorkbook twoSheets = new ImportDisabledCascadeWorkbook();
+        twoSheets.setWorkbookName("ImportDisabled");
+        twoSheets.setRows(twoCountingRows());
+        twoSheets.setSkippedRows(Arrays.asList(third));
+
+        for (int i = 0; i < 2; i++) {
+            CountedNotBlankValidator.resetEvaluations();
+            pxl.exportExcel()
+                    .workbook(oneSheet)
+                    .toStream(new ByteArrayOutputStream());
+            assertThat(CountedNotBlankValidator.evaluations()).as("one sheet, round %s", i).isEqualTo(2);
+
+            CountedNotBlankValidator.resetEvaluations();
+            pxl.exportExcel()
+                    .workbook(twoSheets)
+                    .toStream(new ByteArrayOutputStream());
+            assertThat(CountedNotBlankValidator.evaluations()).as("two sheets, round %s", i).isEqualTo(3);
+        }
+    }
+
+    @Test
+    public void exportWorkbook_getterCascade_validatesEachRowOnce() throws Exception {
+        // @Valid on the getter instead of the field: property access rather than field access, same decision.
+        final GetterCascadeWorkbook workbook = new GetterCascadeWorkbook();
+        workbook.setWorkbookName("GetterCascade");
+        workbook.setRows(twoCountingRows());
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportWorkbook_groupingSheet_validatesEachRowOnce() throws Exception {
+        // Grouping splits the rows across one sheet per key before writing, but validation still runs once over the
+        // original collection - a row must not be counted once per sheet it lands in.
+        final GroupedCascadeWorkbook workbook = new GroupedCascadeWorkbook();
+        workbook.setWorkbookName("Grouped");
+        workbook.setRows(twoCountingRows());        // ages 30 and 42 -> two groups
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportSampleCsvSheet_validatesNothing() throws Exception {
+        // Like the Excel sample builder, the CSV one holds no validator at all.
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportSampleCsv()
+                .sheet(CountingRow.class, "Rows")
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isZero();
+    }
+
+    @Test
+    public void exportWorkbook_xlsEngine_cascadingSheetField_validatesEachRowOnce() throws Exception {
+        final XlsCascadeWorkbook workbook = new XlsCascadeWorkbook();
+        workbook.setWorkbookName("Xls");
+        workbook.setRows(twoCountingRows());
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportWorkbook_sxssfEngine_cascadingSheetField_validatesEachRowOnce() throws Exception {
+        final SxssfCascadeWorkbook workbook = new SxssfCascadeWorkbook();
+        workbook.setWorkbookName("Sxssf");
+        workbook.setRows(twoCountingRows());
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void exportWorkbook_annotationValidationDisabled_validatesNothing() throws Exception {
+        final NoValidationCascadeWorkbook workbook = new NoValidationCascadeWorkbook();
+        workbook.setWorkbookName("NoValidation");
+        workbook.setRows(twoCountingRows());
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        // The annotation-side twin of the option-side case: @Valid alone triggers nothing.
+        assertThat(CountedNotBlankValidator.evaluations()).isZero();
+    }
+
+    @Test
+    public void exportWorkbook_sheetDisabledThroughOption_validatesNothing() throws Exception {
+        final CascadeWorkbook workbook = new CascadeWorkbook();
+        workbook.setWorkbookName("Cascade");
+        workbook.setRows(twoCountingRows());
+
+        final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
+                .exportSheetOptions(Arrays.asList(PxlExportSheetOption.builder()
+                        .fieldName("rows")
+                        .exportEnabled(false)
+                        .build()))
+                .build();
+
+        CountedNotBlankValidator.resetEvaluations();
+        assertThrows(PxlDataException.class, () -> pxl.exportExcel()
+                .workbook(workbook)
+                .override(option)
+                .toStream(new ByteArrayOutputStream()));
+
+        // Disabling through a runtime option lands in the same place as disabling on the annotation: the binder
+        // skips the sheet, and nothing else validates its rows. The resolver reads neither flag, so the two ways of
+        // turning a sheet off cannot drift apart.
+        assertThat(CountedNotBlankValidator.evaluations()).isZero();
+    }
+
+    @Test
+    public void exportWorkbook_reusedWorkbookObject_validatesEachRowOncePerExport() throws Exception {
+        final CascadeWorkbook workbook = new CascadeWorkbook();
+        workbook.setWorkbookName("Cascade");
+        workbook.setRows(twoCountingRows());
+
+        for (int i = 0; i < 3; i++) {
+            CountedNotBlankValidator.resetEvaluations();
+            pxl.exportExcel()
+                    .workbook(workbook)
+                    .toStream(new ByteArrayOutputStream());
+
+            assertThat(CountedNotBlankValidator.evaluations()).as("export %s", i).isEqualTo(2);
+        }
+    }
+
+    @Test
+    public void exportWorkbook_separatePxlInstances_decideAlike() throws Exception {
+        // Each Pxl builds its own validators and its own resolver cache; the decision must not drift between them.
+        final CascadeWorkbook workbook = new CascadeWorkbook();
+        workbook.setWorkbookName("Cascade");
+        workbook.setRows(twoCountingRows());
+
+        CountedNotBlankValidator.resetEvaluations();
+        new Pxl().exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+
+        CountedNotBlankValidator.resetEvaluations();
+        new Pxl().exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
+    }
+
+    @Test
+    public void importWorkbook_sheetMissingFromSource_validatesNothing() throws Exception {
+        // The workbook asks for "Rows"; the file has only "Other". Nothing binds, so the kept-or-skipped cascade has
+        // nothing to walk either way.
+        final byte[] bytes = buildStringSheet("Other", new String[]{"Name", "Age"}, new String[][]{{"Alice", "30"}});
+
+        CountedNotBlankValidator.resetEvaluations();
+        final CascadeWorkbook imported = pxl.importExcel()
+                .workbook(CascadeWorkbook.class)
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(imported.getRows()).isNullOrEmpty();
+        assertThat(CountedNotBlankValidator.evaluations()).isZero();
+    }
+
+    @Test
+    public void exportWorkbook_twoSheets_onlyOneCascading_validateEachRowOnce() throws Exception {
+        final CountingRow third = new CountingRow();
+        third.setName("Carol");
+        third.setAge(51);
+
+        // Both sheets are processed normally; only the first carries @Valid. The counts must not differ.
+        final TwoSheetCascadeWorkbook workbook = new TwoSheetCascadeWorkbook();
+        workbook.setWorkbookName("TwoSheet");
+        workbook.setFirstRows(twoCountingRows());
+        workbook.setSecondRows(Arrays.asList(third));
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(3);
+    }
+
+    @Test
+    public void importWorkbook_twoSheets_onlyOneCascading_validateEachRowOnce() throws Exception {
+        final CountingRow third = new CountingRow();
+        third.setName("Carol");
+        third.setAge(51);
+
+        final TwoSheetCascadeWorkbook exported = new TwoSheetCascadeWorkbook();
+        exported.setWorkbookName("TwoSheet");
+        exported.setFirstRows(twoCountingRows());
+        exported.setSecondRows(Arrays.asList(third));
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        pxl.exportExcel()
+                .workbook(exported)
+                .toStream(outputStream);
+
+        CountedNotBlankValidator.resetEvaluations();
+        final TwoSheetCascadeWorkbook imported = pxl.importExcel()
+                .workbook(TwoSheetCascadeWorkbook.class)
+                .fromStream(new ByteArrayInputStream(outputStream.toByteArray()));
+
+        assertThat(imported.getFirstRows()).hasSize(2);
+        assertThat(imported.getSecondRows()).hasSize(1);
+        assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(3);
+    }
+
+    @Test
+    public void exportSampleExcelSheet_validatesNothing() throws Exception {
+        // The sheet form of the sample builder, next to the workbook form covered above.
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportSampleExcel()
+                .sheet(CountingRow.class, "Rows")
+                .toStream(new ByteArrayOutputStream());
+
+        assertThat(CountedNotBlankValidator.evaluations()).isZero();
+    }
+
+    @Test
+    public void exportWorkbook_cascadingSheetField_validationDisabled_validatesNothing() throws Exception {
+        final CascadeWorkbook workbook = new CascadeWorkbook();
+        workbook.setWorkbookName("Cascade");
+        workbook.setRows(twoCountingRows());
+
+        CountedNotBlankValidator.resetEvaluations();
+        pxl.exportExcel()
+                .workbook(workbook)
+                .override(noValidationOption())
+                .toStream(new ByteArrayOutputStream());
+
+        // exportDataValidation=false gates both passes, so @Valid alone triggers nothing.
+        assertThat(CountedNotBlankValidator.evaluations()).isZero();
+    }
+
+    @Test
+    public void importWorkbook_cascadingSheetField_validationDisabled_validatesNothing() throws Exception {
+        final byte[] bytes = buildStringSheet("Rows", new String[]{"Name", "Age"}, new String[][]{{"Alice", "30"}, {"Bob", "42"}});
+        final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
+                .importDataValidation(false)
+                .build();
+
+        CountedNotBlankValidator.resetEvaluations();
+        final CascadeWorkbook imported = pxl.importExcel()
+                .workbook(CascadeWorkbook.class)
+                .override(option)
+                .fromStream(new ByteArrayInputStream(bytes));
+
+        assertThat(imported.getRows()).hasSize(2);
+        assertThat(CountedNotBlankValidator.evaluations()).isZero();
     }
 
     @Test

@@ -5,6 +5,7 @@ import io.github.hclimkr.pxl.constraint.PxlByteSize;
 import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.codec.PxlCellResolver;
 import io.github.hclimkr.pxl.internal.constraint.PxlByteSizeValidator;
+import io.github.hclimkr.pxl.internal.constraint.PxlSheetCascadeSkippingResolver;
 import io.github.hclimkr.pxl.internal.core.PxlContentsHandler;
 import io.github.hclimkr.pxl.internal.core.PxlCoreCsvExporter;
 import io.github.hclimkr.pxl.internal.core.PxlCoreExcelExporter;
@@ -24,7 +25,11 @@ import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
+import javax.validation.ElementKind;
+import javax.validation.Path;
+import javax.validation.TraversableResolver;
 import java.io.StringWriter;
+import java.lang.annotation.ElementType;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
@@ -34,6 +39,10 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -862,6 +871,323 @@ public class PxlInternalTests {
                 "S", rows, Employee.class, workbookMeta, null, null));
         assertThrows(PxlNullPointerException.class, () -> PxlCoreCsvExporter.writeSampleCsv(
                 "S", null, workbookMeta, new StringWriter()));
+    }
+
+    // ==================================================================
+    // internal/constraint - PxlSheetCascadeSkippingResolver
+    // ==================================================================
+
+    // Minimal Path.Node exposing just a name; the resolver reads nothing else off it.
+    private static Path.Node pathNode(final String name) {
+        return new Path.Node() {
+
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public boolean isInIterable() {
+                return false;
+            }
+
+            @Override
+            public Integer getIndex() {
+                return null;
+            }
+
+            @Override
+            public Object getKey() {
+                return null;
+            }
+
+            @Override
+            public ElementKind getKind() {
+                return ElementKind.PROPERTY;
+            }
+
+            @Override
+            public <T extends Path.Node> T as(final Class<T> nodeType) {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+
+    // A path over nodes with the given names. A nameless node stands for the root bean, so path((String) null) is
+    // the path a provider hands over when the traversed object is the root itself.
+    private static Path path(final String... nodeNames) {
+        final List<Path.Node> nodes = new ArrayList<>();
+        for (final String nodeName : nodeNames) {
+            nodes.add(pathNode(nodeName));
+        }
+
+        return nodes::iterator;
+    }
+
+    private static Path rootPath() {
+        return path((String) null);
+    }
+
+    // Delegate that records whether it was consulted, so a test can tell "skipped by the resolver" apart from
+    // "allowed, by delegation".
+    private static final class RecordingTraversableResolver implements TraversableResolver {
+
+        private int reachableCalls;
+
+        private int cascadableCalls;
+
+        @Override
+        public boolean isReachable(final Object traversableObject,
+                                   final Path.Node traversableProperty,
+                                   final Class<?> rootBeanType,
+                                   final Path pathToTraversableObject,
+                                   final ElementType elementType) {
+
+            reachableCalls++;
+            return true;
+        }
+
+        @Override
+        public boolean isCascadable(final Object traversableObject,
+                                    final Path.Node traversableProperty,
+                                    final Class<?> rootBeanType,
+                                    final Path pathToTraversableObject,
+                                    final ElementType elementType) {
+
+            cascadableCalls++;
+            return true;
+        }
+    }
+
+    @Test
+    public void sheetCascadeResolver_enabledSheetField_skipsCascadeWithoutDelegating() {
+        final RecordingTraversableResolver delegate = new RecordingTraversableResolver();
+        final PxlSheetCascadeSkippingResolver resolver = new PxlSheetCascadeSkippingResolver(delegate);
+
+        final boolean cascadable = resolver.isCascadable(new CascadeWorkbook(), pathNode("rows"),
+                CascadeWorkbook.class, rootPath(), ElementType.FIELD);
+
+        assertThat(cascadable).as("the binder validates these rows itself").isFalse();
+        assertThat(delegate.cascadableCalls).as("a skipped cascade is decided here, not by the delegate").isZero();
+    }
+
+    @Test
+    public void sheetCascadeResolver_nonSheetField_delegates() {
+        final RecordingTraversableResolver delegate = new RecordingTraversableResolver();
+        final PxlSheetCascadeSkippingResolver resolver = new PxlSheetCascadeSkippingResolver(delegate);
+
+        final boolean cascadable = resolver.isCascadable(new CascadeWorkbook(), pathNode("workbookName"),
+                CascadeWorkbook.class, rootPath(), ElementType.FIELD);
+
+        assertThat(cascadable).isTrue();
+        assertThat(delegate.cascadableCalls).isEqualTo(1);
+    }
+
+    @Test
+    public void sheetCascadeResolver_disabledSheetField_skipsCascadeToo() {
+        // A disabled sheet is skipped just like an enabled one. The resolver reads no enabled/disabled flag at all,
+        // which is what leaves such a sheet's rows unvalidated - the binder skips them and nothing else steps in.
+        final RecordingTraversableResolver delegate = new RecordingTraversableResolver();
+        final PxlSheetCascadeSkippingResolver resolver = new PxlSheetCascadeSkippingResolver(delegate);
+
+        // exportEnabled=false on one fixture, importEnabled=false on the other: same answer either way.
+        assertThat(resolver.isCascadable(new DisabledCascadeWorkbook(), pathNode("skippedRows"),
+                DisabledCascadeWorkbook.class, rootPath(), ElementType.FIELD)).isFalse();
+        assertThat(resolver.isCascadable(new ImportDisabledCascadeWorkbook(), pathNode("skippedRows"),
+                ImportDisabledCascadeWorkbook.class, rootPath(), ElementType.FIELD)).isFalse();
+
+        assertThat(delegate.cascadableCalls).as("both decided here, not by the delegate").isZero();
+    }
+
+    @Test
+    public void sheetCascadeResolver_nestedPath_delegates() {
+        // A workbook object reached below the root is not one the binder walks row by row, so its rows would go
+        // unvalidated if the cascade were skipped here.
+        final RecordingTraversableResolver delegate = new RecordingTraversableResolver();
+        final PxlSheetCascadeSkippingResolver resolver = new PxlSheetCascadeSkippingResolver(delegate);
+
+        final boolean cascadable = resolver.isCascadable(new CascadeWorkbook(), pathNode("rows"),
+                CascadeWorkbook.class, path("nested"), ElementType.FIELD);
+
+        assertThat(cascadable).isTrue();
+        assertThat(delegate.cascadableCalls).isEqualTo(1);
+    }
+
+    @Test
+    public void sheetCascadeResolver_inheritedSheetField_skipsCascade() {
+        // The scan walks the superclass chain, so a sheet declared by the parent is recognized on the subclass -
+        // and the per-class cache is keyed by the subclass, which is what could have hidden it.
+        final PxlSheetCascadeSkippingResolver resolver =
+                new PxlSheetCascadeSkippingResolver(new RecordingTraversableResolver());
+
+        final boolean cascadable = resolver.isCascadable(new SubCascadeWorkbook(), pathNode("rows"),
+                SubCascadeWorkbook.class, rootPath(), ElementType.FIELD);
+
+        assertThat(cascadable).isFalse();
+    }
+
+    @Test
+    public void sheetCascadeResolver_noTraversableObject_fallsBackToRootType() {
+        // validateValue hands over no instance; the root type still identifies the sheet field.
+        final PxlSheetCascadeSkippingResolver resolver =
+                new PxlSheetCascadeSkippingResolver(new RecordingTraversableResolver());
+
+        final boolean cascadable = resolver.isCascadable(null, pathNode("rows"),
+                CascadeWorkbook.class, rootPath(), ElementType.FIELD);
+
+        assertThat(cascadable).isFalse();
+    }
+
+    @Test
+    public void sheetCascadeResolver_repeatedDecisions_areStable() {
+        // The decision is cached per class; asking twice must not change the answer for either kind of property.
+        final PxlSheetCascadeSkippingResolver resolver =
+                new PxlSheetCascadeSkippingResolver(new RecordingTraversableResolver());
+        final CascadeWorkbook workbook = new CascadeWorkbook();
+
+        for (int i = 0; i < 2; i++) {
+            assertThat(resolver.isCascadable(workbook, pathNode("rows"), CascadeWorkbook.class, rootPath(), ElementType.FIELD)).isFalse();
+            assertThat(resolver.isCascadable(workbook, pathNode("workbookName"), CascadeWorkbook.class, rootPath(), ElementType.FIELD)).isTrue();
+        }
+    }
+
+    @Test
+    public void sheetCascadeResolver_shadowedSheetField_skipsCascade() {
+        // One field name, two @PxlSheet declarations that disagree on exportEnabled (subclass on, superclass off).
+        // Since the resolver reads no such flag, the disagreement cannot affect it - a sheet field is a sheet field.
+        final PxlSheetCascadeSkippingResolver resolver =
+                new PxlSheetCascadeSkippingResolver(new RecordingTraversableResolver());
+
+        final boolean cascadable = resolver.isCascadable(new SubShadowCascadeWorkbook(), pathNode("rows"),
+                SubShadowCascadeWorkbook.class, rootPath(), ElementType.FIELD);
+
+        assertThat(cascadable).isFalse();
+    }
+
+    @Test
+    public void sheetCascadeResolver_methodElementType_skipsCascade() {
+        // A @Valid on the getter reaches the resolver as ElementType.METHOD with the same property name, so the
+        // decision must not depend on how the user declared the cascade.
+        final PxlSheetCascadeSkippingResolver resolver =
+                new PxlSheetCascadeSkippingResolver(new RecordingTraversableResolver());
+
+        final boolean cascadable = resolver.isCascadable(new GetterCascadeWorkbook(), pathNode("rows"),
+                GetterCascadeWorkbook.class, rootPath(), ElementType.METHOD);
+
+        assertThat(cascadable).isFalse();
+    }
+
+    @Test
+    public void sheetCascadeResolver_concurrentDecisions_areConsistent() throws Exception {
+        // The per-class cache is a ConcurrentHashMap; hammering it from several threads at once must not produce a
+        // wrong answer or blow up on the computeIfAbsent.
+        final PxlSheetCascadeSkippingResolver resolver =
+                new PxlSheetCascadeSkippingResolver(new RecordingTraversableResolver());
+        final int threadCount = 8;
+        final int iterations = 200;
+
+        final ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        try {
+            final List<Callable<Boolean>> tasks = new ArrayList<>();
+            for (int t = 0; t < threadCount; t++) {
+                tasks.add(() -> {
+                    for (int i = 0; i < iterations; i++) {
+                        final boolean sheetSkipped = !resolver.isCascadable(new CascadeWorkbook(), pathNode("rows"),
+                                CascadeWorkbook.class, rootPath(), ElementType.FIELD);
+                        final boolean nonSheetKept = resolver.isCascadable(new CascadeWorkbook(), pathNode("workbookName"),
+                                CascadeWorkbook.class, rootPath(), ElementType.FIELD);
+
+                        if (!sheetSkipped || !nonSheetKept) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                });
+            }
+
+            for (final Future<Boolean> result : executor.invokeAll(tasks)) {
+                assertThat(result.get()).as("every thread must see the same decision").isTrue();
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void sheetCascadeResolver_nullProperty_delegates() {
+        // Nothing to match a sheet field against, so the decision is not this resolver's to make.
+        final RecordingTraversableResolver delegate = new RecordingTraversableResolver();
+        final PxlSheetCascadeSkippingResolver resolver = new PxlSheetCascadeSkippingResolver(delegate);
+
+        final boolean cascadable = resolver.isCascadable(new CascadeWorkbook(), null,
+                CascadeWorkbook.class, rootPath(), ElementType.FIELD);
+
+        assertThat(cascadable).isTrue();
+        assertThat(delegate.cascadableCalls).isEqualTo(1);
+    }
+
+    @Test
+    public void sheetCascadeResolver_unnamedProperty_delegates() {
+        // A node with no name is a bean node, not a property; it names no field to skip.
+        final RecordingTraversableResolver delegate = new RecordingTraversableResolver();
+        final PxlSheetCascadeSkippingResolver resolver = new PxlSheetCascadeSkippingResolver(delegate);
+
+        final boolean cascadable = resolver.isCascadable(new CascadeWorkbook(), pathNode(null),
+                CascadeWorkbook.class, rootPath(), ElementType.FIELD);
+
+        assertThat(cascadable).isTrue();
+        assertThat(delegate.cascadableCalls).isEqualTo(1);
+    }
+
+    @Test
+    public void sheetCascadeResolver_noHostTypeAtAll_delegates() {
+        // Neither an instance nor a root type: there is no class to scan for @PxlSheet fields.
+        final RecordingTraversableResolver delegate = new RecordingTraversableResolver();
+        final PxlSheetCascadeSkippingResolver resolver = new PxlSheetCascadeSkippingResolver(delegate);
+
+        final boolean cascadable = resolver.isCascadable(null, pathNode("rows"), null, rootPath(), ElementType.FIELD);
+
+        assertThat(cascadable).isTrue();
+        assertThat(delegate.cascadableCalls).isEqualTo(1);
+    }
+
+    @Test
+    public void sheetCascadeResolver_classWithoutSheetFields_delegates() {
+        // A row class is validated as a root too; it declares no sheet, so nothing is ever skipped there.
+        final RecordingTraversableResolver delegate = new RecordingTraversableResolver();
+        final PxlSheetCascadeSkippingResolver resolver = new PxlSheetCascadeSkippingResolver(delegate);
+
+        final boolean cascadable = resolver.isCascadable(new CountingRow(), pathNode("name"),
+                CountingRow.class, rootPath(), ElementType.FIELD);
+
+        assertThat(cascadable).isTrue();
+        assertThat(delegate.cascadableCalls).isEqualTo(1);
+    }
+
+    @Test
+    public void sheetCascadeResolver_isReachable_alwaysDelegates() {
+        // Reachability is none of this resolver's business, sheet field or not.
+        final RecordingTraversableResolver delegate = new RecordingTraversableResolver();
+        final PxlSheetCascadeSkippingResolver resolver = new PxlSheetCascadeSkippingResolver(delegate);
+
+        final boolean reachable = resolver.isReachable(new CascadeWorkbook(), pathNode("rows"),
+                CascadeWorkbook.class, rootPath(), ElementType.FIELD);
+
+        assertThat(reachable).isTrue();
+        assertThat(delegate.reachableCalls).isEqualTo(1);
+    }
+
+    @Test
+    public void sheetCascadeResolver_nullDelegate_traversesEverythingButSheets() {
+        // The spec has Configuration hand out a default resolver, so this guards against a provider that does not:
+        // no NPE, and the traverse-everything stand-in keeps the sheet rule intact.
+        final PxlSheetCascadeSkippingResolver resolver = new PxlSheetCascadeSkippingResolver(null);
+        final CascadeWorkbook workbook = new CascadeWorkbook();
+
+        assertThat(resolver.isCascadable(workbook, pathNode("rows"), CascadeWorkbook.class, rootPath(), ElementType.FIELD)).isFalse();
+        assertThat(resolver.isCascadable(workbook, pathNode("workbookName"), CascadeWorkbook.class, rootPath(), ElementType.FIELD)).isTrue();
+        assertThat(resolver.isReachable(workbook, pathNode("rows"), CascadeWorkbook.class, rootPath(), ElementType.FIELD)).isTrue();
     }
 
 }

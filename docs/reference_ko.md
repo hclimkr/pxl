@@ -584,20 +584,22 @@ export도 `exportSheetOptions`/`exportColumnOptions`로 동일하게 구성한�
 ### 표준 제약
 
 필드에 유효성 검사 애노테이션(`@NotNull`, `@NotEmpty`, `@NotBlank`, `@Valid`, ...)을 붙이면 import 결과 객체에 대해 유효성 검사하고,
-실패 시 `PxlValidationException`을 발생시킨다.  
-중첩 객체(시트 리스트)는 `@Valid`로 전파한다.
+실패 시 `PxlValidationException`을 발생시킨다.
 
 ```java
 @NotBlank
 @PxlColumn(name = "Name")
 private String name;
 
-// 워크북/시트의 중첩 리스트는 @Valid 로 전파
+// 컬렉션 자체에 건 제약. 행 검사는 @Valid 유무와 무관하게 수행된다
 @NotEmpty
-@Valid
 @PxlSheet(name = "Employees")
 private List<Employee> employees;
 ```
+
+행 객체는 PXL이 항상 직접 검사한다 — 행 단위로 검사하며 예외에 시트명(import은 행 번호까지)을 붙인다. 따라서 `@PxlSheet` 필드에
+`@Valid`를 붙이지 않아도 행은 검사된다. 반대로 PXL이 처리하지 않는 시트 — export의 `exportEnabled = false`, import의
+`importEnabled = false` — 의 행은 `@Valid`를 붙여도 검사되지 않는다. 즉 행 검사는 실제로 쓰거나 읽는 시트에 대해서만 이뤄진다.
 
 유효성 검사는 `@PxlWorkbook(importDataValidation = ...)`로 제어되며(기본 `true`), 끄면 유효성 검사가 수행되지 않는다.
 단, 이 속성은 필드의 값이 제약을 만족하는지에만 관여한다.  

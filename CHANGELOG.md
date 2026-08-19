@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`@Valid` on a `@PxlSheet` field no longer gets the same row validated twice.** In the workbook form the binder
+  validates each row on its own, tagging the violation with the sheet name and - on import - the row index. Marking
+  the sheet field `@Valid` made bean validation walk those very rows a second time while validating the workbook
+  object: the outcome was identical either way, so the extra traversal only cost time, and on export it cost
+  diagnostics too, because the workbook pass runs first and carries no location - it reported untagged what the
+  per-row pass would have pinned to a sheet. The validator is now configured to refuse that one cascade, leaving the
+  per-row pass as the single place sheet rows are validated. Two consequences worth noting: a violation on export is
+  now reported with its sheet name, and a sheet the binder does not process (`exportEnabled = false` on export,
+  `importEnabled = false` on import) has its rows left unvalidated even when the field carries `@Valid`, so
+  validation follows the sheets that are actually written or read - disabling a sheet through a runtime option
+  behaves the same way. Constraints on the collection itself (`@NotEmpty`, `@Size`, ...), the workbook object's own
+  constraints, and a `@Valid` on any field that is not a sheet are all unaffected, as is the sheet form, which never
+  had a second pass to begin with.
 - **A numeric or `java.util.Date` `pattern` now has to match the cell value in full.** A patterned column was
   parsed with `DecimalFormat.parse(String)` / `SimpleDateFormat.parse(String)`, which stop at the first character
   the pattern cannot read and report success with whatever came before it: under `"#,##0"`, `"123abc"` bound as
