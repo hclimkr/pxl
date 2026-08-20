@@ -32,6 +32,12 @@ public final class PxlColumnUtils {
      * {@link PxlConstants#EXPORT_AUTO_COLUMN_MIN_WIDTH} and
      * {@link PxlConstants#EXPORT_AUTO_COLUMN_MAX_WIDTH}. A {@code null} sheet or a negative column index
      * is a no-op.
+     * <p>
+     * That negative-index tolerance is deliberate. Elsewhere in this package the rule is "lookups are
+     * lenient, mutations are strict": a read-only lookup answers {@code null} for a negative index, while
+     * a call that mutates the sheet rejects it. This method mutates the sheet yet stays lenient, because
+     * the no-op is part of its published contract; it is kept as a documented exception to that rule
+     * rather than tightened.
      *
      * @param sheet       the sheet whose column is resized
      * @param columnIndex the zero-based index of the column to auto-size
