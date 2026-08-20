@@ -449,6 +449,10 @@ public final class PxlI18nDiagnosticKeys {
      */
     public static final String UTIL_PICTURE_HORIZONTAL_NUM_NOT_POSITIVE = "util.picture.horizontalNumNotPositive";
     /**
+     * A hyperlink of type NONE was asked for.
+     */
+    public static final String UTIL_HYPERLINK_TYPE_NONE = "util.hyperlink.typeNone";
+    /**
      * Workbook decryption failed.
      */
     public static final String UTIL_WORKBOOK_DECRYPT_FAILED = "util.workbook.decryptFailed";

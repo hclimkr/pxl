@@ -859,6 +859,107 @@ public class PxlUtilityTests {
         }
     }
 
+    @Test
+    public void cellUtils_addHyperlinkToCell_resolvesTypeFromAddress() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Row row = workbook.createSheet("S").createRow(0);
+
+            // A null cell and a blank address are no-ops.
+            PxlCellUtils.addHyperlinkToCell(null, "https://example.com/");
+            final Cell blankCell = row.createCell(0);
+            PxlCellUtils.addHyperlinkToCell(blankCell, "  ");
+            assertThat(blankCell.getHyperlink()).isNull();
+
+            // The type is read off the address when none is named.
+            assertThat(resolvedHyperlink(row, 1, "https://example.com/a").getType()).isEqualTo(HyperlinkType.URL);
+            assertThat(resolvedHyperlink(row, 2, "MailTo:someone@example.com").getType()).isEqualTo(HyperlinkType.EMAIL);
+            assertThat(resolvedHyperlink(row, 3, "#'S'!A1").getType()).isEqualTo(HyperlinkType.DOCUMENT);
+            assertThat(resolvedHyperlink(row, 4, "docs/readme.txt").getType()).isEqualTo(HyperlinkType.FILE);
+
+            // A file:// URL carries a scheme, so it reads as a URL rather than a file path.
+            assertThat(resolvedHyperlink(row, 5, "file://server/share/a.txt").getType()).isEqualTo(HyperlinkType.URL);
+
+            // Naming a type skips the reading.
+            final Cell namedCell = row.createCell(6);
+            PxlCellUtils.addHyperlinkToCell(namedCell, "docs/readme.txt", null, HyperlinkType.URL);
+            assertThat(namedCell.getHyperlink().getType()).isEqualTo(HyperlinkType.URL);
+
+            // The link is laid over the cell: the value it already held stays, and the label is set only when given.
+            final Cell valuedCell = row.createCell(7);
+            valuedCell.setCellValue("Example");
+            PxlCellUtils.addHyperlinkToCell(valuedCell, "https://example.com/", "Example site");
+            assertThat(valuedCell.getStringCellValue()).isEqualTo("Example");
+            assertThat(valuedCell.getHyperlink().getAddress()).isEqualTo("https://example.com/");
+            assertThat(valuedCell.getHyperlink().getLabel()).isEqualTo("Example site");
+            assertThat(resolvedHyperlink(row, 8, "https://example.com/").getLabel()).isNull();
+        }
+    }
+
+    @Test
+    public void cellUtils_addHyperlinkToCell_documentAddress_dropsLeadingHash() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Row row = workbook.createSheet("S").createRow(0);
+
+            // POI takes the location alone, so the '#' that marks the address as internal is dropped.
+            assertThat(resolvedHyperlink(row, 0, "#'S'!A1").getAddress()).isEqualTo("'S'!A1");
+
+            // A named DOCUMENT type drops it as well, and an address that is nothing but the '#' is a no-op.
+            final Cell namedCell = row.createCell(1);
+            PxlCellUtils.addHyperlinkToCell(namedCell, "#DefinedName", null, HyperlinkType.DOCUMENT);
+            assertThat(namedCell.getHyperlink().getAddress()).isEqualTo("DefinedName");
+
+            final Cell hashOnlyCell = row.createCell(2);
+            PxlCellUtils.addHyperlinkToCell(hashOnlyCell, "#");
+            assertThat(hashOnlyCell.getHyperlink()).isNull();
+        }
+    }
+
+    @Test
+    public void cellUtils_addHyperlinkToCell_typeNone_throws() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Cell cell = workbook.createSheet("S").createRow(0).createCell(0);
+
+            // NONE is not a link a cell can carry: it is refused before POI raises its own exception, and it is
+            // refused for a null cell too, since the argument is checked first.
+            assertThrows(PxlArgumentException.class,
+                    () -> PxlCellUtils.addHyperlinkToCell(cell, "https://example.com/", null, HyperlinkType.NONE));
+            assertThrows(PxlArgumentException.class,
+                    () -> PxlCellUtils.addHyperlinkToCell(null, "https://example.com/", null, HyperlinkType.NONE));
+            assertThat(cell.getHyperlink()).isNull();
+        }
+    }
+
+    @Test
+    public void cellUtils_addHyperlinkToCell_xls_setsHyperlink() throws Exception {
+        try (HSSFWorkbook workbook = new HSSFWorkbook()) {
+            final Cell cell = workbook.createSheet("S").createRow(0).createCell(0);
+            cell.setCellValue("Example");
+
+            PxlCellUtils.addHyperlinkToCell(cell, "https://example.com/", "Example site");
+
+            assertThat(cell.getHyperlink()).isNotNull();
+            assertThat(cell.getHyperlink().getType()).isEqualTo(HyperlinkType.URL);
+            assertThat(cell.getHyperlink().getAddress()).isEqualTo("https://example.com/");
+
+            // XLS keeps a fixed moniker per link type, so the label given here does not reach the file (POI 5.5.1).
+            assertThat(cell.getHyperlink().getLabel()).isEqualTo("url");
+        }
+    }
+
+    /**
+     * Links a fresh cell in the row through PxlCellUtils, letting the address pick the type, and hands the
+     * attached hyperlink back.
+     */
+    private static Hyperlink resolvedHyperlink(final Row row,
+                                               final int columnIndex,
+                                               final String address) {
+
+        final Cell cell = row.createCell(columnIndex);
+        PxlCellUtils.addHyperlinkToCell(cell, address);
+
+        return cell.getHyperlink();
+    }
+
     // ------------------------------------------------------------------
     // PxlCollectionUtils (duplicate / uniqueness / all-same detection)
     // ------------------------------------------------------------------

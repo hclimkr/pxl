@@ -13,6 +13,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.sl.usermodel.PictureData.PictureType;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.ImageUtils;
@@ -42,7 +43,8 @@ import java.util.*;
  * {@code getCellStringValue} renders a cell the way the spreadsheet displays it by honouring its number format
  * through a {@link DataFormatter} - pass the workbook's cached formatter on hot paths, as the overload without one
  * allocates a formatter per call. Also here: formula, error and blank cells; {@code getCellWithMerges}, which reads the
- * value a merged region carries from any of its cells; cell-style cloning; notes; and pictures anchored to a cell.
+ * value a merged region carries from any of its cells; cell-style cloning; notes; hyperlinks; and pictures anchored
+ * to a cell.
  * <p>
  * The lookups are null-safe: a {@code null} or streaming sheet, or an absent row/cell that is not to be created,
  * yields {@code null} rather than an exception, and the decorating methods no-op on a {@code null} cell. Style
@@ -1296,6 +1298,141 @@ public final class PxlCellUtils {
 //        comment.setVisible(true);
 
         cell.setCellComment(comment);
+    }
+
+    /**
+     * Attaches a hyperlink to the cell, with its type resolved from the address and no label.
+     *
+     * @param cell    the cell to link from, may be {@code null}
+     * @param address the link target; ignored if blank
+     * @see #addHyperlinkToCell(Cell, String, String, HyperlinkType)
+     */
+    public static void addHyperlinkToCell(final Cell cell,
+                                          final String address) {
+
+        attachHyperlink(cell, address, null, null);
+    }
+
+    /**
+     * Attaches a hyperlink to the cell, with its type resolved from the address.
+     *
+     * @param cell    the cell to link from, may be {@code null}
+     * @param address the link target; ignored if blank
+     * @param label   the link label, or {@code null} to leave it unset
+     * @see #addHyperlinkToCell(Cell, String, String, HyperlinkType)
+     */
+    public static void addHyperlinkToCell(final Cell cell,
+                                          final String address,
+                                          final String label) {
+
+        attachHyperlink(cell, address, label, null);
+    }
+
+    /**
+     * Attaches a hyperlink to the cell as a new link owned by the cell's workbook. The cell keeps whatever value
+     * it already holds - a link is laid over the cell, not written into it - and it keeps its style too, so a
+     * caller who wants the blue underline Excel usually shows must style the cell itself. A {@code null} cell or
+     * a blank address is a no-op.
+     * <p>
+     * Leaving {@code hyperlinkType} {@code null} has the type read off the address, in this order: an address
+     * starting with {@code mailto:} (in any case) is {@link HyperlinkType#EMAIL}, one starting with {@code #} is
+     * {@link HyperlinkType#DOCUMENT}, one containing {@code ://} - a {@code file://} URL included - is
+     * {@link HyperlinkType#URL}, and anything else is {@link HyperlinkType#FILE}. Naming a type instead skips
+     * that reading and uses it as given. {@link HyperlinkType#NONE} is not a link a cell can carry and is
+     * refused, whether it was named or would leave POI to raise its own {@code IllegalArgumentException}
+     * (XLS) or {@code IllegalStateException} (XLSX).
+     * <p>
+     * The address is handed to POI as it stands, so surrounding whitespace is kept rather than trimmed away.
+     * A {@link HyperlinkType#DOCUMENT} link is the one exception: a leading {@code #} marks the address as
+     * pointing inside the workbook and is dropped, since POI expects the location alone
+     * ({@code 'Sheet1'!A1} or a defined name), and an address that is nothing but that {@code #} is a no-op.
+     * <p>
+     * The label is set only when it is non-blank, and it reaches the file for XLSX (including the streaming
+     * SXSSF form) alone: XLS keeps a fixed moniker per link type instead and reports that back rather than
+     * whatever was set (verified against POI 5.5.1).
+     * <p>
+     * This is the path for putting a new link on a cell. Carrying an existing one from another cell is
+     * {@link #copyCell(Cell, Cell)}'s business, which re-creates the source's link on the destination.
+     *
+     * @param cell          the cell to link from, may be {@code null}
+     * @param address       the link target; ignored if blank
+     * @param label         the link label, or {@code null} to leave it unset
+     * @param hyperlinkType the link type, or {@code null} to resolve it from the address
+     * @throws PxlArgumentException if {@code hyperlinkType} is {@link HyperlinkType#NONE}
+     */
+    public static void addHyperlinkToCell(final Cell cell,
+                                          final String address,
+                                          final String label,
+                                          final HyperlinkType hyperlinkType)
+            throws PxlArgumentException {
+
+        PxlAssertSupport.isTrue(HyperlinkType.NONE != hyperlinkType,
+                PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.UTIL_HYPERLINK_TYPE_NONE));
+
+        attachHyperlink(cell, address, label, hyperlinkType);
+    }
+
+    /**
+     * Attaches the hyperlink, once the type has been vetted. The public overloads that never name a type reach
+     * this directly, so they need not declare the {@link PxlArgumentException} only a named type can raise.
+     *
+     * @param cell          the cell to link from, may be {@code null}
+     * @param address       the link target; ignored if blank
+     * @param label         the link label, or {@code null} to leave it unset
+     * @param hyperlinkType the link type, or {@code null} to resolve it from the address
+     */
+    private static void attachHyperlink(final Cell cell,
+                                        final String address,
+                                        final String label,
+                                        final HyperlinkType hyperlinkType) {
+
+        if (Objects.isNull(cell) || StringUtils.isBlank(address)) {
+            return;
+        }
+
+        final HyperlinkType resolvedType = Objects.isNull(hyperlinkType) ? resolveHyperlinkType(address) : hyperlinkType;
+
+        // POI takes the location alone for a document link, so the '#' that marks it as one is not part of it.
+        final String resolvedAddress = HyperlinkType.DOCUMENT == resolvedType
+                ? StringUtils.removeStart(address, "#")
+                : address;
+        if (StringUtils.isEmpty(resolvedAddress)) {
+            return;
+        }
+
+        final CreationHelper creationHelper = cell.getSheet().getWorkbook().getCreationHelper();
+        final Hyperlink hyperlink = creationHelper.createHyperlink(resolvedType);
+        hyperlink.setAddress(resolvedAddress);
+
+        if (StringUtils.isNotBlank(label)) {
+            hyperlink.setLabel(label);
+        }
+
+        cell.setHyperlink(hyperlink);
+    }
+
+    /**
+     * Reads the link type off an address, for a caller that did not name one. The order the forms are tried in
+     * is what {@link #addHyperlinkToCell(Cell, String, String, HyperlinkType)} documents.
+     *
+     * @param address the link target
+     * @return the type the address reads as, never {@link HyperlinkType#NONE}
+     */
+    private static HyperlinkType resolveHyperlinkType(final String address) {
+
+        if (StringUtils.startsWithIgnoreCase(address, "mailto:")) {
+            return HyperlinkType.EMAIL;
+        }
+
+        if (StringUtils.startsWith(address, "#")) {
+            return HyperlinkType.DOCUMENT;
+        }
+
+        if (StringUtils.contains(address, "://")) {
+            return HyperlinkType.URL;
+        }
+
+        return HyperlinkType.FILE;
     }
 
     /**
