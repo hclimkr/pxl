@@ -13,8 +13,8 @@ import java.util.*;
  * Class/type predicates that drive codec dispatch.
  * <p>
  * Provides the {@code is*Class} checks the resolver uses to classify a field's declared type (number, string, boolean,
- * character, date/time, collection, enum, custom object), plus resolution of a concrete {@link Collection} implementation
- * for a requested collection interface.
+ * character, date/time, UUID, collection, enum, custom object), plus resolution of a concrete {@link Collection}
+ * implementation for a requested collection interface.
  */
 public final class PxlClassSupport {
 
@@ -227,6 +227,21 @@ public final class PxlClassSupport {
     }
 
     /**
+     * Tests whether the type is {@link UUID}.
+     *
+     * @param clazz the type to test
+     * @return {@code true} if the type is {@link UUID}
+     */
+    public static boolean isUuidClass(final Class<?> clazz) {
+
+        if (clazz == UUID.class) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * Tests whether the type is (or implements) {@link Collection}.
      *
      * @param clazz the type to test
@@ -241,7 +256,7 @@ public final class PxlClassSupport {
      * Tests whether the type is directly supported as a column value type by a built-in codec.
      * <p>
      * Covers the numeric, string, boolean, character, legacy {@link Date}, and {@code java.time} date/time types,
-     * plus {@link Duration}, {@link Period}, any enum, and any {@link Collection}.
+     * plus {@link Duration}, {@link Period}, {@link UUID}, any enum, and any {@link Collection}.
      *
      * @param clazz the type to test
      * @return {@code true} if a built-in codec handles the type
@@ -255,6 +270,7 @@ public final class PxlClassSupport {
                 || isJavaDateClass(clazz)
                 || isDateTimeClass(clazz)
                 || isTemporalAmountClass(clazz)
+                || isUuidClass(clazz)
                 || clazz.isEnum()
                 || isCollectionClass(clazz);
     }

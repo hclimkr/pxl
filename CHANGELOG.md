@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`java.util.UUID` is now a supported column type, in both directions and in all four paths** (Excel import,
+  CSV import, Excel export, CSV export), including `Collection<UUID>`. Export was already possible through the
+  custom-object path - a `UUID` has a `toString()` - but import failed while the column metadata was resolved,
+  because `UUID` has no single-argument `String` constructor and, being a JDK type, cannot carry a
+  `@PxlImportConverter` method either; there was no way for a caller to work around it short of a wrapper class.
+  A `UUID` column is written as a string cell in the canonical lower-case form and read back from the canonical
+  8-4-4-4-12 form in either case.
+  Import is deliberately stricter than `UUID.fromString`, which counts the hyphen-separated groups but not their
+  digits and so reads `"1-1-1-1-1"` as `00000001-0001-0001-0001-000000000001` - a typo silently becoming another
+  identifier. The form is validated before the value is built, which also keeps the same file reading the same way
+  on every JDK. The hyphen-less 32-digit form, a braced `{...}` form and a `urn:uuid:` prefix are refused as well,
+  since export only ever writes the canonical form. `exportTrim` and `exportMasking` apply to a UUID column as they
+  do to any other; `pattern`/`importPattern`/`exportPattern` has no meaning for a UUID and is ignored.
+  For anyone already exporting a `UUID` through the custom-object path, the written text is unchanged.
+
 ### Changed
 
 - **Some public `util/` methods now declare a checked exception they did not declare before, which is a

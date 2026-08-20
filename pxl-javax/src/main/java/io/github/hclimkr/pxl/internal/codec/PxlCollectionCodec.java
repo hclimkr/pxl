@@ -170,6 +170,10 @@ final class PxlCollectionCodec {
             for (final String s : strings) {
                 valueObjects.add(PxlPeriodCodec.parsePeriodValue(s, columnMeta));
             }
+        } else if (elementClass == UUID.class) {
+            for (final String s : strings) {
+                valueObjects.add(PxlUuidCodec.parseUuidValue(s, columnMeta));
+            }
         } else if (elementClass.isEnum()) {
             for (final String s : strings) {
                 valueObjects.add(PxlEnumCodec.parseEnumValue(s, columnMeta));
@@ -268,6 +272,8 @@ final class PxlCollectionCodec {
                 strings.add(PxlDurationCodec.buildDurationCell(null, element, columnMeta));
             } else if (elementClass == Period.class) {
                 strings.add(PxlPeriodCodec.buildPeriodCell(null, element, columnMeta));
+            } else if (elementClass == UUID.class) {
+                strings.add(PxlUuidCodec.buildUuidCell(null, element, columnMeta));
             } else if (elementClass.isEnum()) {
                 strings.add(PxlEnumCodec.buildEnumCell(null, element, columnMeta));
             } else if (columnMeta.isExportCustomConvertable()) {

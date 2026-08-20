@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.time.*;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -83,6 +84,9 @@ public final class Fixtures {
         row.setDuration(Duration.ofHours(1).plusMinutes(2).plusSeconds(3));
         row.setPeriod(Period.of(1, 2, 3));
 
+        // UUID (upper-case hexadecimal digits, so the round-trip also shows the canonical lower-case normalization)
+        row.setUuid(UUID.fromString("123E4567-E89B-12D3-A456-426614174000"));
+
         // enum
         row.setGrade(Grade.A);
         row.setCategory(Category.FOOD);
@@ -144,6 +148,9 @@ public final class Fixtures {
         assertThat(row.getOffsetDateTime()).isEqualTo(expected.getOffsetDateTime());
         assertThat(row.getDuration()).isEqualTo(expected.getDuration());
         assertThat(row.getPeriod()).isEqualTo(expected.getPeriod());
+
+        // The value is case-insensitive, so the round-trip through the canonical lower-case text preserves it.
+        assertThat(row.getUuid()).as("UUID value was not preserved").isEqualTo(expected.getUuid());
 
         assertThat(row.getGrade()).isEqualTo(Grade.A);
         assertThat(row.getCategory()).isEqualTo(Category.FOOD);
@@ -208,6 +215,8 @@ public final class Fixtures {
         row.setOffsetDateTime(BASE_DATE_TIME.atZone(zone).toOffsetDateTime());
         row.setDuration(Duration.ofSeconds(1));
         row.setPeriod(Period.ofDays(1));
+
+        row.setUuid(UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
         row.setGrade(Grade.A);
         row.setCategory(Category.FOOD);

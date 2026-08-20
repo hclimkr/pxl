@@ -1169,6 +1169,8 @@ public class PxlTypeConversionTests {
         row.setBools(Arrays.asList(true, false));
         row.setBigInts(Arrays.asList(new BigInteger("123"), new BigInteger("-456")));
         row.setBigDecs(Arrays.asList(new BigDecimal("1.25"), new BigDecimal("-3.5")));
+        row.setUuids(Arrays.asList(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
+                UUID.fromString("00112233-4455-6677-8899-aabbccddeeff")));
 
         final CollectionTypesRow out = roundTripCollections(row);
 
@@ -1183,6 +1185,8 @@ public class PxlTypeConversionTests {
         assertThat(out.getBigDecs()).hasSize(2);
         assertThat(out.getBigDecs().get(0)).isEqualByComparingTo("1.25");
         assertThat(out.getBigDecs().get(1)).isEqualByComparingTo("-3.5");
+        assertThat(out.getUuids()).containsExactly(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
+                UUID.fromString("00112233-4455-6677-8899-aabbccddeeff"));
     }
 
     @Test
@@ -1243,13 +1247,14 @@ public class PxlTypeConversionTests {
                 "Text", "LeadingZero", "PrimByte", "WrapByte", "PrimShort", "WrapShort", "PrimInt", "WrapInt", "PrimLong", "WrapLong",
                 "PrimDouble", "WrapDouble", "PrimFloat", "WrapFloat", "PrimChar", "WrapChar", "PrimBool", "WrapBool",
                 "BigInt", "BigDec", "JavaDate", "LocalDate", "LocalTime", "LocalDateTime", "ZonedDateTime", "OffsetTime", "OffsetDateTime",
-                "Duration", "Period", "Grade", "Category", "Point", "Money", "StringList", "IntList", "GradeList"};
+                "Duration", "Period", "Uuid", "Grade", "Category", "Point", "Money", "StringList", "IntList", "GradeList"};
         final String[] values = {
                 "Sample text", "007", "1", "2", "3", "4", "5", "6", "7", "8",
                 "1.5", "2.5", "3.5", "4.5", "A", "B", "true", "false",
                 "12345678901234567890", "12345.6789", "2023-06-15 10:30:45", "2023-06-15", "10:30:45", "2023-06-15 10:30:45",
                 "2023-06-15T10:30:45+09:00", "10:30:45+09:00", "2023-06-15T10:30:45+09:00",
-                "PT1H2M3S", "P1Y2M3D", "A", "Electronics", "\"3,7\"", "USD 1050", "Apple;Banana;Cherry", "10;20;30", "A;B;F"};
+                "PT1H2M3S", "P1Y2M3D", "123e4567-e89b-12d3-a456-426614174000",
+                "A", "Electronics", "\"3,7\"", "USD 1050", "Apple;Banana;Cherry", "10;20;30", "A;B;F"};
 
         final String csv = String.join(",", headers) + "\n" + String.join(",", values) + "\n";
 
@@ -1292,6 +1297,8 @@ public class PxlTypeConversionTests {
         assertThat(row.getOffsetDateTime()).isEqualTo(OffsetDateTime.parse("2023-06-15T10:30:45+09:00"));
         assertThat(row.getDuration()).isEqualTo(Duration.ofHours(1).plusMinutes(2).plusSeconds(3));
         assertThat(row.getPeriod()).isEqualTo(Period.of(1, 2, 3));
+        // UUID
+        assertThat(row.getUuid()).isEqualTo(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"));
         // enum (name match and toString-label match)
         assertThat(row.getGrade()).isEqualTo(Grade.A);
         assertThat(row.getCategory()).isEqualTo(Category.ELECTRONICS);
@@ -1567,6 +1574,214 @@ public class PxlTypeConversionTests {
                 assertThat(dataCell.getStringCellValue()).as(headerCell.getStringCellValue())
                         .isNotEmpty().doesNotContainPattern("[0-9]");
             }
+        } finally {
+            workbook.close();
+        }
+    }
+
+    // ==================================================================
+    // UUID: a value that only has meaning as text. Import accepts the canonical 8-4-4-4-12 form in either case and
+    // nothing else; export always writes that form in lower case. The strictness belongs to the codec rather than to
+    // UUID.fromString, which counts the hyphen-separated groups but not their digits and so would widen "1-1-1-1-1"
+    // into an entirely different value.
+    // ==================================================================
+
+    private static final String UUID_TEXT = "123e4567-e89b-12d3-a456-426614174000";
+
+    private static final String OTHER_UUID_TEXT = "00112233-4455-6677-8899-aabbccddeeff";
+
+    private static final UUID UUID_VALUE = UUID.fromString(UUID_TEXT);
+
+    private static final UUID OTHER_UUID_VALUE = UUID.fromString(OTHER_UUID_TEXT);
+
+    private UuidRow roundTripUuid(final UuidRow row) throws Exception {
+        final File excelFile = TestPaths.exportFile(testInfo);
+        pxl.exportExcel()
+                .sheet(UuidRow.class, Arrays.asList(row), "U")
+                .override(noValidationOption())
+                .toFile(excelFile);
+        return pxl.importExcel()
+                .sheet(UuidRow.class, Arrays.asList("U"))
+                .fromFile(excelFile).get(0);
+    }
+
+    private Workbook exportUuidWorkbook(final UuidRow row) throws Exception {
+        return pxl.exportExcel()
+                .sheet(UuidRow.class, Arrays.asList(row), "U")
+                .override(noValidationOption())
+                .toWorkbook();
+    }
+
+    // Locates the data cell by its header text, so the assertion does not depend on the column order.
+    private static String dataStringOf(final Workbook workbook, final String headerName) {
+        final Sheet sheet = workbook.getSheet("U");
+        for (final Cell headerCell : sheet.getRow(0)) {
+            if (headerName.equals(headerCell.getStringCellValue())) {
+                return sheet.getRow(1).getCell(headerCell.getColumnIndex()).getStringCellValue();
+            }
+        }
+        return null;
+    }
+
+    @Test
+    public void uuid_roundTrip_preservesValue() throws Exception {
+        final UuidRow row = new UuidRow();
+        row.setId(UUID_VALUE);
+        row.setExact(OTHER_UUID_VALUE);
+
+        final UuidRow out = roundTripUuid(row);
+
+        assertThat(out.getId()).isEqualTo(UUID_VALUE);
+        assertThat(out.getExact()).isEqualTo(OTHER_UUID_VALUE);
+    }
+
+    @Test
+    public void uuid_nilValue_roundTrips() throws Exception {
+        // The nil UUID is an ordinary value, not a stand-in for null: folding it into null would break the round-trip.
+        final UuidRow row = new UuidRow();
+        row.setId(new UUID(0L, 0L));
+
+        final UuidRow out = roundTripUuid(row);
+
+        assertThat(out.getId()).isEqualTo(new UUID(0L, 0L));
+    }
+
+    @Test
+    public void uuid_export_writesCanonicalLowerCaseText() throws Exception {
+        final UuidRow row = new UuidRow();
+        row.setId(UUID.fromString(UUID_TEXT.toUpperCase(Locale.ROOT)));
+
+        final Workbook workbook = exportUuidWorkbook(row);
+        try {
+            assertThat(dataStringOf(workbook, "Id")).isEqualTo(UUID_TEXT);
+        } finally {
+            workbook.close();
+        }
+    }
+
+    @Test
+    public void uuid_upperCaseInput_bindsSameValue() throws Exception {
+        final byte[] bytes = stringSheet("U", new String[]{"Id"}, new String[][]{{UUID_TEXT.toUpperCase(Locale.ROOT)}});
+        assertThat(importList(bytes, "U", UuidRow.class).get(0).getId()).isEqualTo(UUID_VALUE);
+    }
+
+    @Test
+    public void uuid_shortGroups_throws() throws Exception {
+        // UUID.fromString accepts this and widens it into 00000001-0001-0001-0001-000000000001; the codec must not.
+        final byte[] bytes = stringSheet("U", new String[]{"Id"}, new String[][]{{"1-1-1-1-1"}});
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "U", UuidRow.class));
+    }
+
+    @Test
+    public void uuid_hyphenlessHex_throws() throws Exception {
+        // Export only ever writes the canonical form, so import accepts only that form.
+        final byte[] bytes = stringSheet("U", new String[]{"Id"}, new String[][]{{"123e4567e89b12d3a456426614174000"}});
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "U", UuidRow.class));
+    }
+
+    @Test
+    public void uuid_bracedForm_throws() throws Exception {
+        final byte[] bytes = stringSheet("U", new String[]{"Id"}, new String[][]{{"{" + UUID_TEXT + "}"}});
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "U", UuidRow.class));
+    }
+
+    @Test
+    public void uuid_urnPrefixedForm_throws() throws Exception {
+        final byte[] bytes = stringSheet("U", new String[]{"Id"}, new String[][]{{"urn:uuid:" + UUID_TEXT}});
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "U", UuidRow.class));
+    }
+
+    @Test
+    public void uuid_blankCell_bindsNull() throws Exception {
+        final byte[] bytes = sheet("U", s -> {
+            final Row header = s.createRow(0);
+            header.createCell(0).setCellValue("Id");
+            header.createCell(1).setCellValue("Exact");
+            final Row data = s.createRow(1);
+            data.createCell(0).setBlank();
+            data.createCell(1).setCellValue(UUID_TEXT);
+        });
+
+        final UuidRow row = importList(bytes, "U", UuidRow.class).get(0);
+
+        assertThat(row.getId()).isNull();
+        assertThat(row.getExact()).isEqualTo(UUID_VALUE);
+    }
+
+    @Test
+    public void uuid_booleanCell_throws() throws Exception {
+        final byte[] bytes = sheet("U", s -> {
+            s.createRow(0).createCell(0).setCellValue("Id");
+            s.createRow(1).createCell(0).setCellValue(true);
+        });
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "U", UuidRow.class));
+    }
+
+    @Test
+    public void uuid_numericCell_throws() throws Exception {
+        // A NUMERIC cell is rendered to text first, so the failure reports an invalid value rather than a cell type.
+        final byte[] bytes = sheet("U", s -> {
+            s.createRow(0).createCell(0).setCellValue("Id");
+            s.createRow(1).createCell(0).setCellValue(123456);
+        });
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "U", UuidRow.class));
+    }
+
+    @Test
+    public void uuid_paddedValue_trimsAndBinds() throws Exception {
+        final byte[] bytes = stringSheet("U", new String[]{"Id"}, new String[][]{{"  " + UUID_TEXT + "  "}});
+        assertThat(importList(bytes, "U", UuidRow.class).get(0).getId()).isEqualTo(UUID_VALUE);
+    }
+
+    @Test
+    public void uuid_untrimmedValue_throws() throws Exception {
+        // The Exact column disables importTrim, so the padding stays part of the value and it is no longer canonical.
+        final byte[] bytes = stringSheet("U", new String[]{"Exact"}, new String[][]{{" " + UUID_TEXT + " "}});
+        assertThrows(PxlCellCodecException.class, () -> importList(bytes, "U", UuidRow.class));
+    }
+
+    @Test
+    public void uuid_exportMasking_masksHexDigits() throws Exception {
+        final UuidRow row = new UuidRow();
+        row.setMasked(UUID_VALUE);
+
+        final Workbook workbook = exportUuidWorkbook(row);
+        try {
+            // The "[0-9a-f]" mask replaces every hexadecimal digit of the canonical form, leaving its hyphens.
+            assertThat(dataStringOf(workbook, "Masked")).isEqualTo("********-****-****-****-************");
+        } finally {
+            workbook.close();
+        }
+    }
+
+    @Test
+    public void uuid_importUnique_duplicateThrows() throws Exception {
+        // The same UUID written in two cases is one value - a String column would not have caught this pair.
+        final byte[] bytes = stringSheet("U", new String[]{"Unique"},
+                new String[][]{{UUID_TEXT}, {UUID_TEXT.toUpperCase(Locale.ROOT)}});
+        assertThrows(PxlValidationException.class, () -> importList(bytes, "U", UuidRow.class));
+    }
+
+    @Test
+    public void uuidCollection_roundTrip_preservesNullPositions() throws Exception {
+        final UuidRow row = new UuidRow();
+        row.setIds(Arrays.asList(UUID_VALUE, null, OTHER_UUID_VALUE));
+
+        final UuidRow out = roundTripUuid(row);
+
+        assertThat(out.getIds()).containsExactly(UUID_VALUE, null, OTHER_UUID_VALUE);
+    }
+
+    @Test
+    public void uuidCollection_export_joinsCanonicalStrings() throws Exception {
+        // Guards the collection element branch of the dispatcher: a UUID element type resolves to no custom converter
+        // any more, so without that branch this export fails as an unsupported element type.
+        final UuidRow row = new UuidRow();
+        row.setIds(Arrays.asList(UUID_VALUE, OTHER_UUID_VALUE));
+
+        final Workbook workbook = exportUuidWorkbook(row);
+        try {
+            assertThat(dataStringOf(workbook, "Ids")).isEqualTo(UUID_TEXT + ";" + OTHER_UUID_TEXT);
         } finally {
             workbook.close();
         }

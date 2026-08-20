@@ -67,7 +67,7 @@ public final class PxlExportColumnOption {
 
     /**
      * Specifies the cell formatting string on export.
-     * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, OffsetDateTime, and Duration.
+     * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, OffsetDateTime, Duration, and Period.
      */
     @Builder.Default
     private final String exportPattern = null;

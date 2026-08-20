@@ -108,7 +108,7 @@ public class PxlSampleExcelExportTests {
                 .toWorkbook();
         try {
             assertThat(headerValuesOf(workbook, "AllTypes"))
-                    .contains("Text", "PrimInt", "Grade", "Category", "Point", "Money", "StringList");
+                    .contains("Text", "PrimInt", "Grade", "Category", "Point", "Money", "StringList", "Uuid");
             // The example row is populated with exportSample values.
             assertThat(sampleValuesOf(workbook, "AllTypes"))
                     .containsEntry("Text", "Sample text")
@@ -117,7 +117,8 @@ public class PxlSampleExcelExportTests {
                     .containsEntry("Category", "Electronics")
                     .containsEntry("Point", "3,7")
                     .containsEntry("Money", "USD 1050")
-                    .containsEntry("StringList", "Apple;Banana;Cherry");
+                    .containsEntry("StringList", "Apple;Banana;Cherry")
+                    .containsEntry("Uuid", "123e4567-e89b-12d3-a456-426614174000");
         } finally {
             workbook.close();
         }
@@ -348,6 +349,31 @@ public class PxlSampleExcelExportTests {
         assertThrows(PxlCellCodecException.class, () ->
                 pxl.exportSampleExcel()
                         .sheet(BadEnumSampleRow.class, "S")
+                        .toStream(outputStream));
+    }
+
+    @Test
+    public void exportSample_uuidSample_writesCanonicalValue() throws Exception {
+        // A UUID column's exportSample is parsed back into a UUID and written out again, so it survives unchanged.
+        final Workbook workbook = pxl.exportSampleExcel()
+                .sheet(UuidRow.class, "S")
+                .toWorkbook();
+        try {
+            assertThat(sampleValuesOf(workbook, "S"))
+                    .containsEntry("Id", "123e4567-e89b-12d3-a456-426614174000");
+        } finally {
+            workbook.close();
+        }
+    }
+
+    @Test
+    public void exportSample_uuidSampleNotCanonical_throws() {
+        // "1-1-1-1-1" is a sample UUID.fromString would accept, widening it into another value. The codec refuses it,
+        // so the sample export fails instead of writing a value its own import side would reject.
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        assertThrows(PxlCellCodecException.class, () ->
+                pxl.exportSampleExcel()
+                        .sheet(BadUuidSampleRow.class, "S")
                         .toStream(outputStream));
     }
 

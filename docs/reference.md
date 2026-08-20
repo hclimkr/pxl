@@ -43,7 +43,8 @@ With a declarative approach of putting annotations on your DTO, you get the foll
 
 - **Type fidelity & strictness**   
   Full `java.time` (including `Zoned`/`Offset`/`Duration`/`Period`), `BigInteger`/`BigDecimal` precision (2^53) awareness,
-  `NaN`/`Infinity` rejection, non-lenient date parsing (blocks rollover of invalid dates), `Collection` position preservation, symmetric import/export behavior.
+  `NaN`/`Infinity` rejection, non-lenient date parsing (blocks rollover of invalid dates), `Collection` position preservation,
+  `UUID` restricted to its canonical form, symmetric import/export behavior.
   Not just common types — these edge cases are defended and documented per codec.
 - **Standard validation integration + custom constraints**  
   Performs per-row validation on import with `javax.validation`/`jakarta.validation`,
@@ -316,7 +317,7 @@ thrown and `null` is never returned.
 | Primitive/wrapper | `byte` `short` `int` `long` `float` `double` `char` `boolean` and their wrapper classes, `String` |
 | Numeric          | `BigInteger` `BigDecimal`                                                                    |
 | Date/time        | `Date` `LocalDate` `LocalTime` `LocalDateTime` `ZonedDateTime` `OffsetTime` `OffsetDateTime` |
-| Other            | `Enum`, user-defined classes, `Collection` of the above types                               |
+| Other            | `Enum`, `UUID`, user-defined classes, `Collection` of the above types                       |
 | Experimental     | `Duration` `Period`                                                                          |
 
 Fields of an unsupported variable type fail with `PxlArgumentException` while the column metadata is resolved (a user-defined class becomes a supported type once it has `@PxlImportConverter`/`@PxlExportConverter` or a `String` constructor). `PxlCellCodecException` is for a supported type whose cell value cannot be converted into it.
@@ -337,6 +338,7 @@ Fields of an unsupported variable type fail with `PxlArgumentException` while th
 | User-defined classes                            | Requires a single-argument `String` constructor or `@PxlImportConverter`                                                                                                                       |
 | `Collection`                                    | Split by separator, preserving the positions of empty/null elements (e.g., `"a;;b"`→`["a", null, "b"]`).<br/>Elements must be concrete classes; nested generics (`List<List<..>>`), wildcards (`List<? extends X>`), and raw types raise `PxlReflectionException`. |
 | `Duration`·`Period` (experimental)              | String cell: `pattern` or ISO-8601.<br/>Numeric cell: fixed unit (`Duration`=seconds, `Period`=days), fractional part truncated, raises an exception when the range is exceeded.                |
+| `UUID`                                          | String cell: the canonical 8-4-4-4-12 hexadecimal form only, in either case (`123E4567-…` binds the same value as `123e4567-…`).<br/>Numeric cell: rendered to text first, so it is reported as an invalid value rather than an unsupported cell type.<br/>Boolean cell: raises an exception.<br/>`pattern`/`importPattern` has no meaning for a UUID and is ignored. |
 
 **Common to Import**
 
@@ -367,6 +369,7 @@ Fields of an unsupported variable type fail with `PxlArgumentException` while th
 | User-defined classes                            | Requires an overridden `toString()` or `@PxlExportConverter`                                                                                                                                                             |
 | `Collection`                                    | Joined by separator, `null` element → empty slot (e.g., `["a", null, "b"]`→`"a;;b"`).<br/>`exportStringAsPicture` is possible                                                                                              |
 | `Duration`·`Period` (experimental)              | Without a pattern, ISO-8601 (`toString()`).<br/>With a pattern, `DurationFormatUtils`; `Period` is an approximation because it is converted based on the current time                                                       |
+| `UUID`                                          | Always written as a string cell in the canonical lower-case form (`toString()`), so an upper-case value is read back as the same value written in lower case.<br/>`exportTrim` and masking (`exportMasking`) apply to that string; `pattern`/`exportPattern` has no meaning for a UUID and is ignored                                    |
 
 **Common to Export**
 
@@ -464,7 +467,7 @@ Import-only: It is not used on export (or sample export).
 | `importEnabled`                                                                                                | `true`     | Whether import is enabled                                                                                       |
 | `importTrim`                                                                                                   | `true`     | Whether to trim the string on import.<br/>When `false`, numbers/dates/`Boolean`, etc., may fail to parse or get a wrong value due to whitespace |
 | `importUnique`                                                                                                 | `false`    | Whether to check uniqueness of column values on import                                                          |
-| `importPattern`                                                                                                | `""`       | Import format (numeric=`DecimalFormat`, date/time=`DateTimeFormat`).<br/>Must match the cell value in full; leftover characters make the value invalid.<br/>Date/time falls back to the default pattern on failure (a partial match counts as a failure, so the fallback formatters get their turn) |
+| `importPattern`                                                                                                | `""`       | Import format (numeric=`DecimalFormat`, date/time=`DateTimeFormat`, `Duration`/`Period`=`DurationFormatUtils`).<br/>Must match the cell value in full; leftover characters make the value invalid.<br/>Date/time falls back to the default pattern on failure (a partial match counts as a failure, so the fallback formatters get their turn), and `Duration`/`Period` falls back to ISO-8601 the same way |
 | `importTrueString` / `importFalseString`                                                                       | `"true"`/`"false"` | `String` column: renders a boolean cell as this string.<br/>`Boolean` column: interprets this string (case-insensitive) as true/false (takes priority over the built-in tokens) |
 | `importCollectionSeparator`                                                                                    | `""`       | Separator to split a cell value into Collection elements.<br/>The entire literal string (`"::"`·`", "`, etc., multi-character allowed). |
 | `importOverrideSuperClassColumn`                                                                               | `false`    | Whether to override the superclass field of the same column name                                               |

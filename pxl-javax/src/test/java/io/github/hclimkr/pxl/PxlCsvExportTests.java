@@ -128,6 +128,28 @@ public class PxlCsvExportTests {
     }
 
     @Test
+    public void exportCsv_uuidColumns_writeCanonicalText() throws Exception {
+        final File csvFile = csvFile();
+
+        final String uuidText = "123e4567-e89b-12d3-a456-426614174000";
+        final String otherUuidText = "00112233-4455-6677-8899-aabbccddeeff";
+
+        final UuidRow row = new UuidRow();
+        row.setId(UUID.fromString(uuidText));
+        row.setIds(Arrays.asList(UUID.fromString(otherUuidText), UUID.fromString(uuidText)));
+
+        pxl.exportCsv()
+                .sheet(UuidRow.class, Arrays.asList(row), "Uuids")
+                .toFile(csvFile);
+
+        final List<String> lines = linesOf(csvFile);
+        assertThat(lines.get(0)).isEqualTo("Id,Ids,Exact,Masked,Unique");
+        // The collection separator is not the delimiter, so the joined field needs no quoting; the unset columns are
+        // written with their exportNullString (the empty string by default).
+        assertThat(lines.get(1)).isEqualTo(uuidText + "," + otherUuidText + ";" + uuidText + ",,,");
+    }
+
+    @Test
     public void exportCsv_toStream_flushesEverythingAndLeavesStreamOpen() throws Exception {
         final boolean[] closed = {false};
         final ByteArrayOutputStream buffer = new ByteArrayOutputStream();

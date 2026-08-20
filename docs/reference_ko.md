@@ -43,7 +43,8 @@ DTO에 애노테이션을 붙이는 선언적 방식으로 아래 기능을 별�
 
 - **타입 충실성 & 엄격성**   
   완전한 `java.time`(`Zoned`/`Offset`/`Duration`/`Period` 포함), `BigInteger`/`BigDecimal` 정밀도(2^53) 인지,
-  `NaN`/`Infinity` 거부, non-lenient 날짜 파싱(무효 날짜 rollover 차단), `Collection` 위치 보존, import/export 대칭 동작.
+  `NaN`/`Infinity` 거부, non-lenient 날짜 파싱(무효 날짜 rollover 차단), `Collection` 위치 보존,
+  `UUID`의 canonical 형식 강제, import/export 대칭 동작.
   흔한 타입만이 아니라 이런 엣지까지 코덱 단위로 방어·문서화한다.
 - **표준 유효성 검사 통합 + 커스텀 제약**  
   import 시 `javax.validation`/`jakarta.validation`으로 행 단위 유효성 검사하고,
@@ -309,7 +310,7 @@ response.setHeader("Content-Disposition",
 | 기본형/래퍼 | `byte` `short` `int` `long` `float` `double` `char` `boolean` 및 각 래퍼 클래스, `String`           |
 | 수치     | `BigInteger` `BigDecimal`                                                                    |
 | 날짜·시각  | `Date` `LocalDate` `LocalTime` `LocalDateTime` `ZonedDateTime` `OffsetTime` `OffsetDateTime` |
-| 기타     | `Enum`, 사용자 정의 클래스, 위 타입들의 `Collection`                                                      |
+| 기타     | `Enum`, `UUID`, 사용자 정의 클래스, 위 타입들의 `Collection`                                              |
 | 실험적    | `Duration` `Period`                                                                          |
 
 미지원 변수 타입 필드는 컬럼 메타를 해석하는 시점에 `PxlArgumentException`으로 실패한다(사용자 정의 클래스라면 `@PxlImportConverter`·`@PxlExportConverter` 또는 `String` 생성자를 갖춰야 지원 타입이 된다). 지원 타입이지만 셀 값을 그 타입으로 변환할 수 없을 때가 `PxlCellCodecException`이다.
@@ -330,6 +331,7 @@ response.setHeader("Content-Disposition",
 | 사용자 정의 클래스                                | `String` 단일인자 생성자 또는 `@PxlImportConverter` 필요                                                                                                                                           |
 | `Collection`                                   | 구분자로 분리, 빈/null 요소의 위치 보존(예 `"a;;b"`→`["a", null, "b"]`).<br/>요소는 구체 클래스여야 하며 중첩 제네릭(`List<List<..>>`)·와일드카드(`List<? extends X>`)·raw type은 `PxlReflectionException` 발생.                |
 | `Duration`·`Period` (실험적)                    | 문자열 셀: `pattern` 또는 ISO-8601.<br/>숫자 셀: 단위 고정(`Duration`=초, `Period`=일), 소수부 절단, 범위 초과 시 예외 발생.                                                                                         |
+| `UUID`                                         | 문자열 셀: canonical 8-4-4-4-12 16진 형식만 허용하며 대소문자는 가리지 않는다(`123E4567-…`는 `123e4567-…`와 같은 값으로 바인딩).<br/>숫자 셀: 먼저 문자열로 렌더링하므로 "지원하지 않는 셀 타입"이 아니라 "유효하지 않은 값"으로 보고된다.<br/>불리언 셀: 예외 발생.<br/>`pattern`/`importPattern`은 UUID에 의미가 없어 무시된다. |
 
 **Import 공통**
 
@@ -358,6 +360,7 @@ response.setHeader("Content-Disposition",
 | 사용자 정의 클래스                                | `toString()` 재정의 또는 `@PxlExportConverter` 필요                        |
 | `Collection`                                   | 구분자로 조인, `null` 요소 → 빈칸(예 `["a", null, "b"]`→`"a;;b"`).<br/>`exportStringAsPicture` 가능                                                                                                                        |
 | `Duration`·`Period` (실험적)                    | 패턴 없으면 ISO-8601(`toString()`).<br/>패턴이면 `DurationFormatUtils`; `Period`는 현재 시각 기준 환산이라 근사값                                                                                                                       |
+| `UUID`                                         | 언제나 canonical 소문자 형식(`toString()`)의 문자열 셀로 기록된다. 따라서 대문자 값도 소문자로 기록되어 되돌아오며, 값 자체는 동일하다.<br/>`exportTrim`·마스킹(`exportMasking`)은 그 문자열에 적용되고, `pattern`/`exportPattern`은 UUID에 의미가 없어 무시된다                                                       |
 
 **Export 공통**
 
@@ -455,7 +458,7 @@ import 전용: export(및 샘플 export)에서는 사용되지 않는다.
 | `importEnabled`                                                                                                | `true`     | Import 사용 여부                                                                                                   |
 | `importTrim`                                                                                                   | `true`     | Import 시 문자열 trim 여부.<br/>단, `false`이면 숫자·날짜·`Boolean` 등은 공백 탓에 파싱 실패/오값이 될 수 있다                               |
 | `importUnique`                                                                                                 | `false`    | Import 시 열 값들의 유일성 검사 여부                                                                                       |
-| `importPattern`                                                                                                | `""`       | Import 형식(수치=`DecimalFormat`, 날짜·시각=`DateTimeFormat`).<br/>셀 값 전체와 맞아야 하며, 남는 문자가 있으면 그 값은 무효다.<br/>날짜·시각은 실패 시 기본 패턴 폴백(부분 일치도 실패로 쳐서 폴백 포맷터로 넘어간다) |
+| `importPattern`                                                                                                | `""`       | Import 형식(수치=`DecimalFormat`, 날짜·시각=`DateTimeFormat`, `Duration`/`Period`=`DurationFormatUtils`).<br/>셀 값 전체와 맞아야 하며, 남는 문자가 있으면 그 값은 무효다.<br/>날짜·시각은 실패 시 기본 패턴 폴백(부분 일치도 실패로 쳐서 폴백 포맷터로 넘어간다), `Duration`/`Period`도 같은 방식으로 ISO-8601로 폴백한다 |
 | `importTrueString` / `importFalseString`                                                                       | `"true"`/`"false"` | `String` 열: 불리언 셀을 이 문자열로 렌더링.<br/>`Boolean` 열: 이 문자열(대소문자 무시)을 참/거짓으로 해석(내장 토큰보다 우선)                              |
 | `importCollectionSeparator`                                                                                    | `""`       | Cell 값을 Collection 요소로 분리할 구분자.<br/>리터럴 전체 문자열(`"::"`·`", "` 등 다중문자 가능).              |
 | `importOverrideSuperClassColumn`                                                                               | `false`    | 슈퍼클래스의 동일 컬럼명 필드를 override할지                                                                                   |

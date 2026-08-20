@@ -69,7 +69,8 @@ public @interface PxlColumn {
 
     /**
      * Specifies the cell formatting string on import.
-     * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, OffsetDateTime.
+     * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, OffsetDateTime, Duration, Period.
+     * A Duration/Period pattern is the {@code DurationFormatUtils} style used on export, and a value that does not match it falls back to ISO-8601.
      * The pattern has to consume the cell value in full - see {@link #pattern()}.
      *
      * @return the import-specific cell-formatting pattern; empty ({@code ""}) falls back to {@link #pattern()}
@@ -142,7 +143,7 @@ public @interface PxlColumn {
 
     /**
      * Specifies the cell formatting string on export.
-     * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, OffsetDateTime, Duration.
+     * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, OffsetDateTime, Duration, Period.
      *
      * @return the export-specific cell-formatting pattern; empty ({@code ""}) falls back to {@link #pattern()}
      */

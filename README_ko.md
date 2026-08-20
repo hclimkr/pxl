@@ -63,8 +63,8 @@ List<Employee> employees = pxl.importExcel()
 - **선언만으로 매핑** — 필드에 `@PxlColumn`, 컬렉션 필드에 `@PxlSheet`, 클래스에 `@PxlWorkbook`. DTO의
   나머지는 건드리지 않는다. 헤더는 이름으로 매칭하므로 파일의 열 순서는 자유이고 정의에 없는 열은 무시된다.
 - **약 30종 필드 타입 기본 지원** — 원시 타입과 래퍼, `String`, `BigDecimal`, `BigInteger`, `enum`,
-  `LocalDate` / `LocalDateTime` / `LocalTime` / `Date`, `Duration` / `Period`, `Collection`, 그리고 그 밖의
-  타입은 `@PxlImportConverter` / `@PxlExportConverter`로 처리한다.
+  `LocalDate` / `LocalDateTime` / `LocalTime` / `Date`, `Duration` / `Period`, `UUID`, `Collection`, 그리고
+  그 밖의 타입은 `@PxlImportConverter` / `@PxlExportConverter`로 처리한다.
 - **행 단위 Bean Validation** — DTO에 선언한 표준 `javax.validation` / `jakarta.validation` 제약이 바인딩
   중에 검증되며, PXL 자체 제약 `@PxlByteSize`도 함께 쓸 수 있다.
 - **엑셀 표현 요소** — 셀 스타일러, 컬럼 폭, 행 높이, 창 고정, 자동 필터, 드롭다운 검증, 행 그룹핑,

@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.time.*;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * DTO holding all scalar types supported by PXL plus Collection/enum/custom objects in a single row.
@@ -131,6 +132,11 @@ public class AllTypesRow {
 
     @PxlColumn(name = "Period", exportSample = "P1Y2M3D")
     private Period period;
+
+    // ----- UUID (canonical form, written and read as text) -----
+
+    @PxlColumn(name = "Uuid", exportSample = "123e4567-e89b-12d3-a456-426614174000")
+    private UUID uuid;
 
     // ----- enum -----
 

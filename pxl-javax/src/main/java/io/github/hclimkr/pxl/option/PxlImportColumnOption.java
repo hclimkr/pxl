@@ -56,7 +56,8 @@ public final class PxlImportColumnOption {
 
     /**
      * Specifies the cell formatting string on import.
-     * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, and OffsetDateTime.
+     * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, OffsetDateTime, Duration, and Period.
+     * A Duration/Period pattern is the {@code DurationFormatUtils} style used on export, and a value that does not match it falls back to ISO-8601.
      * The pattern has to consume the cell value in full; a value it reads only the front of is rejected.
      */
     @Builder.Default

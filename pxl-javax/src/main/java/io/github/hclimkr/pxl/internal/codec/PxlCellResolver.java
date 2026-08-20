@@ -23,13 +23,14 @@ import java.time.*;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Central type dispatcher for cell value conversion. Routes each column, based on its resolved
  * {@code columnClass}, to the matching per-type codec for both import (cell/string to value) and export
  * (value to cell). Covers {@link String}, the primitive and boxed numeric types, {@code char}/{@link Character},
  * {@code boolean}/{@link Boolean}, {@link BigInteger}/{@link BigDecimal}, the {@code java.time} types plus
- * {@link Date}, enums, collections, and objects handled by a custom converter.
+ * {@link Date}, {@link UUID}, enums, collections, and objects handled by a custom converter.
  */
 public final class PxlCellResolver {
 
@@ -141,6 +142,8 @@ public final class PxlCellResolver {
             valueObject = PxlDurationCodec.parseDurationValue(cell, columnMeta);
         } else if (columnClass == Period.class) {
             valueObject = PxlPeriodCodec.parsePeriodValue(cell, columnMeta);
+        } else if (columnClass == UUID.class) {
+            valueObject = PxlUuidCodec.parseUuidValue(cell, columnMeta);
         } else if (columnClass.isEnum()) {
             valueObject = PxlEnumCodec.parseEnumValue(cell, columnMeta);
         } else if (PxlClassSupport.isCollectionClass(columnClass)) {
@@ -236,6 +239,8 @@ public final class PxlCellResolver {
             valueObject = PxlDurationCodec.parseDurationValue(s, columnMeta);
         } else if (columnClass == Period.class) {
             valueObject = PxlPeriodCodec.parsePeriodValue(s, columnMeta);
+        } else if (columnClass == UUID.class) {
+            valueObject = PxlUuidCodec.parseUuidValue(s, columnMeta);
         } else if (columnClass.isEnum()) {
             valueObject = PxlEnumCodec.parseEnumValue(s, columnMeta);
         } else if (PxlClassSupport.isCollectionClass(columnClass)) {
@@ -340,6 +345,8 @@ public final class PxlCellResolver {
             return PxlDurationCodec.buildDurationCell(cell, object, columnMeta);
         } else if (columnClass == Period.class) {
             return PxlPeriodCodec.buildPeriodCell(cell, object, columnMeta);
+        } else if (columnClass == UUID.class) {
+            return PxlUuidCodec.buildUuidCell(cell, object, columnMeta);
         } else if (columnClass.isEnum()) {
             return PxlEnumCodec.buildEnumCell(cell, object, columnMeta);
         } else if (PxlClassSupport.isCollectionClass(columnClass)) {

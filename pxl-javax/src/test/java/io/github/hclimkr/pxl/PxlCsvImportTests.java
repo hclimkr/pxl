@@ -23,10 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.Normalizer;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -126,6 +123,32 @@ public class PxlCsvImportTests {
                 .fromStream("Employees", stream(EMPLOYEES_CSV));
 
         assertEmployees(employees);
+    }
+
+    // Every CSV field arrives as a string, so this drives the string dispatcher rather than the cell one.
+    @Test
+    public void importCsvStream_uuidColumns_bind() throws Exception {
+        final String uuidText = "123e4567-e89b-12d3-a456-426614174000";
+        final String otherUuidText = "00112233-4455-6677-8899-aabbccddeeff";
+        final String csv = "Id,Ids\n"
+                + uuidText + "," + otherUuidText + ";" + uuidText + "\n";
+
+        final UuidRow row = pxl.importCsv()
+                .sheet(UuidRow.class)
+                .fromStream("Uuids", stream(csv)).get(0);
+
+        assertThat(row.getId()).isEqualTo(UUID.fromString(uuidText));
+        assertThat(row.getIds()).containsExactly(UUID.fromString(otherUuidText), UUID.fromString(uuidText));
+    }
+
+    @Test
+    public void importCsvStream_uuidShortGroups_throws() throws Exception {
+        // The canonical form is enforced on this path too, not only when reading a cell.
+        final String csv = "Id\n1-1-1-1-1\n";
+
+        assertThrows(PxlCellCodecException.class, () -> pxl.importCsv()
+                .sheet(UuidRow.class)
+                .fromStream("Uuids", stream(csv)));
     }
 
     // Resource ownership: fromStream does not close the InputStream passed by the caller

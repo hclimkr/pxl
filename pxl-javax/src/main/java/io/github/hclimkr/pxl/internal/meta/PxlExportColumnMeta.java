@@ -280,8 +280,8 @@ public final class PxlExportColumnMeta {
      * Besides the names, two more values are read through the workbook's export bundle. The {@code exportSample} of a
      * String or enum column is translated, element by element when the column is a Collection; and the
      * {@code exportOptionItems} of a String column are translated as well, so the dropdown lists the same text the
-     * sample cell holds. An enum, numeric or temporal column always writes its value in canonical form, so its
-     * dropdown is left untranslated to stay consistent with what is written.
+     * sample cell holds. A column of any other type - enum, numeric, temporal, UUID - always writes its value in
+     * canonical form, so its dropdown is left untranslated to stay consistent with what is written.
      *
      * @param sheetMeta   the enclosing sheet metadata, supplying the row class, column options and cascaded stylers
      * @param isForSample {@code true} to select columns by {@code exportSampleEnabled}, {@code false} by {@code exportEnabled}
@@ -397,8 +397,9 @@ public final class PxlExportColumnMeta {
                         .orElseGet(columnAnnotation::exportOptionItems);
 
                 // A String column is the only one whose dropdown is translated, because it is the only one that writes
-                // translated text into the cell: an enum, numeric or temporal column always writes its canonical value,
-                // so translating its items would leave what is written outside the list it is validated against.
+                // translated text into the cell: a column of any other type - enum, numeric, temporal, UUID - always
+                // writes its canonical value, so translating its items would leave what is written outside the list it
+                // is validated against.
                 if ((exportEnabled || exportSampleEnabled)
                         && Objects.nonNull(exportResourceBundle)
                         && ArrayUtils.isNotEmpty(exportOptionItems)

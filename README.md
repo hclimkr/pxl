@@ -66,7 +66,7 @@ For details such as supported variable types, the full set of options, and const
   column order in the file is free and unknown columns are ignored.
 - **Around 30 field types out of the box** — primitives and their wrappers, `String`, `BigDecimal`,
   `BigInteger`, `enum`, `LocalDate` / `LocalDateTime` / `LocalTime` / `Date`, `Duration` / `Period`,
-  `Collection`, and anything else through `@PxlImportConverter` / `@PxlExportConverter`.
+  `UUID`, `Collection`, and anything else through `@PxlImportConverter` / `@PxlExportConverter`.
 - **Bean Validation per row** — standard `javax.validation` / `jakarta.validation` constraints
   declared on the DTO are enforced while binding, alongside PXL's own `@PxlByteSize`.
 - **Excel-side presentation** — cell stylers, column widths, row heights, freeze panes, auto filters,

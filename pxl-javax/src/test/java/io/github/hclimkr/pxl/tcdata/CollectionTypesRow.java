@@ -8,6 +8,7 @@ import java.math.BigInteger;
 import java.time.*;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * DTO whose columns are collections of many different element types.
@@ -76,6 +77,9 @@ public class CollectionTypesRow {
 
     @PxlColumn(name = "Periods")
     private List<Period> periods;
+
+    @PxlColumn(name = "Uuids")
+    private List<UUID> uuids;
 
     @PxlColumn(name = "Moneys")
     private List<Money> moneys;
