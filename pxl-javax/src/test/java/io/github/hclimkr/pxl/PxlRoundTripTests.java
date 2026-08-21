@@ -6,7 +6,6 @@ import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
 import io.github.hclimkr.pxl.tcdata.*;
 import io.github.hclimkr.pxl.type.PxlExcelEngine;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
-import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -23,16 +21,18 @@ import java.util.Collection;
 import java.util.List;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Round-trip (export -> import) tests.
+ * Round-trip (export -&gt; import) tests.
  * <p>
  * Exports in workbook / sheet / multi-sheet form, then imports again and verifies that values are preserved.
- * Since the binding/codec logic follows the same path regardless of transport, the transport axis is
- * <b>parameterized</b> via {@link Transport} (real file / in-memory stream / returned POI workbook), running one body
- * across three transports. {@code FILE} mode leaves a {@code <methodName>.xlsx} file on disk, while
- * {@code STREAM}/{@code POI} round-trip in memory.
+ * Since the binding/codec logic follows the same path regardless of destination, the destination axis is
+ * <b>parameterized</b> via {@link ExportDest} (real file / in-memory stream / returned POI workbook), running one
+ * body across all three. {@code FILE} leaves a {@code <methodName>_FILE.xlsx} file on disk and is read back with
+ * {@code fromFile}, so the import side is swept along with the export side; {@code STREAM}/{@code WORKBOOK} round
+ * trip in memory.
  */
 public class PxlRoundTripTests {
 
@@ -52,30 +52,12 @@ public class PxlRoundTripTests {
     }
 
     /**
-     * Round-trip transport. The codec/binder logic is identical; only the I/O boundary differs.
-     */
-    public enum Transport {
-        /**
-         * Export to a real file -> import from the file. (The file remains on disk.)
-         */
-        FILE,
-        /**
-         * Export to an in-memory OutputStream -> import from an InputStream.
-         */
-        STREAM,
-        /**
-         * Export via the POI Workbook-returning API -> serialize, then import from a stream.
-         */
-        POI
-    }
-
-    /**
-     * Holds the artifact (file or bytes) exported by the chosen transport, and reads it back in workbook/sheet form.
+     * Holds the artifact (file or bytes) the chosen destination produced, and reads it back in workbook/sheet form.
      */
     private static final class RoundTripSource {
 
-        private final File file;      // FILE mode
-        private final byte[] bytes;   // STREAM / POI mode
+        private final File file;      // FILE destination
+        private final byte[] bytes;   // STREAM / WORKBOOK destination
 
         private RoundTripSource(final File file) {
             this.file = file;
@@ -111,67 +93,35 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Per-transport export helpers (workbook / sheet / multi-sheet form)
+    // Per-destination export helpers (workbook / sheet / multi-sheet form)
     // ------------------------------------------------------------------
 
-    private RoundTripSource exportWorkbook(final Transport transport,
-                                           final Object workbookObject,
-                                           final PxlExportWorkbookOption option) throws Exception {
-        switch (transport) {
-            case FILE: {
-                final File file = TestPaths.exportFile(testInfo);
-                pxl.exportExcel()
-                        .workbook(workbookObject)
-                        .override(option)
-                        .toFile(file);
-                return new RoundTripSource(file);
-            }
-            case STREAM: {
-                final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                pxl.exportExcel()
-                        .workbook(workbookObject)
-                        .override(option)
-                        .toStream(outputStream);
-                return new RoundTripSource(outputStream.toByteArray());
-            }
-            case POI:
-            default:
-                return new RoundTripSource(toBytes(pxl.exportExcel()
-                        .workbook(workbookObject)
-                        .override(option)
-                        .toWorkbook()));
-        }
+    // Runs the builder against the destination. On FILE the artifact itself is handed on, so the import side is
+    // read from the file rather than from bytes that happen to have come out of one.
+    private RoundTripSource sourceOf(final PxlExcelExportBuilder builder, final ExportDest dest) throws Exception {
+        final byte[] bytes = emit(builder, dest, testInfo);
+
+        return ExportDest.FILE == dest
+                ? new RoundTripSource(exportFile(testInfo, dest, XLSX))
+                : new RoundTripSource(bytes);
     }
 
-    private <T> RoundTripSource exportSheet(final Transport transport,
+    private RoundTripSource exportWorkbook(final ExportDest dest,
+                                           final Object workbookObject,
+                                           final PxlExportWorkbookOption option) throws Exception {
+        return sourceOf(pxl.exportExcel()
+                .workbook(workbookObject)
+                .override(option), dest);
+    }
+
+    private <T> RoundTripSource exportSheet(final ExportDest dest,
                                             final String sheetName,
                                             final Collection<T> rows,
                                             final Class<T> rowClass,
                                             final PxlExportWorkbookOption option) throws Exception {
-        switch (transport) {
-            case FILE: {
-                final File file = TestPaths.exportFile(testInfo);
-                pxl.exportExcel()
-                        .sheet(rowClass, rows, sheetName)
-                        .override(option)
-                        .toFile(file);
-                return new RoundTripSource(file);
-            }
-            case STREAM: {
-                final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                pxl.exportExcel()
-                        .sheet(rowClass, rows, sheetName)
-                        .override(option)
-                        .toStream(outputStream);
-                return new RoundTripSource(outputStream.toByteArray());
-            }
-            case POI:
-            default:
-                return new RoundTripSource(toBytes(pxl.exportExcel()
-                        .sheet(rowClass, rows, sheetName)
-                        .override(option)
-                        .toWorkbook()));
-        }
+        return sourceOf(pxl.exportExcel()
+                .sheet(rowClass, rows, sheetName)
+                .override(option), dest);
     }
 
     // Since the builder config methods (sheet/workbook) throw checked Pxl exceptions, this interface is used
@@ -181,43 +131,13 @@ public class PxlRoundTripTests {
         void accept(PxlExcelExportBuilder builder) throws PxlException;
     }
 
-    private RoundTripSource exportMultiSheet(final Transport transport,
+    private RoundTripSource exportMultiSheet(final ExportDest dest,
                                              final SheetConfigurer sheets,
                                              final PxlExportWorkbookOption option) throws Exception {
-        switch (transport) {
-            case FILE: {
-                final File file = TestPaths.exportFile(testInfo);
-                final PxlExcelExportBuilder builder = pxl.exportExcel();
-                sheets.accept(builder);
-                builder.override(option)
-                        .toFile(file);
-                return new RoundTripSource(file);
-            }
-            case STREAM: {
-                final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                final PxlExcelExportBuilder builder = pxl.exportExcel();
-                sheets.accept(builder);
-                builder.override(option)
-                        .toStream(outputStream);
-                return new RoundTripSource(outputStream.toByteArray());
-            }
-            case POI:
-            default: {
-                final PxlExcelExportBuilder builder = pxl.exportExcel();
-                sheets.accept(builder);
-                return new RoundTripSource(toBytes(builder.override(option)
-                        .toWorkbook()));
-            }
-        }
-    }
+        final PxlExcelExportBuilder builder = pxl.exportExcel();
+        sheets.accept(builder);
 
-    private static byte[] toBytes(final Workbook workbook) throws Exception {
-        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            workbook.write(outputStream);
-            return outputStream.toByteArray();
-        } finally {
-            workbook.close();
-        }
+        return sourceOf(builder.override(option), dest);
     }
 
     private static List<Employee> sampleEmployees() {
@@ -233,13 +153,13 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Sheet form: all types - transport parity (FILE/STREAM/POI)
+    // Sheet form: all types - destination parity (FILE/STREAM/WORKBOOK)
     // ------------------------------------------------------------------
 
     @ParameterizedTest
-    @EnumSource(Transport.class)
-    public void sheetForm_allTypes_roundTrips(final Transport transport) throws Exception {
-        final RoundTripSource source = exportSheet(transport, "AllTypes",
+    @EnumSource(ExportDest.class)
+    public void sheetForm_allTypes_roundTrips(final ExportDest dest) throws Exception {
+        final RoundTripSource source = exportSheet(dest, "AllTypes",
                 Arrays.asList(Fixtures.sampleAllTypesRow()), AllTypesRow.class, noValidationOption());
 
         @SuppressWarnings("unchecked") final List<AllTypesRow> rows =
@@ -250,17 +170,17 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Workbook form: all types + workbook name - transport parity
+    // Workbook form: all types + workbook name - destination parity
     // ------------------------------------------------------------------
 
     @ParameterizedTest
-    @EnumSource(Transport.class)
-    public void workbookForm_allTypes_roundTrips(final Transport transport) throws Exception {
+    @EnumSource(ExportDest.class)
+    public void workbookForm_allTypes_roundTrips(final ExportDest dest) throws Exception {
         final AllTypesWorkbook workbook = new AllTypesWorkbook();
         workbook.setWorkbookName("MyWorkbook");
         workbook.setRows(Arrays.asList(Fixtures.sampleAllTypesRow()));
 
-        final RoundTripSource source = exportWorkbook(transport, workbook, noValidationOption());
+        final RoundTripSource source = exportWorkbook(dest, workbook, noValidationOption());
         final AllTypesWorkbook imported = (AllTypesWorkbook) source.importWorkbook("MyWorkbook", AllTypesWorkbook.class);
 
         assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(imported)).isEqualTo("MyWorkbook");
@@ -269,18 +189,18 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Workbook form: two different sheet types (Employees / Departments) - transport parity
+    // Workbook form: two different sheet types (Employees / Departments) - destination parity
     // ------------------------------------------------------------------
 
     @ParameterizedTest
-    @EnumSource(Transport.class)
-    public void workbookForm_twoSheetTypes_roundTrips(final Transport transport) throws Exception {
+    @EnumSource(ExportDest.class)
+    public void workbookForm_twoSheetTypes_roundTrips(final ExportDest dest) throws Exception {
         final CompanyWorkbook workbook = new CompanyWorkbook();
         workbook.setWorkbookName("Acme");
         workbook.setEmployees(sampleEmployees());
         workbook.setDepartments(sampleDepartments());
 
-        final RoundTripSource source = exportWorkbook(transport, workbook, noValidationOption());
+        final RoundTripSource source = exportWorkbook(dest, workbook, noValidationOption());
         final CompanyWorkbook imported = (CompanyWorkbook) source.importWorkbook("Acme", CompanyWorkbook.class);
 
         assertThat(PxlWorkbookUtils.getWorkbookNameFromWorkbookObject(imported)).isEqualTo("Acme");
@@ -298,16 +218,16 @@ public class PxlRoundTripTests {
         assertThat(imported.getDepartments().get(1).getHeadcount()).isEqualTo(7);
     }
 
-    // Option null -> exportDataValidation defaults to true (a realistic file with a Grade enum dropdown/hidden sheet); round-trips regardless of transport
+    // Option null -> exportDataValidation defaults to true (a realistic file with a Grade enum dropdown/hidden sheet); round-trips regardless of destination
     @ParameterizedTest
-    @EnumSource(Transport.class)
-    public void workbookForm_twoSheetTypesWithValidation_roundTrips(final Transport transport) throws Exception {
+    @EnumSource(ExportDest.class)
+    public void workbookForm_twoSheetTypesWithValidation_roundTrips(final ExportDest dest) throws Exception {
         final CompanyWorkbook workbook = new CompanyWorkbook();
         workbook.setWorkbookName("Acme");
         workbook.setEmployees(sampleEmployees());
         workbook.setDepartments(sampleDepartments());
 
-        final RoundTripSource source = exportWorkbook(transport, workbook, null);
+        final RoundTripSource source = exportWorkbook(dest, workbook, null);
         final CompanyWorkbook imported = (CompanyWorkbook) source.importWorkbook("Acme", CompanyWorkbook.class);
 
         // Even with a dropdown/hidden sheet, name matching reads only the data sheet correctly.
@@ -317,19 +237,19 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Multi-sheet (explicit list) form - transport parity
+    // Multi-sheet (explicit list) form - destination parity
     // ------------------------------------------------------------------
 
     @ParameterizedTest
-    @EnumSource(Transport.class)
-    public void multiSheetListForm_roundTrips(final Transport transport) throws Exception {
+    @EnumSource(ExportDest.class)
+    public void multiSheetListForm_roundTrips(final ExportDest dest) throws Exception {
         final List<Employee> engineering = Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"));
         final List<Employee> sales = Arrays.asList(
                 Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales"),
                 Fixtures.employee("Carol", 35, "68000", true, LocalDate.of(2019, 3, 20), Grade.A, "Sales"));
 
-        final RoundTripSource source = exportMultiSheet(transport,
+        final RoundTripSource source = exportMultiSheet(dest,
                 builder -> builder
                         .sheet(Employee.class, engineering, "Engineering")
                         .sheet(Employee.class, sales, "Sales"),
@@ -345,27 +265,24 @@ public class PxlRoundTripTests {
     }
 
     // ------------------------------------------------------------------
-    // Real .xls (HSSF) file round-trip (file-format axis - separate from transport parameterization)
+    // Real .xls (HSSF) round trip (file-format axis - on top of the destination sweep)
     // ------------------------------------------------------------------
 
-    @Test
-    public void sheetForm_allTypesViaXlsFile_roundTrips() throws Exception {
-        final File file = TestPaths.exportFile(testInfo, ".xls");
-
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetForm_allTypesViaXls_roundTrips(final ExportDest dest) throws Exception {
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
                 .exportExcelEngine(PxlExcelEngine.HSSF)
                 .exportDataValidation(false)
                 .build();
-        pxl.exportExcel()
-                .sheet(AllTypesRow.class, Arrays.asList(Fixtures.sampleAllTypesRow()), "AllTypes")
-                .override(option)
-                .toFile(file);
 
-        assertThat(file).exists();
+        final byte[] bytes = emit(pxl.exportExcel()
+                .sheet(AllTypesRow.class, Arrays.asList(Fixtures.sampleAllTypesRow()), "AllTypes")
+                .override(option), dest, testInfo, XLS);
 
         final List<AllTypesRow> rows = pxl.importExcel()
                 .sheet(AllTypesRow.class, Arrays.asList("AllTypes"))
-                .fromFile(file);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(rows).hasSize(1);
         Fixtures.assertSampleAllTypesRow(rows.get(0));
@@ -375,10 +292,9 @@ public class PxlRoundTripTests {
     // CSV round trip (exportCsv -> importCsv)
     // ------------------------------------------------------------------
 
-    @Test
-    public void csvRoundTrip_sheetForm_preservesValues() throws Exception {
-        final File csvFile = TestPaths.exportFile(testInfo, ".csv");
-
+    @ParameterizedTest
+    @EnumSource(value = ExportDest.class, names = {"FILE", "STREAM"})
+    public void csvRoundTrip_sheetForm_preservesValues(final ExportDest dest) throws Exception {
         final Employee alice = new Employee();
         alice.setName("Alice");
         alice.setAge(30);
@@ -388,13 +304,12 @@ public class PxlRoundTripTests {
         alice.setGrade(Grade.A);
         alice.setDepartment("Engineering");
 
-        pxl.exportCsv()
-                .sheet(Employee.class, Arrays.asList(alice), "Employees")
-                .toFile(csvFile);
+        final byte[] bytes = emit(pxl.exportCsv()
+                .sheet(Employee.class, Arrays.asList(alice), "Employees"), dest, testInfo);
 
         final List<Employee> rows = pxl.importCsv()
                 .sheet(Employee.class)
-                .fromFile(csvFile);
+                .fromStream("Employees", new ByteArrayInputStream(bytes));
 
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).getName()).isEqualTo("Alice");

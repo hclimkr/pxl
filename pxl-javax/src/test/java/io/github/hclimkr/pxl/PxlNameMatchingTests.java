@@ -13,13 +13,15 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.github.hclimkr.pxl.tcdata.TestExports.emit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -30,6 +32,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Verifies array (alias), numeric-header, and enum-value matching rules, the name a column is written under (the
  * first alias, or the field name when none is declared), plus behavior when a required/optional column header is
  * missing.
+ * <p>
+ * The tests that write a workbook first are swept across {@link ExportDest}: the name a header is written under has
+ * to be the same whichever terminal produced it. The rest build their input with raw POI and never export at all.
  */
 public class PxlNameMatchingTests {
 
@@ -110,20 +115,19 @@ public class PxlNameMatchingTests {
         assertThat(row.getAge()).isEqualTo(30);
     }
 
-    @Test
-    public void columnName_alias_exportsUnderTheFirstName() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void columnName_alias_exportsUnderTheFirstName(final ExportDest dest) throws Exception {
         // Import accepts any of the aliases, but a header can only be written as one of them: the first.
         final AliasRow row = new AliasRow();
         row.setName("Alice");
         row.setAge(30);
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(AliasRow.class, Arrays.asList(row), "Alias")
-                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build())
-                .toFile(excelFile);
+                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build()), dest, testInfo);
 
-        try (Workbook poi = WorkbookFactory.create(excelFile)) {
+        try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             final Row header = poi.getSheet("Alias").getRow(0);
             assertThat(Arrays.asList(header.getCell(0).getStringCellValue(), header.getCell(1).getStringCellValue()))
                     .as("the remaining aliases are not written as headers")
@@ -131,29 +135,25 @@ public class PxlNameMatchingTests {
         }
     }
 
-    @Test
-    public void columnName_notDeclared_usesFieldName() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void columnName_notDeclared_usesFieldName(final ExportDest dest) throws Exception {
         // With name left at {}, the field name is the header written and the header matched.
         final FieldNameColumnRow row = new FieldNameColumnRow();
         row.setCode("A-1");
         row.setAmount(7);
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(FieldNameColumnRow.class, Arrays.asList(row), "Fields")
-                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build())
-                .toFile(excelFile);
+                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build()), dest, testInfo);
 
-        try (Workbook poi = WorkbookFactory.create(excelFile)) {
+        try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             final Row header = poi.getSheet("Fields").getRow(0);
             assertThat(Arrays.asList(header.getCell(0).getStringCellValue(), header.getCell(1).getStringCellValue()))
                     .containsExactlyInAnyOrder("code", "amount");
         }
 
-        final FieldNameColumnRow imported = pxl.importExcel()
-                .sheet(FieldNameColumnRow.class, Arrays.asList("Fields"))
-                .fromFile(excelFile)
-                .get(0);
+        final FieldNameColumnRow imported = importList(bytes, "Fields", FieldNameColumnRow.class).get(0);
 
         assertThat(imported.getCode()).isEqualTo("A-1");
         assertThat(imported.getAmount()).isEqualTo(7);
@@ -181,40 +181,38 @@ public class PxlNameMatchingTests {
         assertThat(importList(bytes, "DATA", NameMatchRow.class).get(0).getName()).isEqualTo("Alice");
     }
 
-    @Test
-    public void sheetName_workbookForm_differentCase_matches() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetName_workbookForm_differentCase_matches(final ExportDest dest) throws Exception {
         // The workbook form matches the same way: the actual sheet "EMPLOYEE" binds the @PxlSheet alias "Employee"
-        final File excelFile = TestPaths.exportFile(testInfo);
         final List<Employee> employees = Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering"));
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, employees, "EMPLOYEE")
-                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build())
-                .toFile(excelFile);
+                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build()), dest, testInfo);
 
         final AliasSheetWorkbook imported = pxl.importExcel()
                 .workbook(AliasSheetWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getData()).extracting(Employee::getName).containsExactly("Alice");
     }
 
-    @Test
-    public void sheetName_alias_anyOfArrayMatches() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetName_alias_anyOfArrayMatches(final ExportDest dest) throws Exception {
         // @PxlSheet(name={"Crew","Employee","직원"}) - matches even when the actual sheet name is "Employee"
-        final File excelFile = TestPaths.exportFile(testInfo);
         final List<Employee> employees = Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering"),
                 Fixtures.employee("Bob", 42, "72000", false, null, Grade.B, "Sales"));
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, employees, "Employee")
-                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build())
-                .toFile(excelFile);
+                .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build()), dest, testInfo);
 
         final AliasSheetWorkbook imported = pxl.importExcel()
                 .workbookName("Aliased")
                 .workbook(AliasSheetWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getData()).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }

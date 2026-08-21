@@ -1,11 +1,15 @@
 package io.github.hclimkr.pxl;
 
+import io.github.hclimkr.pxl.tcdata.ExportDest;
 import io.github.hclimkr.pxl.tcdata.PictureRow;
 import org.apache.poi.ss.usermodel.PictureData;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -13,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.workbookOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -22,11 +27,22 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * Uses free image URLs from https://picsum.photos as input.
  * If the network/service is unreachable, the test is <b>skipped rather than failed</b> (assumeTrue),
  * and it is separated by {@code @Tag("network")} so it can be excluded with {@code -DexcludedGroups=network}.
+ * <p>
+ * The export is swept across {@link ExportDest} like every other export test; the downloads happen once per run
+ * of the body, so the sweep costs three fetches of the same three images.
  */
 @Tag("network")
 public class PxlPictureNetworkExportTests {
 
     private static Pxl pxl;
+
+    // Captures the current test method name to match the export file name.
+    private TestInfo testInfo;
+
+    @BeforeEach
+    public void bindTestInfo(final TestInfo testInfo) {
+        this.testInfo = testInfo;
+    }
 
     // Uses fixed ids so the images differ (preventing deduplication).
     private static final String PHOTO_URL = "https://picsum.photos/id/237/120/120";
@@ -58,26 +74,23 @@ public class PxlPictureNetworkExportTests {
         }
     }
 
-    @Test
-    public void exportPicture_networkUrl_embedded() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPicture_networkUrl_embedded(final ExportDest dest) throws Exception {
         assumeTrue(networkAvailable(), "skipping test because the network (picsum.photos) is not reachable");
 
         final PictureRow row = new PictureRow();
         row.setPhoto(PHOTO_URL);
         row.setGallery(GALLERY_URLS);
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(PictureRow.class, Arrays.asList(row), "Pictures")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             final List<? extends PictureData> pictures = workbook.getAllPictures();
             // 1 single + 2 gallery = 3 (different ids, so not deduplicated)
             assertThat(pictures).hasSize(3);
             // Embedded images are thumbnailed and written as PNG (even if the original is JPEG).
             assertThat(pictures).allMatch(p -> p.getPictureType() == Workbook.PICTURE_TYPE_PNG);
-        } finally {
-            workbook.close();
         }
     }
 }

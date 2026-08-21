@@ -13,15 +13,18 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.emit;
+import static io.github.hclimkr.pxl.tcdata.TestExports.workbookOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -30,6 +33,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * stream-reader cache buffer, SXSSF window, conditional sheets, column export on/off, enum dropdown, importColumnRange,
  * the same workbook attributes declared on @PxlWorkbook instead of a runtime option, and how many times bean
  * validation visits a row when the sheet field carries @Valid.
+ * <p>
+ * Every test that exports is swept across {@link ExportDest}: what a workbook option writes has to be the same on
+ * every terminal. The CSV ones are narrowed to {@code FILE} and {@code STREAM}, since CSV has no
+ * {@code toWorkbook()}. The import-only tests build their input with raw POI and never export at all.
  */
 public class PxlWorkbookOptionTests {
 
@@ -209,23 +216,20 @@ public class PxlWorkbookOptionTests {
     // Sheet exportOrder -> sheet order
     // ------------------------------------------------------------------
 
-    @Test
-    public void sheetExportOrder_ordersSheets() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetExportOrder_ordersSheets(final ExportDest dest) throws Exception {
         final SheetOrderWorkbook workbook = new SheetOrderWorkbook();
         workbook.setWorkbookName("Order");
         workbook.setZebra(twoEmployees());
         workbook.setApple(twoEmployees());
 
-        final Workbook poi = pxl.exportExcel()
+        try (Workbook poi = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             // exportOrder order: A(Zebra), B(Apple)
             assertThat(poi.getSheetName(0)).isEqualTo("Zebra");
             assertThat(poi.getSheetName(1)).isEqualTo("Apple");
-        } finally {
-            poi.close();
         }
     }
 
@@ -233,30 +237,30 @@ public class PxlWorkbookOptionTests {
     // Sheet override on export (exportOverrideSuperClassSheet)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportOverrideSuperClassSheet_childSheetWins() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportOverrideSuperClassSheet_childSheetWins(final ExportDest dest) throws Exception {
         final SubExportSheetWorkbook workbook = new SubExportSheetWorkbook();
         workbook.workbookName = "W";
         workbook.employees = twoEmployees();                                   // child data (Alice, Bob)
         ((SuperExportSheetWorkbook) workbook).employees = Arrays.asList(
                 Fixtures.employee("Carol", 35, "68000", true, null, Grade.A, "Finance"));   // parent data
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         // child overrides -> a single "Employees" sheet with only the child data
         final List<Employee> imported = pxl.importExcel()
                 .sheet(Employee.class, Arrays.asList("Employees"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
 
-    @Test
-    public void exportOverrideSuperClassSheet_differentCase_childSheetWins() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportOverrideSuperClassSheet_differentCase_childSheetWins(final ExportDest dest) throws Exception {
         // The child names the same sheet in a different case ("EMPLOYEES" against the super's "Employees").
         // Names differing only in case denote one sheet - a workbook cannot hold both - so the override applies.
         final SubCaseExportSheetWorkbook workbook = new SubCaseExportSheetWorkbook();
@@ -265,16 +269,14 @@ public class PxlWorkbookOptionTests {
         ((SuperExportSheetWorkbook) workbook).employees = Arrays.asList(
                 Fixtures.employee("Carol", 35, "68000", true, null, Grade.A, "Finance"));   // parent data
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         // child overrides -> a single sheet with only the child data, read back with the differently cased name
         final List<Employee> imported = pxl.importExcel()
                 .sheet(Employee.class, Arrays.asList("Employees"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
@@ -295,8 +297,9 @@ public class PxlWorkbookOptionTests {
         return Arrays.asList(Fixtures.employee("Carol", 35, "68000", true, null, Grade.A, "Finance"));
     }
 
-    @Test
-    public void exportOverrideSuperClassSheet_bySheetNameNotFieldName_childSheetWins() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportOverrideSuperClassSheet_bySheetNameNotFieldName_childSheetWins(final ExportDest dest) throws Exception {
         // The override is keyed on the sheet name, not the field name: a field named staff that lists "Employees"
         // among its candidate names still suppresses the super's employees field. The sheet it writes is named
         // after the FIRST candidate ("Crew") - matching decides the override, the first name decides the label.
@@ -305,21 +308,18 @@ public class PxlWorkbookOptionTests {
         workbook.staff = twoEmployees();                                       // child data (Alice, Bob)
         ((SuperExportSheetWorkbook) workbook).employees = oneParentEmployee();  // parent data
 
-        final Workbook poi = pxl.exportExcel()
+        try (Workbook poi = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             assertThat(poi.getNumberOfSheets()).isEqualTo(1);
             assertThat(poi.getSheetName(0)).isEqualTo("Crew");
             assertThat(employeeNames(poi.getSheetAt(0))).containsExactly("Alice", "Bob");
-        } finally {
-            poi.close();
         }
     }
 
-    @Test
-    public void exportOverrideSuperClassSheet_withDifferentSheetName_doesNotOverride() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportOverrideSuperClassSheet_withDifferentSheetName_doesNotOverride(final ExportDest dest) throws Exception {
         // Shadowing the field is not by itself an override: this employees field names a different sheet
         // ("Staff"), so the super's "Employees" is written as well and the workbook carries both.
         final SubOtherNameOverrideExportSheetWorkbook workbook = new SubOtherNameOverrideExportSheetWorkbook();
@@ -327,21 +327,18 @@ public class PxlWorkbookOptionTests {
         workbook.employees = twoEmployees();
         ((SuperExportSheetWorkbook) workbook).employees = oneParentEmployee();
 
-        final Workbook poi = pxl.exportExcel()
+        try (Workbook poi = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             assertThat(poi.getNumberOfSheets()).isEqualTo(2);
             assertThat(employeeNames(poi.getSheet("Staff"))).containsExactly("Alice", "Bob");
             assertThat(employeeNames(poi.getSheet("Employees"))).containsExactly("Carol");
-        } finally {
-            poi.close();
         }
     }
 
-    @Test
-    public void exportOverrideSuperClassSheet_onDisabledSheet_doesNotOverride() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportOverrideSuperClassSheet_onDisabledSheet_doesNotOverride(final ExportDest dest) throws Exception {
         // A sheet excluded from export claims no name, so its override never takes effect:
         // the super's employees field writes the "Employees" sheet.
         final SubDisabledOverrideExportSheetWorkbook workbook = new SubDisabledOverrideExportSheetWorkbook();
@@ -349,21 +346,18 @@ public class PxlWorkbookOptionTests {
         workbook.employees = twoEmployees();
         ((SuperExportSheetWorkbook) workbook).employees = oneParentEmployee();
 
-        final Workbook poi = pxl.exportExcel()
+        try (Workbook poi = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             assertThat(poi.getNumberOfSheets()).isEqualTo(1);
             assertThat(poi.getSheetName(0)).isEqualTo("Employees");
             assertThat(employeeNames(poi.getSheetAt(0))).containsExactly("Carol");
-        } finally {
-            poi.close();
         }
     }
 
-    @Test
-    public void exportOverrideSuperClassSheet_declaredOnSuperClass_throws() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportOverrideSuperClassSheet_declaredOnSuperClass_throws(final ExportDest dest) throws Exception {
         // The flag runs from a subclass toward its superclass only. Declared on the superclass it suppresses
         // nothing - the subclass field is resolved first - so both fields ask for an "Employees" sheet and the
         // export fails, where the same pair with the flag on the child (see above) succeeds.
@@ -373,29 +367,27 @@ public class PxlWorkbookOptionTests {
         workbook.employees = twoEmployees();
         ((SuperOverrideExportSheetWorkbook) workbook).employees = oneParentEmployee();
 
-        assertThrows(PxlDataException.class, () -> pxl.exportExcel()
+        assertThrows(PxlDataException.class, () -> emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toWorkbook());
+                .override(noValidationOption()), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
     // Column override on export (exportOverrideSuperClassColumn)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportOverrideSuperClassColumn_childColumnWins() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportOverrideSuperClassColumn_childColumnWins(final ExportDest dest) throws Exception {
         final DerivedColRow row = new DerivedColRow();
         row.val = "sub";                        // child field
         ((BaseColRow) row).val = "super";       // parent field
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(DerivedColRow.class, Arrays.asList(row), "C")
-                .override(noValidationOption())
-                .toStream(outputStream);
+                .override(noValidationOption()), dest, testInfo);
 
-        try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+        try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             final Sheet sheet = poi.getSheet("C");
             // only one "Val" column, with the child field's value
             final Set<String> headerSet = headers(poi, "C");
@@ -408,8 +400,9 @@ public class PxlWorkbookOptionTests {
     // Workbook attributes declared on @PxlWorkbook rather than in a runtime option
     // ------------------------------------------------------------------
 
-    @Test
-    public void dataValidation_disabledOnAnnotation_skipsValidationBothWays() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void dataValidation_disabledOnAnnotation_skipsValidationBothWays(final ExportDest dest) throws Exception {
         // Age is null, which its @NotNull rejects. The annotation turns validation off on both directions, so the
         // row travels out and back untouched.
         final ValidatedRow row = new ValidatedRow();
@@ -419,25 +412,22 @@ public class PxlWorkbookOptionTests {
         workbook.setWorkbookName("Lenient");
         workbook.setRows(Arrays.asList(row));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toFile(excelFile);
+        final byte[] bytes = emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         final NoValidationWorkbook imported = pxl.importExcel()
                 .workbookName("Lenient")
                 .workbook(NoValidationWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getRows()).hasSize(1);
         assertThat(imported.getRows().get(0).getName()).isEqualTo("Alice");
         assertThat(imported.getRows().get(0).getAge()).isNull();
 
         // Putting validation back on rejects the very same row, which is what makes the annotation the cause above.
-        assertThrows(PxlValidationException.class, () -> pxl.exportExcel()
+        assertThrows(PxlValidationException.class, () -> emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(PxlExportWorkbookOption.builder().exportDataValidation(true).build())
-                .toStream(new ByteArrayOutputStream()));
+                .override(PxlExportWorkbookOption.builder().exportDataValidation(true).build()), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
@@ -456,44 +446,44 @@ public class PxlWorkbookOptionTests {
         return Arrays.asList(alice, bob);
     }
 
-    @Test
-    public void exportWorkbook_cascadingSheetField_validatesEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_cascadingSheetField_validatesEachRowOnce(final ExportDest dest) throws Exception {
         final CascadeWorkbook workbook = new CascadeWorkbook();
         workbook.setWorkbookName("Cascade");
         workbook.setRows(twoCountingRows());
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         // The workbook-object pass does not descend into the sheet field, so only the row collection pass reaches
         // the rows - the same count the control below gets without @Valid.
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportWorkbook_nonCascadingSheetField_validatesEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_nonCascadingSheetField_validatesEachRowOnce(final ExportDest dest) throws Exception {
         final NoCascadeWorkbook workbook = new NoCascadeWorkbook();
         workbook.setWorkbookName("NoCascade");
         workbook.setRows(twoCountingRows());
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         // Without @Valid the workbook-object pass stops at the workbook's own constraints, so only the row
         // collection pass reaches the rows.
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportSheet_rowCollection_validatesEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSheet_rowCollection_validatesEachRowOnce(final ExportDest dest) throws Exception {
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .sheet(CountingRow.class, twoCountingRows(), "Rows")
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .sheet(CountingRow.class, twoCountingRows(), "Rows"), dest, testInfo);
 
         // The sheet form has no workbook object at all, so there is only ever one validation pass.
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
@@ -569,24 +559,25 @@ public class PxlWorkbookOptionTests {
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportWorkbook_typeUseCascadingSheetField_validatesEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_typeUseCascadingSheetField_validatesEachRowOnce(final ExportDest dest) throws Exception {
         final TypeUseCascadeWorkbook workbook = new TypeUseCascadeWorkbook();
         workbook.setWorkbookName("TypeUseCascade");
         workbook.setRows(twoCountingRows());
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         // Bean Validation 2.0 also accepts the cascade as a container element constraint (List<@Valid Row>). It has
         // to be skipped just like the field form, otherwise the resolver has a hole.
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportWorkbook_exportDisabledSheet_validatesNothingForThatSheet() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_exportDisabledSheet_validatesNothingForThatSheet(final ExportDest dest) throws Exception {
         final CountingRow third = new CountingRow();
         third.setName("Carol");
         third.setAge(51);
@@ -597,17 +588,17 @@ public class PxlWorkbookOptionTests {
         workbook.setSkippedRows(Arrays.asList(third));                          // exportEnabled=false -> not validated
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         // Only the exported sheet's 2 rows. The disabled sheet carries @Valid, but its cascade is skipped like any
         // other sheet's, so validation follows what is actually written.
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportWorkbook_importDisabledSheet_stillValidatedOnExport() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_importDisabledSheet_stillValidatedOnExport(final ExportDest dest) throws Exception {
         final CountingRow third = new CountingRow();
         third.setName("Carol");
         third.setAge(51);
@@ -620,9 +611,8 @@ public class PxlWorkbookOptionTests {
         workbook.setSkippedRows(Arrays.asList(third));
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         // 3 rows, each validated exactly once. The flag that matters here is exportEnabled, not importEnabled.
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(3);
@@ -643,61 +633,59 @@ public class PxlWorkbookOptionTests {
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportWorkbook_inheritedCascadingSheetField_validatesEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_inheritedCascadingSheetField_validatesEachRowOnce(final ExportDest dest) throws Exception {
         // The @Valid @PxlSheet field is inherited, not declared, so the resolver has to find it up the chain.
         final SubCascadeWorkbook workbook = new SubCascadeWorkbook();
         workbook.setWorkbookName("SubCascade");
         workbook.setRows(twoCountingRows());
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportCsvSheet_rowCollection_validatesEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(value = ExportDest.class, names = {"FILE", "STREAM"})
+    public void exportCsvSheet_rowCollection_validatesEachRowOnce(final ExportDest dest) throws Exception {
         // CSV export has no workbook form at all, so there is only ever the one pass.
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportCsv()
-                .sheet(CountingRow.class, twoCountingRows(), "Rows")
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportCsv()
+                .sheet(CountingRow.class, twoCountingRows(), "Rows"), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportSampleExcelWorkbook_validatesNothing() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSampleExcelWorkbook_validatesNothing(final ExportDest dest) throws Exception {
         // A sample carries no data objects, so its builder holds no validator to begin with.
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportSampleExcel()
-                .workbook(CascadeWorkbook.class)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportSampleExcel()
+                .workbook(CascadeWorkbook.class), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isZero();
     }
 
-    @Test
-    public void roundTripWorkbook_cascadingSheetField_validatesEachRowOncePerDirection() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void roundTripWorkbook_cascadingSheetField_validatesEachRowOncePerDirection(final ExportDest dest) throws Exception {
         final CascadeWorkbook workbook = new CascadeWorkbook();
         workbook.setWorkbookName("Cascade");
         workbook.setRows(twoCountingRows());
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(outputStream);
+        final byte[] bytes = emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
         assertThat(CountedNotBlankValidator.evaluations()).as("export").isEqualTo(2);
 
         CountedNotBlankValidator.resetEvaluations();
         final CascadeWorkbook imported = pxl.importExcel()
                 .workbook(CascadeWorkbook.class)
-                .fromStream(new ByteArrayInputStream(outputStream.toByteArray()));
+                .fromStream(new ByteArrayInputStream(bytes));
         assertThat(CountedNotBlankValidator.evaluations()).as("import").isEqualTo(2);
 
         assertThat(imported.getRows()).extracting(CountingRow::getName).containsExactly("Alice", "Bob");
@@ -759,24 +747,25 @@ public class PxlWorkbookOptionTests {
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportSheets_multipleSheetForms_validateEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSheets_multipleSheetForms_validateEachRowOnce(final ExportDest dest) throws Exception {
         final CountingRow third = new CountingRow();
         third.setName("Carol");
         third.setAge(51);
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
+        emit(pxl.exportExcel()
                 .sheet(CountingRow.class, twoCountingRows(), "First")
-                .sheet(CountingRow.class, Arrays.asList(third), "Second")
-                .toStream(new ByteArrayOutputStream());
+                .sheet(CountingRow.class, Arrays.asList(third), "Second"), dest, testInfo);
 
         // Chained sheet(...) calls take the multi-sheet form, which validates each collection separately.
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(3);
     }
 
-    @Test
-    public void exportWorkbook_nullSheetCollection_validatesNothing() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_nullSheetCollection_validatesNothing(final ExportDest dest) throws Exception {
         final CascadeWorkbook empty = new CascadeWorkbook();
         empty.setWorkbookName("Empty");
         empty.setRows(null);
@@ -785,29 +774,29 @@ public class PxlWorkbookOptionTests {
         // A null sheet collection produces no sheet at all, so the export ends with "no data" - unlike an empty
         // collection, which still yields a header-only sheet (see the test below). What this pins down is that
         // neither validation pass dereferenced it on the way there.
-        assertThrows(PxlDataException.class, () -> pxl.exportExcel()
-                .workbook(empty)
-                .toStream(new ByteArrayOutputStream()));
+        assertThrows(PxlDataException.class, () -> emit(pxl.exportExcel()
+                .workbook(empty), dest, testInfo));
 
         assertThat(CountedNotBlankValidator.evaluations()).isZero();
     }
 
-    @Test
-    public void exportWorkbook_emptySheetCollection_validatesNothing() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_emptySheetCollection_validatesNothing(final ExportDest dest) throws Exception {
         final CascadeWorkbook empty = new CascadeWorkbook();
         empty.setWorkbookName("Empty");
         empty.setRows(Collections.<CountingRow>emptyList());
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(empty)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(empty), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isZero();
     }
 
-    @Test
-    public void exportWorkbook_differentWorkbookClasses_decideIndependently() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_differentWorkbookClasses_decideIndependently(final ExportDest dest) throws Exception {
         // The resolver caches the sheet field names per class. Alternating a one-sheet class with a two-sheet one is
         // what would expose a cache leaking across them: were the two-sheet class served the one-sheet entry, its
         // second sheet would lose its skip and that sheet's row would be validated twice (4 instead of 3).
@@ -827,36 +816,35 @@ public class PxlWorkbookOptionTests {
 
         for (int i = 0; i < 2; i++) {
             CountedNotBlankValidator.resetEvaluations();
-            pxl.exportExcel()
-                    .workbook(oneSheet)
-                    .toStream(new ByteArrayOutputStream());
+            emit(pxl.exportExcel()
+                    .workbook(oneSheet), dest, testInfo);
             assertThat(CountedNotBlankValidator.evaluations()).as("one sheet, round %s", i).isEqualTo(2);
 
             CountedNotBlankValidator.resetEvaluations();
-            pxl.exportExcel()
-                    .workbook(twoSheets)
-                    .toStream(new ByteArrayOutputStream());
+            emit(pxl.exportExcel()
+                    .workbook(twoSheets), dest, testInfo);
             assertThat(CountedNotBlankValidator.evaluations()).as("two sheets, round %s", i).isEqualTo(3);
         }
     }
 
-    @Test
-    public void exportWorkbook_getterCascade_validatesEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_getterCascade_validatesEachRowOnce(final ExportDest dest) throws Exception {
         // @Valid on the getter instead of the field: property access rather than field access, same decision.
         final GetterCascadeWorkbook workbook = new GetterCascadeWorkbook();
         workbook.setWorkbookName("GetterCascade");
         workbook.setRows(twoCountingRows());
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportWorkbook_groupingSheet_validatesEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_groupingSheet_validatesEachRowOnce(final ExportDest dest) throws Exception {
         // Grouping splits the rows across one sheet per key before writing, but validation still runs once over the
         // original collection - a row must not be counted once per sheet it lands in.
         final GroupedCascadeWorkbook workbook = new GroupedCascadeWorkbook();
@@ -864,69 +852,69 @@ public class PxlWorkbookOptionTests {
         workbook.setRows(twoCountingRows());        // ages 30 and 42 -> two groups
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportSampleCsvSheet_validatesNothing() throws Exception {
+    @ParameterizedTest
+    @EnumSource(value = ExportDest.class, names = {"FILE", "STREAM"})
+    public void exportSampleCsvSheet_validatesNothing(final ExportDest dest) throws Exception {
         // Like the Excel sample builder, the CSV one holds no validator at all.
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportSampleCsv()
-                .sheet(CountingRow.class, "Rows")
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportSampleCsv()
+                .sheet(CountingRow.class, "Rows"), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isZero();
     }
 
-    @Test
-    public void exportWorkbook_xlsEngine_cascadingSheetField_validatesEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_xlsEngine_cascadingSheetField_validatesEachRowOnce(final ExportDest dest) throws Exception {
         final XlsCascadeWorkbook workbook = new XlsCascadeWorkbook();
         workbook.setWorkbookName("Xls");
         workbook.setRows(twoCountingRows());
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportWorkbook_sxssfEngine_cascadingSheetField_validatesEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_sxssfEngine_cascadingSheetField_validatesEachRowOnce(final ExportDest dest) throws Exception {
         final SxssfCascadeWorkbook workbook = new SxssfCascadeWorkbook();
         workbook.setWorkbookName("Sxssf");
         workbook.setRows(twoCountingRows());
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
-    @Test
-    public void exportWorkbook_annotationValidationDisabled_validatesNothing() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_annotationValidationDisabled_validatesNothing(final ExportDest dest) throws Exception {
         final NoValidationCascadeWorkbook workbook = new NoValidationCascadeWorkbook();
         workbook.setWorkbookName("NoValidation");
         workbook.setRows(twoCountingRows());
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         // The annotation-side twin of the option-side case: @Valid alone triggers nothing.
         assertThat(CountedNotBlankValidator.evaluations()).isZero();
     }
 
-    @Test
-    public void exportWorkbook_sheetDisabledThroughOption_validatesNothing() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_sheetDisabledThroughOption_validatesNothing(final ExportDest dest) throws Exception {
         final CascadeWorkbook workbook = new CascadeWorkbook();
         workbook.setWorkbookName("Cascade");
         workbook.setRows(twoCountingRows());
@@ -939,10 +927,9 @@ public class PxlWorkbookOptionTests {
                 .build();
 
         CountedNotBlankValidator.resetEvaluations();
-        assertThrows(PxlDataException.class, () -> pxl.exportExcel()
+        assertThrows(PxlDataException.class, () -> emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(option)
-                .toStream(new ByteArrayOutputStream()));
+                .override(option), dest, testInfo));
 
         // Disabling through a runtime option lands in the same place as disabling on the annotation: the binder
         // skips the sheet, and nothing else validates its rows. The resolver reads neither flag, so the two ways of
@@ -950,39 +937,38 @@ public class PxlWorkbookOptionTests {
         assertThat(CountedNotBlankValidator.evaluations()).isZero();
     }
 
-    @Test
-    public void exportWorkbook_reusedWorkbookObject_validatesEachRowOncePerExport() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_reusedWorkbookObject_validatesEachRowOncePerExport(final ExportDest dest) throws Exception {
         final CascadeWorkbook workbook = new CascadeWorkbook();
         workbook.setWorkbookName("Cascade");
         workbook.setRows(twoCountingRows());
 
         for (int i = 0; i < 3; i++) {
             CountedNotBlankValidator.resetEvaluations();
-            pxl.exportExcel()
-                    .workbook(workbook)
-                    .toStream(new ByteArrayOutputStream());
+            emit(pxl.exportExcel()
+                    .workbook(workbook), dest, testInfo);
 
             assertThat(CountedNotBlankValidator.evaluations()).as("export %s", i).isEqualTo(2);
         }
     }
 
-    @Test
-    public void exportWorkbook_separatePxlInstances_decideAlike() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_separatePxlInstances_decideAlike(final ExportDest dest) throws Exception {
         // Each Pxl builds its own validators and its own resolver cache; the decision must not drift between them.
         final CascadeWorkbook workbook = new CascadeWorkbook();
         workbook.setWorkbookName("Cascade");
         workbook.setRows(twoCountingRows());
 
         CountedNotBlankValidator.resetEvaluations();
-        new Pxl().exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(new Pxl().exportExcel()
+                .workbook(workbook), dest, testInfo);
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
 
         CountedNotBlankValidator.resetEvaluations();
-        new Pxl().exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(new Pxl().exportExcel()
+                .workbook(workbook), dest, testInfo);
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(2);
     }
 
@@ -1001,8 +987,9 @@ public class PxlWorkbookOptionTests {
         assertThat(CountedNotBlankValidator.evaluations()).isZero();
     }
 
-    @Test
-    public void exportWorkbook_twoSheets_onlyOneCascading_validateEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_twoSheets_onlyOneCascading_validateEachRowOnce(final ExportDest dest) throws Exception {
         final CountingRow third = new CountingRow();
         third.setName("Carol");
         third.setAge(51);
@@ -1014,15 +1001,15 @@ public class PxlWorkbookOptionTests {
         workbook.setSecondRows(Arrays.asList(third));
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(3);
     }
 
-    @Test
-    public void importWorkbook_twoSheets_onlyOneCascading_validateEachRowOnce() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importWorkbook_twoSheets_onlyOneCascading_validateEachRowOnce(final ExportDest dest) throws Exception {
         final CountingRow third = new CountingRow();
         third.setName("Carol");
         third.setAge(51);
@@ -1032,43 +1019,41 @@ public class PxlWorkbookOptionTests {
         exported.setFirstRows(twoCountingRows());
         exported.setSecondRows(Arrays.asList(third));
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
-                .workbook(exported)
-                .toStream(outputStream);
+        final byte[] bytes = emit(pxl.exportExcel()
+                .workbook(exported), dest, testInfo);
 
         CountedNotBlankValidator.resetEvaluations();
         final TwoSheetCascadeWorkbook imported = pxl.importExcel()
                 .workbook(TwoSheetCascadeWorkbook.class)
-                .fromStream(new ByteArrayInputStream(outputStream.toByteArray()));
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getFirstRows()).hasSize(2);
         assertThat(imported.getSecondRows()).hasSize(1);
         assertThat(CountedNotBlankValidator.evaluations()).isEqualTo(3);
     }
 
-    @Test
-    public void exportSampleExcelSheet_validatesNothing() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSampleExcelSheet_validatesNothing(final ExportDest dest) throws Exception {
         // The sheet form of the sample builder, next to the workbook form covered above.
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportSampleExcel()
-                .sheet(CountingRow.class, "Rows")
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportSampleExcel()
+                .sheet(CountingRow.class, "Rows"), dest, testInfo);
 
         assertThat(CountedNotBlankValidator.evaluations()).isZero();
     }
 
-    @Test
-    public void exportWorkbook_cascadingSheetField_validationDisabled_validatesNothing() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_cascadingSheetField_validationDisabled_validatesNothing(final ExportDest dest) throws Exception {
         final CascadeWorkbook workbook = new CascadeWorkbook();
         workbook.setWorkbookName("Cascade");
         workbook.setRows(twoCountingRows());
 
         CountedNotBlankValidator.resetEvaluations();
-        pxl.exportExcel()
+        emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toStream(new ByteArrayOutputStream());
+                .override(noValidationOption()), dest, testInfo);
 
         // exportDataValidation=false gates both passes, so @Valid alone triggers nothing.
         assertThat(CountedNotBlankValidator.evaluations()).isZero();
@@ -1091,25 +1076,25 @@ public class PxlWorkbookOptionTests {
         assertThat(CountedNotBlankValidator.evaluations()).isZero();
     }
 
-    @Test
-    public void streamReader_declaredOnAnnotation_readsAllRows() throws Exception {
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void streamReader_declaredOnAnnotation_readsAllRows(final ExportDest dest) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), "People")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         // The reader, its row cache and its buffer all come off @PxlWorkbook here.
         final StreamReaderWorkbook imported = pxl.importExcel()
                 .workbookName("Streamed")
                 .workbook(StreamReaderWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getPeople()).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
 
-    @Test
-    public void sxssfRowAccessWindow_declaredOnAnnotation_keepsEveryFlushedRow() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sxssfRowAccessWindow_declaredOnAnnotation_keepsEveryFlushedRow(final ExportDest dest) throws Exception {
         // Fifty rows through a ten-row window, so most of them leave memory before the workbook is written - the
         // case the option test above never reaches with its window wider than the data.
         final List<Employee> many = new ArrayList<>();
@@ -1121,15 +1106,13 @@ public class PxlWorkbookOptionTests {
         workbook.setWorkbookName("Windowed");
         workbook.setPeople(many);
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final List<Employee> rows = pxl.importExcel()
                 .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(rows).hasSize(50);
         assertThat(rows.get(0).getName()).isEqualTo("Name0");
@@ -1159,13 +1142,12 @@ public class PxlWorkbookOptionTests {
     // Works correctly even when stream-reader cache/buffer sizes are specified
     // ------------------------------------------------------------------
 
-    @Test
-    public void streamReaderCacheBuffer_variants_work() throws Exception {
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void streamReaderCacheBuffer_variants_work(final ExportDest dest) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), "People")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final PxlImportSheetOption sheetOption = PxlImportSheetOption.builder()
                 .importHeaderRowIndex(1)
@@ -1181,7 +1163,7 @@ public class PxlWorkbookOptionTests {
         final List<Employee> rows = pxl.importExcel()
                 .override(option)
                 .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(rows).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
@@ -1190,23 +1172,22 @@ public class PxlWorkbookOptionTests {
     // Works correctly even when the SXSSF row-access window size is specified
     // ------------------------------------------------------------------
 
-    @Test
-    public void sxssfRowAccessWindow_variants_work() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sxssfRowAccessWindow_variants_work(final ExportDest dest) throws Exception {
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
                 .exportExcelEngine(PxlExcelEngine.SXSSF)
                 .exportSXSSFRowAccessWindowSize(100)
                 .exportDataValidation(false)
                 .build();
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), "People")
-                .override(exportOption)
-                .toFile(excelFile);
+                .override(exportOption), dest, testInfo);
 
         final List<Employee> rows = pxl.importExcel()
                 .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(rows).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
@@ -1215,22 +1196,19 @@ public class PxlWorkbookOptionTests {
     // exportOrder: column order follows the order strings (alphabetical)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportOrder_controlsColumnOrder() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportOrder_controlsColumnOrder(final ExportDest dest) throws Exception {
         final OrderedRow row = new OrderedRow();
         row.setX("x");
         row.setY("y");
         row.setZ("z");
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(OrderedRow.class, Arrays.asList(row), "Order")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             // declaration order is X,Y,Z but exportOrder gives Y(A), Z(B), X(C)
             assertThat(headerSequence(workbook.getSheet("Order"))).containsExactly("Y", "Z", "X");
-        } finally {
-            workbook.close();
         }
     }
 
@@ -1238,30 +1216,28 @@ public class PxlWorkbookOptionTests {
     // exportIfNull / exportIfEmpty: conditional sheet creation
     // ------------------------------------------------------------------
 
-    @Test
-    public void conditionalSheet_nullOrEmpty_excluded() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void conditionalSheet_nullOrEmpty_excluded(final ExportDest dest) throws Exception {
         final ConditionalWorkbook workbook = new ConditionalWorkbook();
         workbook.setKeepWhenNull(null);                 // exportIfNull=true  -> created
         workbook.setDropWhenNull(null);                 // default (false)    -> not created
         workbook.setDropWhenEmpty(new ArrayList<>());   // exportIfEmpty=false -> not created
         workbook.setKeepWhenEmpty(new ArrayList<>());   // default (true)     -> created
 
-        final Workbook poiWorkbook = pxl.exportExcel()
+        try (Workbook poiWorkbook = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             assertThat(poiWorkbook.getSheet("KeepWhenNull")).as("created even when null").isNotNull();
             assertThat(poiWorkbook.getSheet("DropWhenNull")).as("not created when null").isNull();
             assertThat(poiWorkbook.getSheet("DropWhenEmpty")).as("not created when list is empty").isNull();
             assertThat(poiWorkbook.getSheet("KeepWhenEmpty")).as("created even when list is empty").isNotNull();
-        } finally {
-            poiWorkbook.close();
         }
     }
 
-    @Test
-    public void conditionalSheet_sheetOptions_overrideAnnotations() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void conditionalSheet_sheetOptions_overrideAnnotations(final ExportDest dest) throws Exception {
         // The same data as above, with every sheet's flag flipped by an option keyed on that sheet's field name:
         // what the annotations keep the options drop, and the other way round.
         final ConditionalWorkbook workbook = new ConditionalWorkbook();
@@ -1279,64 +1255,55 @@ public class PxlWorkbookOptionTests {
                         PxlExportSheetOption.builder().fieldName("keepWhenEmpty").exportIfEmpty(false).build()))
                 .build();
 
-        final Workbook poiWorkbook = pxl.exportExcel()
+        try (Workbook poiWorkbook = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(option)
-                .toWorkbook();
-        try {
+                .override(option), dest, testInfo)) {
             assertThat(poiWorkbook.getSheet("KeepWhenNull")).as("exportIfNull=false from the option").isNull();
             assertThat(poiWorkbook.getSheet("DropWhenNull")).as("exportIfNull=true from the option").isNotNull();
             assertThat(poiWorkbook.getSheet("DropWhenEmpty")).as("exportIfEmpty=true from the option").isNotNull();
             assertThat(poiWorkbook.getSheet("KeepWhenEmpty")).as("exportIfEmpty=false from the option").isNull();
-        } finally {
-            poiWorkbook.close();
         }
     }
 
-    @Test
-    public void conditionalSheet_exportIfNull_createsHeaderOnlySheet() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void conditionalSheet_exportIfNull_createsHeaderOnlySheet(final ExportDest dest) throws Exception {
         // "Created" has to mean a sheet worth opening: the header row is written even with no collection behind it.
         final ConditionalWorkbook workbook = new ConditionalWorkbook();
         workbook.setKeepWhenNull(null);
 
-        final Workbook poiWorkbook = pxl.exportExcel()
+        try (Workbook poiWorkbook = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             final Sheet sheet = poiWorkbook.getSheet("KeepWhenNull");
             assertThat(sheet).isNotNull();
             assertThat(headerSequence(sheet)).contains("Name", "Age", "Department");
             assertThat(sheet.getLastRowNum()).as("the header row is the only row").isZero();
             assertThat(sheet.getPhysicalNumberOfRows()).isEqualTo(1);
-        } finally {
-            poiWorkbook.close();
         }
     }
 
-    @Test
-    public void conditionalSheet_emptyList_ignoresExportIfNull() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void conditionalSheet_emptyList_ignoresExportIfNull(final ExportDest dest) throws Exception {
         // The two flags answer different questions, and only one of them is ever asked: a null field never reaches
         // the empty check. DropWhenNull declares exportIfNull=false but says nothing about empties, so an empty
         // list still gets a sheet.
         final ConditionalWorkbook workbook = new ConditionalWorkbook();
         workbook.setDropWhenNull(new ArrayList<>());
 
-        final Workbook poiWorkbook = pxl.exportExcel()
+        try (Workbook poiWorkbook = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             assertThat(poiWorkbook.getSheet("DropWhenNull"))
                     .as("exportIfNull=false does not drop an empty list")
                     .isNotNull();
-        } finally {
-            poiWorkbook.close();
         }
     }
 
-    @Test
-    public void conditionalSheet_everySheetDropped_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void conditionalSheet_everySheetDropped_throws(final ExportDest dest) {
         // A wildcard option turns both flags off for every sheet, leaving nothing to write. The export has to say
         // so rather than hand back a workbook with no sheet in it.
         final ConditionalWorkbook workbook = new ConditionalWorkbook();
@@ -1354,14 +1321,14 @@ public class PxlWorkbookOptionTests {
                         .build()))
                 .build();
 
-        assertThrows(PxlDataException.class, () -> pxl.exportExcel()
+        assertThrows(PxlDataException.class, () -> emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(option)
-                .toStream(new ByteArrayOutputStream()));
+                .override(option), dest, testInfo));
     }
 
-    @Test
-    public void conditionalSheet_sheetFormEmptyRows_exportIfEmptyOff_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void conditionalSheet_sheetFormEmptyRows_exportIfEmptyOff_throws(final ExportDest dest) {
         // The sheet form has no field to skip past, so dropping its only sheet empties the workbook - the same
         // PxlDataException the CSV terminal raises for the same collection.
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
@@ -1371,25 +1338,21 @@ public class PxlWorkbookOptionTests {
                         .build()))
                 .build();
 
-        assertThrows(PxlDataException.class, () -> pxl.exportExcel()
+        assertThrows(PxlDataException.class, () -> emit(pxl.exportExcel()
                 .sheet(Employee.class, new ArrayList<Employee>(), "People")
-                .override(option)
-                .toStream(new ByteArrayOutputStream()));
+                .override(option), dest, testInfo));
     }
 
-    @Test
-    public void conditionalSheet_sheetFormEmptyRows_exportIfEmptyOn_writesHeaderOnlySheet() throws Exception {
-        final Workbook workbook = pxl.exportExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void conditionalSheet_sheetFormEmptyRows_exportIfEmptyOn_writesHeaderOnlySheet(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(Employee.class, new ArrayList<Employee>(), "People")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             final Sheet sheet = workbook.getSheet("People");
             assertThat(sheet).as("exportIfEmpty defaults to true").isNotNull();
             assertThat(headerSequence(sheet)).contains("Name", "Age", "Department");
             assertThat(sheet.getLastRowNum()).as("the header row is the only row").isZero();
-        } finally {
-            workbook.close();
         }
     }
 
@@ -1397,8 +1360,9 @@ public class PxlWorkbookOptionTests {
     // exportEnabled=false (option): exclude a specific column
     // ------------------------------------------------------------------
 
-    @Test
-    public void columnExportDisabled_excludesColumn() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void columnExportDisabled_excludesColumn(final ExportDest dest) throws Exception {
         final Employee employee = Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering");
 
         final PxlExportColumnOption columnOption = PxlExportColumnOption.builder()
@@ -1413,16 +1377,12 @@ public class PxlWorkbookOptionTests {
                 .exportSheetOptions(Arrays.asList(sheetOption))
                 .build();
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(Employee.class, Arrays.asList(employee), "People")
-                .override(option)
-                .toWorkbook();
-        try {
+                .override(option), dest, testInfo)) {
             final List<String> headers = headerSequence(workbook.getSheet("People"));
             assertThat(headers).contains("Name", "Salary", "Department");
             assertThat(headers).doesNotContain("Age");      // excluded by exportEnabled=false
-        } finally {
-            workbook.close();
         }
     }
 
@@ -1431,14 +1391,13 @@ public class PxlWorkbookOptionTests {
     // a column-level importEnabled=false skips binding just that column
     // ------------------------------------------------------------------
 
-    @Test
-    public void nestedColumnOverride_importDisabledColumn_skipsBinding() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void nestedColumnOverride_importDisabledColumn_skipsBinding(final ExportDest dest) throws Exception {
         // Export two employees (ages 30, 42) with every column present.
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), "People")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         // Build the full workbook -> sheet -> column override tree and pass it in one override(...) call.
         final PxlImportColumnOption ageColumn = PxlImportColumnOption.builder()
@@ -1455,7 +1414,7 @@ public class PxlWorkbookOptionTests {
         final List<Employee> rows = pxl.importExcel()
                 .override(option)
                 .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         // Other columns are still bound, but the disabled age column stays at the primitive default (0).
         assertThat(rows).extracting(Employee::getName).containsExactly("Alice", "Bob");
@@ -1466,19 +1425,16 @@ public class PxlWorkbookOptionTests {
     // enum dropdown: data validation is created when exportDataValidation=true
     // ------------------------------------------------------------------
 
-    @Test
-    public void enumDropdown_dataValidationPresent() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void enumDropdown_dataValidationPresent(final ExportDest dest) throws Exception {
         final Employee employee = Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering");
 
         // option null -> exportDataValidation defaults to true -> dropdown created on the Grade enum column
-        final Workbook workbook = pxl.exportExcel()
-                .sheet(Employee.class, Arrays.asList(employee), "People")
-                .toWorkbook();
-        try {
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
+                .sheet(Employee.class, Arrays.asList(employee), "People"), dest, testInfo)) {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("People");
             assertThat(sheet.getDataValidations()).as("enum dropdown (data validation) should be created").isNotEmpty();
-        } finally {
-            workbook.close();
         }
     }
 

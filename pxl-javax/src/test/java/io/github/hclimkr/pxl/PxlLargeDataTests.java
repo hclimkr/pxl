@@ -22,6 +22,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * (importUsingStreamReader) and verifies that the row count and values are correct. (Replaces the deprecated invoice_code large-data test.)
  * <p>
  * Since it takes some time to run, it is separated by {@code @Tag("slow")} so it can be excluded with {@code -DexcludedGroups=slow}.
+ * <p>
+ * The exports here are not swept across destinations the way the export suites are. They are a fixture step for an
+ * import assertion, and the file destination is the one that keeps a streaming write meaningful: buffering fifty
+ * thousand rows into a byte array would hold the whole workbook in memory, which is exactly what SXSSF is here to
+ * avoid - and it would triple the runtime of an already slow suite.
  */
 @Tag("slow")
 public class PxlLargeDataTests {

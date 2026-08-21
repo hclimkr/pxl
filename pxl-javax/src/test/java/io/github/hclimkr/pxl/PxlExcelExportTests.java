@@ -15,21 +15,31 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.nio.file.Files;
 import java.time.*;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Excel export path tests - masking/trimming/grouping/password/export engine (SXSSF, HSSF), literal formulas, column inheritance, sheet name normalization, lastColumnIndex boundary.
+ * <p>
+ * Whatever an export produces has to be the same on every terminal the builder offers, so a test whose subject is
+ * the exported result is swept across {@link ExportDest} with {@link TestExports#emit} (bytes) or
+ * {@link TestExports#workbookOf} (POI workbook) rather than being pinned to one destination. What stays a plain
+ * {@code @Test} is the opposite kind: a test whose subject <em>is</em> one destination's mechanics - the caller's
+ * stream not being closed, nothing being left on disk when a file cannot be opened, one builder driven through two
+ * terminals in a row.
  */
 public class PxlExcelExportTests {
 
@@ -48,16 +58,27 @@ public class PxlExcelExportTests {
         this.testInfo = testInfo;
     }
 
-    // Exports the given rows into a single sheet in a real file, then imports it back. (file name = test method name)
-    private <T> List<T> roundTripSheet(final String sheetName, final List<T> rows, final Class<T> rowClass) throws Exception {
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .sheet(rowClass, rows, sheetName)
-                .override(noValidationOption())
-                .toFile(excelFile);
+    // Reads rows back out of exported bytes, so every destination is verified through the same import call.
+    private <T> List<T> importSheet(final byte[] bytes, final Class<T> rowClass, final String sheetName) throws Exception {
         return pxl.importExcel()
                 .sheet(rowClass, Arrays.asList(sheetName))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
+    }
+
+    // As above, for an encrypted export.
+    private <T> List<T> importSheet(final byte[] bytes, final Class<T> rowClass, final String sheetName, final String password) throws Exception {
+        return pxl.importExcel()
+                .override(PxlImportWorkbookOption.builder().importPassword(password).build())
+                .sheet(rowClass, Arrays.asList(sheetName))
+                .fromStream(new ByteArrayInputStream(bytes));
+    }
+
+    // Exports the given rows into a single sheet on the given destination, then imports them back.
+    private <T> List<T> roundTripSheet(final ExportDest dest, final String sheetName, final List<T> rows, final Class<T> rowClass) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
+                .sheet(rowClass, rows, sheetName)
+                .override(noValidationOption()), dest, testInfo);
+        return importSheet(bytes, rowClass, sheetName);
     }
 
     private static List<Employee> twoEmployees() {
@@ -77,6 +98,7 @@ public class PxlExcelExportTests {
     // Builder reuse - running the same builder again with the same configuration
     // ------------------------------------------------------------------
 
+    // Not swept: the subject is two different terminals run off one builder, so the destinations are the fixture.
     @Test
     public void exportExcel_sameBuilderRunTwice_producesIdenticalContent() throws Exception {
         final List<Employee> employees = twoEmployees();
@@ -102,9 +124,7 @@ public class PxlExcelExportTests {
         final List<Employee> fromFile = pxl.importExcel()
                 .sheet(Employee.class, Arrays.asList("People"))
                 .fromFile(excelFile);
-        final List<Employee> fromStream = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("People"))
-                .fromStream(new ByteArrayInputStream(secondRun));
+        final List<Employee> fromStream = importSheet(secondRun, Employee.class, "People");
 
         // Both runs carry exactly the same rows.
         assertThat(fromFile).extracting(Employee::getName).containsExactly("Alice", "Bob");
@@ -122,6 +142,7 @@ public class PxlExcelExportTests {
         return new File(TestPaths.exportFile(testInfo).getPath() + ".no-such-dir", "out.xlsx");
     }
 
+    // Not swept: only the file destination can fail to open.
     @Test
     public void exportExcel_toFileDestinationUnopenable_throwsAndBuilderStaysUsable() throws Exception {
         final PxlExcelExportBuilder builder = pxl.exportExcel()
@@ -173,25 +194,20 @@ public class PxlExcelExportTests {
     // Multiple sheets - a different rowClass per sheet
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportMultiSheet_perSheetRowClass_appliesEachClass() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportMultiSheet_perSheetRowClass_appliesEachClass(final ExportDest dest) throws Exception {
         final List<Employee> employees = twoEmployees();
         final List<AllTypesRow> allTypes = Arrays.asList(Fixtures.sampleAllTypesRow());
 
-        final File excelFile = TestPaths.exportFile(testInfo);
         // Call sheet() multiple times to specify a different rowClass per sheet.
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, employees, "Employees")
                 .sheet(AllTypesRow.class, allTypes, "AllTypes")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
-        final List<Employee> importedEmployees = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("Employees"))
-                .fromFile(excelFile);
-        final List<AllTypesRow> importedAllTypes = pxl.importExcel()
-                .sheet(AllTypesRow.class, Arrays.asList("AllTypes"))
-                .fromFile(excelFile);
+        final List<Employee> importedEmployees = importSheet(bytes, Employee.class, "Employees");
+        final List<AllTypesRow> importedAllTypes = importSheet(bytes, AllTypesRow.class, "AllTypes");
 
         // Verify each sheet is bound with its own rowClass - different classes are applied per sheet.
         assertThat(importedEmployees).extracting(Employee::getName).containsExactly("Alice", "Bob");
@@ -199,8 +215,9 @@ public class PxlExcelExportTests {
         assertThat(importedAllTypes.get(0).getText()).isEqualTo("Hello, PXL");
     }
 
-    @Test
-    public void exportMultiSheet_threeSheets_preservesCallOrderAndRows() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportMultiSheet_threeSheets_preservesCallOrderAndRows(final ExportDest dest) throws Exception {
         final List<Employee> engineering = Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"));
         final List<Employee> sales = Arrays.asList(
@@ -210,16 +227,16 @@ public class PxlExcelExportTests {
                 Fixtures.department("ENG", "Engineering", 12),
                 Fixtures.department("SAL", "Sales", 7));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
         // Three sheet() calls -> three sheets; the same rowClass may repeat and the call order is the sheet order.
-        pxl.exportExcel()
+        final PxlExcelExportBuilder builder = pxl.exportExcel()
                 .sheet(Employee.class, engineering, "Engineering")
                 .sheet(Employee.class, sales, "Sales")
                 .sheet(Department.class, departments, "Departments")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption());
 
-        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+        final byte[] bytes = emit(builder, dest, testInfo);
+
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             assertThat(workbook.getNumberOfSheets()).isEqualTo(3);
             assertThat(workbook.getSheetName(0)).isEqualTo("Engineering");
             assertThat(workbook.getSheetName(1)).isEqualTo("Sales");
@@ -227,15 +244,9 @@ public class PxlExcelExportTests {
         }
 
         // Rows must not leak across sheets: each sheet holds only the rows passed with its own sheet() call.
-        final List<Employee> importedEngineering = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("Engineering"))
-                .fromFile(excelFile);
-        final List<Employee> importedSales = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("Sales"))
-                .fromFile(excelFile);
-        final List<Department> importedDepartments = pxl.importExcel()
-                .sheet(Department.class, Arrays.asList("Departments"))
-                .fromFile(excelFile);
+        final List<Employee> importedEngineering = importSheet(bytes, Employee.class, "Engineering");
+        final List<Employee> importedSales = importSheet(bytes, Employee.class, "Sales");
+        final List<Department> importedDepartments = importSheet(bytes, Department.class, "Departments");
 
         assertThat(importedEngineering).extracting(Employee::getName).containsExactly("Alice");
         assertThat(importedSales).extracting(Employee::getName).containsExactly("Bob", "Carol");
@@ -247,20 +258,13 @@ public class PxlExcelExportTests {
     // Masking (exportMasking)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportMasking_digits_replaced() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportMasking_digits_replaced(final ExportDest dest) throws Exception {
         final MaskingRow row = new MaskingRow();
         row.setSecret("ID12345");
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .sheet(MaskingRow.class, Arrays.asList(row), "Masking")
-                .override(noValidationOption())
-                .toFile(excelFile);
-
-        final List<MaskingRow> rows = pxl.importExcel()
-                .sheet(MaskingRow.class, Arrays.asList("Masking"))
-                .fromFile(excelFile);
+        final List<MaskingRow> rows = roundTripSheet(dest, "Masking", Arrays.asList(row), MaskingRow.class);
 
         assertThat(rows).hasSize(1);
         // All 5 digits are replaced with '*'.
@@ -271,20 +275,13 @@ public class PxlExcelExportTests {
     // Export trim (exportTrim)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportTrim_whitespace_trimmed() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportTrim_whitespace_trimmed(final ExportDest dest) throws Exception {
         final TrimRow row = new TrimRow();
         row.setPadded("  spaced  ");
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .sheet(TrimRow.class, Arrays.asList(row), "Trim")
-                .override(noValidationOption())
-                .toFile(excelFile);
-
-        final List<TrimRow> rows = pxl.importExcel()
-                .sheet(TrimRow.class, Arrays.asList("Trim"))
-                .fromFile(excelFile);
+        final List<TrimRow> rows = roundTripSheet(dest, "Trim", Arrays.asList(row), TrimRow.class);
 
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).getPadded()).isEqualTo("spaced");
@@ -294,8 +291,9 @@ public class PxlExcelExportTests {
     // Grouping (exportGroupingFieldName) - sheets are split by department value.
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportGrouping_splitsIntoSheets() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportGrouping_splitsIntoSheets(final ExportDest dest) throws Exception {
         final GroupedWorkbook workbook = new GroupedWorkbook();
         workbook.setWorkbookName("Grouped");
         workbook.setEmployees(Arrays.asList(
@@ -303,24 +301,18 @@ public class PxlExcelExportTests {
                 Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales"),
                 Fixtures.employee("Carol", 35, "68000", true, LocalDate.of(2019, 3, 20), Grade.A, "Engineering")));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         // Group sheet names follow the "<sheet name> - <group value>" format.
-        try (Workbook poiWorkbook = WorkbookFactory.create(excelFile)) {
+        try (Workbook poiWorkbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             assertThat(poiWorkbook.getSheet("Employees - Engineering")).as("Engineering group sheet is missing.").isNotNull();
             assertThat(poiWorkbook.getSheet("Employees - Sales")).as("Sales group sheet is missing.").isNotNull();
         }
 
-        final List<Employee> engineering = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("Employees - Engineering"))
-                .fromFile(excelFile);
-        final List<Employee> sales = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("Employees - Sales"))
-                .fromFile(excelFile);
+        final List<Employee> engineering = importSheet(bytes, Employee.class, "Employees - Engineering");
+        final List<Employee> sales = importSheet(bytes, Employee.class, "Employees - Sales");
 
         assertThat(engineering).extracting(Employee::getName).containsExactly("Alice", "Carol");
         assertThat(sales).extracting(Employee::getName).containsExactly("Bob");
@@ -330,54 +322,47 @@ public class PxlExcelExportTests {
     // Password (exportPassword / importPassword) round trip
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportPassword_encrypted_roundTrips() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPassword_encrypted_roundTrips(final ExportDest dest) throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
                 .exportDataValidation(false)
                 .exportPassword("secret")
                 .build();
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .sheet(Employee.class, Arrays.asList(alice), "People")
-                .override(exportOption)
-                .toFile(excelFile);
 
-        final PxlImportWorkbookOption importOption = PxlImportWorkbookOption.builder()
-                .importPassword("secret")
-                .build();
-        final List<Employee> people = pxl.importExcel()
-                .override(importOption)
-                .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+        // toWorkbook() hands the workbook over unencrypted by contract, so the sweep applies the same password on
+        // the way out - which is what the terminal's javadoc tells a caller to do.
+        final byte[] bytes = emit(pxl.exportExcel()
+                .sheet(Employee.class, Arrays.asList(alice), "People")
+                .override(exportOption), dest, testInfo, XLSX, "secret");
+
+        final List<Employee> people = importSheet(bytes, Employee.class, "People", "secret");
 
         assertThat(people).hasSize(1);
         assertThat(people.get(0).getName()).isEqualTo("Alice");
     }
 
-    @Test
-    public void exportPassword_declaredOnAnnotation_encryptsAndReopens() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPassword_declaredOnAnnotation_encryptsAndReopens(final ExportDest dest) throws Exception {
         // The round trip above drives both passwords from an option; @PxlWorkbook is the other way in.
         final PasswordWorkbook workbook = new PasswordWorkbook();
         workbook.setWorkbookName("Protected");
         workbook.setPeople(Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering")));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toFile(excelFile);
+        final byte[] bytes = emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo, XLSX, "secret");
 
         // Opening it without the password has to fail, or the export would have written plaintext.
-        assertThrows(PxlException.class, () -> pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile));
+        assertThrows(PxlException.class, () -> importSheet(bytes, Employee.class, "People"));
 
         final PasswordWorkbook imported = pxl.importExcel()
                 .workbookName("Protected")
                 .workbook(PasswordWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getPeople()).extracting(Employee::getName).containsExactly("Alice");
     }
@@ -386,8 +371,9 @@ public class PxlExcelExportTests {
     // Engine: SXSSF (streaming write, result is xlsx)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportSxssf_streaming_roundTrips() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSxssf_streaming_roundTrips(final ExportDest dest) throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
@@ -395,15 +381,11 @@ public class PxlExcelExportTests {
                 .exportDataValidation(false)
                 .build();
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, Arrays.asList(alice), "People")
-                .override(option)
-                .toFile(excelFile);
+                .override(option), dest, testInfo);
 
-        final List<Employee> people = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+        final List<Employee> people = importSheet(bytes, Employee.class, "People");
 
         assertThat(people).hasSize(1);
         assertThat(people.get(0).getName()).isEqualTo("Alice");
@@ -413,8 +395,9 @@ public class PxlExcelExportTests {
     // Engine: HSSF (xls) round trip
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportHssf_xls_roundTrips() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportHssf_xls_roundTrips(final ExportDest dest) throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
@@ -422,15 +405,11 @@ public class PxlExcelExportTests {
                 .exportDataValidation(false)
                 .build();
 
-        final File xlsFile = TestPaths.exportFile(testInfo, ".xls");
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, Arrays.asList(alice), "People")
-                .override(option)
-                .toFile(xlsFile);
+                .override(option), dest, testInfo, XLS);
 
-        final List<Employee> people = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(xlsFile);
+        final List<Employee> people = importSheet(bytes, Employee.class, "People");
 
         assertThat(people).hasSize(1);
         assertThat(people.get(0).getName()).isEqualTo("Alice");
@@ -441,8 +420,9 @@ public class PxlExcelExportTests {
     // Engine x password: SXSSF/HSSF encrypted round trip (writeToStream uses agile encryption for both XSSF and SXSSF, Biff8 for HSSF)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportSxssf_encrypted_roundTrips() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSxssf_encrypted_roundTrips(final ExportDest dest) throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
@@ -450,27 +430,21 @@ public class PxlExcelExportTests {
                 .exportDataValidation(false)
                 .exportPassword("secret")
                 .build();
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .sheet(Employee.class, Arrays.asList(alice), "People")
-                .override(exportOption)
-                .toFile(excelFile);
 
-        final PxlImportWorkbookOption importOption = PxlImportWorkbookOption.builder()
-                .importPassword("secret")
-                .build();
-        final List<Employee> people = pxl.importExcel()
-                .override(importOption)
-                .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+        final byte[] bytes = emit(pxl.exportExcel()
+                .sheet(Employee.class, Arrays.asList(alice), "People")
+                .override(exportOption), dest, testInfo, XLSX, "secret");
+
+        final List<Employee> people = importSheet(bytes, Employee.class, "People", "secret");
 
         assertThat(people).hasSize(1);
         assertThat(people.get(0).getName()).isEqualTo("Alice");
         assertThat(people.get(0).getGrade()).isEqualTo(Grade.A);
     }
 
-    @Test
-    public void exportHssf_encrypted_roundTrips() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportHssf_encrypted_roundTrips(final ExportDest dest) throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
@@ -478,19 +452,12 @@ public class PxlExcelExportTests {
                 .exportDataValidation(false)
                 .exportPassword("secret")
                 .build();
-        final File xlsFile = TestPaths.exportFile(testInfo, ".xls");
-        pxl.exportExcel()
-                .sheet(Employee.class, Arrays.asList(alice), "People")
-                .override(exportOption)
-                .toFile(xlsFile);
 
-        final PxlImportWorkbookOption importOption = PxlImportWorkbookOption.builder()
-                .importPassword("secret")
-                .build();
-        final List<Employee> people = pxl.importExcel()
-                .override(importOption)
-                .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(xlsFile);
+        final byte[] bytes = emit(pxl.exportExcel()
+                .sheet(Employee.class, Arrays.asList(alice), "People")
+                .override(exportOption), dest, testInfo, XLS, "secret");
+
+        final List<Employee> people = importSheet(bytes, Employee.class, "People", "secret");
 
         assertThat(people).hasSize(1);
         assertThat(people.get(0).getName()).isEqualTo("Alice");
@@ -500,21 +467,18 @@ public class PxlExcelExportTests {
                 .exportExcelEngine(PxlExcelEngine.HSSF)
                 .exportDataValidation(false)
                 .build();
-        final File plainXls = TestPaths.exportFile("hssf-plain-after-encrypted.xls");
-        pxl.exportExcel()
+        final byte[] plainBytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, Arrays.asList(alice), "People")
-                .override(plainOption)
-                .toFile(plainXls);
-        final List<Employee> plainPeople = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(plainXls);
-        assertThat(plainPeople).hasSize(1);
+                .override(plainOption), dest, testInfo, "-plain" + XLS);
+
+        assertThat(importSheet(plainBytes, Employee.class, "People")).hasSize(1);
     }
 
     // ------------------------------------------------------------------
     // Resource ownership: toStream does not close the OutputStream passed by the caller (only flushes)
     // ------------------------------------------------------------------
 
+    // Not swept: only the stream destination is handed a stream it does not own.
     @Test
     public void exportToStream_doesNotCloseCallerStream() throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
@@ -540,33 +504,31 @@ public class PxlExcelExportTests {
     // exportStringAsFormula=false: "=..." strings are not evaluated as formulas but preserved as literals
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportLiteralFormula_notEvaluated() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportLiteralFormula_notEvaluated(final ExportDest dest) throws Exception {
         final LiteralRow row = new LiteralRow();
         row.setExpr("=1+2");
 
-        final List<LiteralRow> out = roundTripSheet("Literal", Arrays.asList(row), LiteralRow.class);
+        final List<LiteralRow> out = roundTripSheet(dest, "Literal", Arrays.asList(row), LiteralRow.class);
 
         assertThat(out).hasSize(1);
         // If evaluated as a formula it would become "3", but as a literal it must stay "=1+2".
         assertThat(out.get(0).getExpr()).isEqualTo("=1+2");
     }
 
-    @Test
-    public void exportLiteralFormula_writtenQuotePrefixed() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportLiteralFormula_writtenQuotePrefixed(final ExportDest dest) throws Exception {
         // The round-trip above shows the value survives; this pins how. Without exportStringAsFormula the leading '='
         // makes the cell a quote-prefixed string, so Excel shows the text verbatim instead of reading it as a formula.
         // That prefix is a safeguard on writing text, not one of the forms the column options choose between.
         final LiteralRow row = new LiteralRow();
         row.setExpr("=1+2");
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(LiteralRow.class, Arrays.asList(row), "Literal")
-                .override(noValidationOption())
-                .toFile(excelFile);
-
-        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+                .override(noValidationOption()), dest, testInfo)) {
             final Cell cell = firstDataCell(workbook, "Literal", "Expr");
             assertThat(cell.getCellType()).isEqualTo(CellType.STRING);
             assertThat(cell.getStringCellValue()).isEqualTo("=1+2");
@@ -578,14 +540,15 @@ public class PxlExcelExportTests {
     // Column inheritance: @PxlColumn fields from the superclass are also bound
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportInheritedColumns_roundTrips() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportInheritedColumns_roundTrips(final ExportDest dest) throws Exception {
         final DerivedRow row = new DerivedRow();
         row.setId(7);                 // inherited field
         row.setBaseName("base");      // inherited field
         row.setExtra("own");          // own field
 
-        final List<DerivedRow> out = roundTripSheet("Derived", Arrays.asList(row), DerivedRow.class);
+        final List<DerivedRow> out = roundTripSheet(dest, "Derived", Arrays.asList(row), DerivedRow.class);
 
         assertThat(out).hasSize(1);
         assertThat(out.get(0).getId()).isEqualTo(7);
@@ -594,21 +557,17 @@ public class PxlExcelExportTests {
     }
 
     // Separately verify that a superclass-only field actually appears in the header
-    @Test
-    public void exportInheritedColumns_headerIncludesThem() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportInheritedColumns_headerIncludesThem(final ExportDest dest) throws Exception {
         final DerivedRow row = new DerivedRow();
         row.setId(1);
         row.setBaseName("base");
         row.setExtra("own");
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(DerivedRow.class, Arrays.asList(row), "Derived")
-                .override(noValidationOption())
-                .toStream(outputStream);
-
-        try (Workbook workbook =
-                     WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+                .override(noValidationOption()), dest, testInfo)) {
             final Row header = workbook.getSheet("Derived").getRow(0);
             final Set<String> headers = new HashSet<>();
             for (final Cell cell : header) {
@@ -622,61 +581,58 @@ public class PxlExcelExportTests {
     // All sheets exportEnabled=false: fails because there is no sheet to export
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportAllSheetsDisabled_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportAllSheetsDisabled_throws(final ExportDest dest) {
         final DisabledSheetWorkbook workbook = new DisabledSheetWorkbook();
         workbook.setWorkbookName("NoSheets");
         workbook.setRows(Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering")));
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        // The check sits in build(), which every terminal runs first, so the failure is the same on all of them.
         assertThrows(PxlDataException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .workbook(workbook)
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
     // Empty password -> round trips without encryption (importable without a password)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportEmptyPassword_noEncryption_roundTrips() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportEmptyPassword_noEncryption_roundTrips(final ExportDest dest) throws Exception {
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
                 .exportDataValidation(false)
                 .exportPassword("")     // empty password = no encryption
                 .build();
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), "People")
-                .override(exportOption)
-                .toFile(excelFile);
+                .override(exportOption), dest, testInfo, XLSX, "");
 
         // Must be importable without any password option
-        final List<Employee> people = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
-        assertThat(people).extracting(Employee::getName).containsExactly("Alice", "Bob");
+        assertThat(importSheet(bytes, Employee.class, "People"))
+                .extracting(Employee::getName)
+                .containsExactly("Alice", "Bob");
     }
 
     // ------------------------------------------------------------------
     // Import with password + stream reader combination
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportPassword_withStreamReader_roundTrips() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPassword_withStreamReader_roundTrips(final ExportDest dest) throws Exception {
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
                 .exportDataValidation(false)
                 .exportPassword("secret")
                 .build();
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), "People")
-                .override(exportOption)
-                .toFile(excelFile);
+                .override(exportOption), dest, testInfo, XLSX, "secret");
 
         // Import with the correct password + stream reader (header/data row indices specified)
         final PxlImportSheetOption sheetOption = PxlImportSheetOption.builder()
@@ -692,7 +648,7 @@ public class PxlExcelExportTests {
         final List<Employee> people = pxl.importExcel()
                 .override(importOption)
                 .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
         assertThat(people).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
 
@@ -700,17 +656,15 @@ public class PxlExcelExportTests {
     // Sheet name over 31 chars -> truncated to 31 chars
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportSheetName_over31Chars_truncated() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSheetName_over31Chars_truncated(final ExportDest dest) throws Exception {
         final String longName = "VeryLongSheetNameThatExceeds31Characters";   // 40 chars
         assertThat(longName.length()).isGreaterThan(31);
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), longName)
-                .override(noValidationOption())
-                .toFile(excelFile);
-        final byte[] bytes = Files.readAllBytes(excelFile.toPath());
+                .override(noValidationOption()), dest, testInfo);
 
         // The actual sheet name is truncated to 31 chars
         final String actualName = firstSheetName(bytes);
@@ -718,27 +672,24 @@ public class PxlExcelExportTests {
         assertThat(longName).startsWith(actualName);
 
         // Importing with the truncated actual name round trips correctly
-        final List<Employee> people = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList(actualName))
-                .fromFile(excelFile);
-        assertThat(people).extracting(Employee::getName).containsExactly("Alice", "Bob");
+        assertThat(importSheet(bytes, Employee.class, actualName))
+                .extracting(Employee::getName)
+                .containsExactly("Alice", "Bob");
     }
 
     // ------------------------------------------------------------------
     // Invalid characters in sheet name -> replaced with spaces
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportSheetName_invalidChars_sanitized() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSheetName_invalidChars_sanitized(final ExportDest dest) throws Exception {
         // Invalid characters in Excel sheet names: / \ ? * [ ] :
         final String badName = "Bad/Name:With*Chars";
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), badName)
-                .override(noValidationOption())
-                .toFile(excelFile);
-        final byte[] bytes = Files.readAllBytes(excelFile.toPath());
+                .override(noValidationOption()), dest, testInfo);
 
         final String actualName = firstSheetName(bytes);
         // No invalid characters must remain
@@ -747,36 +698,32 @@ public class PxlExcelExportTests {
         assertThat(actualName).isEqualTo("Bad Name With Chars");
 
         // Importing with the normalized name round trips correctly
-        final List<Employee> people = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList(actualName))
-                .fromFile(excelFile);
-        assertThat(people).extracting(Employee::getName).containsExactly("Alice", "Bob");
+        assertThat(importSheet(bytes, Employee.class, actualName))
+                .extracting(Employee::getName)
+                .containsExactly("Alice", "Bob");
     }
 
     // ------------------------------------------------------------------
     // Exception when the export column range is smaller than the column count
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportLastColumnIndex_tooSmall_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportLastColumnIndex_tooSmall_throws(final ExportDest dest) {
         final ExportColBoundWorkbook workbook = new ExportColBoundWorkbook();
         workbook.setWorkbookName("W");
         workbook.setRows(Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering")));
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlDataException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .workbook(workbook)
-                        .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build())
-                        .toStream(outputStream));
+                        .override(PxlExportWorkbookOption.builder().exportDataValidation(false).build()), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
     // Date/time numeric export (when neither pattern nor masking is set, written as numeric date cells rather than strings)
     // ------------------------------------------------------------------
-
-    private static final DataFormatter DATA_FORMATTER = new DataFormatter();
 
     // Finds the cell in the first data row (1) by the header name in the header row (0).
     private static Cell firstDataCell(final Workbook workbook, final String sheetName, final String header) {
@@ -793,8 +740,9 @@ public class PxlExcelExportTests {
         return sheet.getRow(1).getCell(col);
     }
 
-    @Test
-    public void exportExcel_dateTimeColumnsWithoutPatternOrMasking_writtenAsNumericDateCells() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportExcel_dateTimeColumnsWithoutPatternOrMasking_writtenAsNumericDateCells(final ExportDest dest) throws Exception {
         // A dedicated fixture whose date/time columns carry no pattern (AllTypesRow now pins explicit patterns,
         // which would force string cells); without a pattern each column is written as a numeric Excel-date cell.
         final ZoneId zone = ZoneId.systemDefault();
@@ -809,14 +757,12 @@ public class PxlExcelExportTests {
         row.setOffsetTime(LocalTime.of(10, 30, 45).atOffset(OffsetTime.now(zone).getOffset()));
         row.setOffsetDateTime(baseDateTime.atZone(zone).toOffsetDateTime());
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(DateTimeNumericRow.class, Arrays.asList(row), "DateTimes")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final String[] dateHeaders = {"JavaDate", "LocalDate", "LocalTime", "LocalDateTime", "ZonedDateTime", "OffsetTime", "OffsetDateTime"};
-        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             for (final String header : dateHeaders) {
                 final Cell cell = firstDataCell(workbook, "DateTimes", header);
                 assertThat(cell.getCellType()).as(header + " cell type").isEqualTo(CellType.NUMERIC);
@@ -830,9 +776,7 @@ public class PxlExcelExportTests {
         }
 
         // Even when written as numeric, the values are preserved on round trip (all values are second-granular).
-        final List<DateTimeNumericRow> imported = pxl.importExcel()
-                .sheet(DateTimeNumericRow.class, Arrays.asList("DateTimes"))
-                .fromFile(excelFile);
+        final List<DateTimeNumericRow> imported = importSheet(bytes, DateTimeNumericRow.class, "DateTimes");
         assertThat(imported).hasSize(1);
         final DateTimeNumericRow result = imported.get(0);
         assertThat(result.getJavaDate()).isEqualTo(row.getJavaDate());
@@ -844,8 +788,9 @@ public class PxlExcelExportTests {
         assertThat(result.getOffsetDateTime()).isEqualTo(row.getOffsetDateTime());
     }
 
-    @Test
-    public void exportExcel_dateColumnWithMasking_staysStringCell() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportExcel_dateColumnWithMasking_staysStringCell(final ExportDest dest) throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         // A date column with masking cannot be represented as numeric, so it stays a (masked) string.
@@ -861,21 +806,18 @@ public class PxlExcelExportTests {
                 .exportSheetOptions(Arrays.asList(sheetOption))
                 .build();
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(Employee.class, Arrays.asList(alice), "People")
-                .override(option)
-                .toStream(outputStream);
-
-        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+                .override(option), dest, testInfo)) {
             final Cell cell = firstDataCell(workbook, "People", "HireDate");
             assertThat(cell.getCellType()).isEqualTo(CellType.STRING);
             assertThat(cell.getStringCellValue()).isEqualTo("****-**-**");   // all digits of 2020-01-15 are masked
         }
     }
 
-    @Test
-    public void exportExcel_dateColumnWithExportPattern_staysStringCell() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportExcel_dateColumnWithExportPattern_staysStringCell(final ExportDest dest) throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
 
         // A date column with exportPattern must keep its string representation, so it is not converted to numeric.
@@ -891,13 +833,9 @@ public class PxlExcelExportTests {
                 .exportSheetOptions(Arrays.asList(sheetOption))
                 .build();
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(Employee.class, Arrays.asList(alice), "People")
-                .override(option)
-                .toStream(outputStream);
-
-        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+                .override(option), dest, testInfo)) {
             final Cell cell = firstDataCell(workbook, "People", "HireDate");
             assertThat(cell.getCellType()).isEqualTo(CellType.STRING);
             assertThat(cell.getStringCellValue()).isEqualTo("2020/01/15");
@@ -910,20 +848,17 @@ public class PxlExcelExportTests {
     // ------------------------------------------------------------------
 
     // Non-streaming (XSSF): export's evaluateAll() computes the formula and writes the cached result to the file.
-    @Test
-    public void exportFormula_nonStreaming_cachesComputedResult() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportFormula_nonStreaming_cachesComputedResult(final ExportDest dest) throws Exception {
         final FormulaRow row = new FormulaRow();
         row.setLabel("calc");
         row.setFormula("=2+3");
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
-                .override(noValidationOption())
-                .toFile(excelFile);
-
         // Open with raw POI but do not evaluate here - getNumericCellValue() returns the cached value left by export.
-        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
+                .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
+                .override(noValidationOption()), dest, testInfo)) {
             final Cell cell = firstDataCell(workbook, "Formula", "Formula");
             assertThat(cell.getCellType()).isEqualTo(CellType.FORMULA);
             assertThat(cell.getCellFormula()).isEqualTo("2+3");
@@ -933,19 +868,16 @@ public class PxlExcelExportTests {
     }
 
     // exportStringAsFormula only claims a value that starts with '=': anything else is ordinary text.
-    @Test
-    public void exportFormula_valueWithoutLeadingEquals_writesPlainText() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportFormula_valueWithoutLeadingEquals_writesPlainText(final ExportDest dest) throws Exception {
         final FormulaRow row = new FormulaRow();
         row.setLabel("calc");
         row.setFormula("not a formula");
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
-                .override(noValidationOption())
-                .toFile(excelFile);
-
-        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+                .override(noValidationOption()), dest, testInfo)) {
             final Cell cell = firstDataCell(workbook, "Formula", "Formula");
             assertThat(cell.getCellType()).isEqualTo(CellType.STRING);
             assertThat(cell.getStringCellValue()).isEqualTo("not a formula");
@@ -955,20 +887,17 @@ public class PxlExcelExportTests {
     }
 
     // A cell-reference formula (=A2*B2) is also computed at export time - the cached value of Qty(A) * Price(B) is written.
-    @Test
-    public void exportFormula_cellReference_computedAtExport() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportFormula_cellReference_computedAtExport(final ExportDest dest) throws Exception {
         final FormulaRefRow row = new FormulaRefRow();
         row.setQty(6);
         row.setPrice(7);
         row.setTotal("=A2*B2");
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(FormulaRefRow.class, Arrays.asList(row), "FormulaRef")
-                .override(noValidationOption())
-                .toFile(excelFile);
-
-        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+                .override(noValidationOption()), dest, testInfo)) {
             final Cell cell = firstDataCell(workbook, "FormulaRef", "Total");
             assertThat(cell.getCellType()).isEqualTo(CellType.FORMULA);
             assertThat(cell.getCellFormula()).isEqualTo("A2*B2");
@@ -977,8 +906,11 @@ public class PxlExcelExportTests {
     }
 
     // Streaming (SXSSF): delegates computation to Excel - only sets the recalc flag and leaves no cached value.
-    @Test
-    public void exportFormula_sxssf_delegatesRecalcWithoutCaching() throws Exception {
+    // Swept over the written destinations only: on WORKBOOK the assertion would run against the live SXSSF
+    // workbook, whose formula cells carry no readable value at all rather than the absent one written to a file.
+    @ParameterizedTest
+    @EnumSource(value = ExportDest.class, names = {"FILE", "STREAM"})
+    public void exportFormula_sxssf_delegatesRecalcWithoutCaching(final ExportDest dest) throws Exception {
         final FormulaRow row = new FormulaRow();
         row.setLabel("calc");
         row.setFormula("=2+3");
@@ -988,13 +920,9 @@ public class PxlExcelExportTests {
                 .exportDataValidation(false)
                 .build();
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
-                .override(option)
-                .toFile(excelFile);
-
-        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+                .override(option), dest, testInfo)) {
             // The flag delegating a full recalculation when the file is opened is set.
             assertThat(workbook.getForceFormulaRecalculation()).isTrue();
 
@@ -1012,19 +940,16 @@ public class PxlExcelExportTests {
     // ------------------------------------------------------------------
 
     // A null Double is written as a STRING cell containing an empty string, neither numeric 0 nor blank (default exportNullString="").
-    @Test
-    public void exportNullDouble_writesEmptyStringCell_notBlank() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportNullDouble_writesEmptyStringCell_notBlank(final ExportDest dest) throws Exception {
         final AllTypesRow row = new AllTypesRow();
         row.setText("keep");          // at least one value in the row
         row.setWrapDouble(null);      // target: null Double
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(AllTypesRow.class, Arrays.asList(row), "Types")
-                .override(noValidationOption())
-                .toFile(excelFile);
-
-        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+                .override(noValidationOption()), dest, testInfo)) {
             final Cell cell = firstDataCell(workbook, "Types", "WrapDouble");
             assertThat(cell.getCellType()).isEqualTo(CellType.STRING);   // neither BLANK nor NUMERIC
             assertThat(cell.getStringCellValue()).isEqualTo("");
@@ -1032,8 +957,9 @@ public class PxlExcelExportTests {
     }
 
     // When exportNullString is specified, a null field is written as that string.
-    @Test
-    public void exportNullString_customValue_overridesNullDoubleCell() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportNullString_customValue_overridesNullDoubleCell(final ExportDest dest) throws Exception {
         final AllTypesRow row = new AllTypesRow();
         row.setText("keep");
         row.setWrapDouble(null);
@@ -1050,13 +976,9 @@ public class PxlExcelExportTests {
                 .exportSheetOptions(Arrays.asList(sheetOption))
                 .build();
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(AllTypesRow.class, Arrays.asList(row), "Types")
-                .override(option)
-                .toFile(excelFile);
-
-        try (Workbook workbook = WorkbookFactory.create(excelFile)) {
+                .override(option), dest, testInfo)) {
             final Cell cell = firstDataCell(workbook, "Types", "WrapDouble");
             assertThat(cell.getCellType()).isEqualTo(CellType.STRING);
             assertThat(cell.getStringCellValue()).isEqualTo("N/A");
@@ -1076,27 +998,34 @@ public class PxlExcelExportTests {
     }
 
     // Per-engine file extension (HSSF=.xls, XSSF/SXSSF=.xlsx), taken from the format the engine writes.
-    // Also prevents file name collisions in parameterized tests.
+    // Also prevents file name collisions between the engines of one parameterized test (the destination adds its own).
     private static String ext(final PxlExcelEngine engine) {
         return "_" + engine.name() + "." + engine.getFileFormat().getFilenameExtension();
     }
 
+    // The engine x destination matrix the sweeps below run: two axes, so an @EnumSource on either alone would
+    // leave the other pinned to a single value.
+    private static Stream<Arguments> nonDefaultEnginesAndDestinations() {
+        final List<Arguments> arguments = new ArrayList<>();
+        for (final PxlExcelEngine engine : Arrays.asList(PxlExcelEngine.HSSF, PxlExcelEngine.SXSSF)) {
+            for (final ExportDest dest : ExportDest.values()) {
+                arguments.add(Arguments.of(engine, dest));
+            }
+        }
+        return arguments.stream();
+    }
+
     // Whether rich-type (all types) round trips are preserved on HSSF and SXSSF too. On SXSSF the auto-size tracking path is also exercised.
     @ParameterizedTest
-    @EnumSource(value = PxlExcelEngine.class, names = {"HSSF", "SXSSF"})
-    public void richTypes_roundTrip_perEngine(final PxlExcelEngine engine) throws Exception {
+    @MethodSource("nonDefaultEnginesAndDestinations")
+    public void richTypes_roundTrip_perEngine(final PxlExcelEngine engine, final ExportDest dest) throws Exception {
         final AllTypesRow row = Fixtures.sampleAllTypesRow();
 
-        final File file = TestPaths.exportFile(testInfo, ext(engine));
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(AllTypesRow.class, Arrays.asList(row), "Types")
-                .override(engineOption(engine, false))
-                .toFile(file);
+                .override(engineOption(engine, false)), dest, testInfo, ext(engine));
 
-        final AllTypesRow out = pxl.importExcel()
-                .sheet(AllTypesRow.class, Arrays.asList("Types"))
-                .fromFile(file).get(0);
-        Fixtures.assertSampleAllTypesRow(out);
+        Fixtures.assertSampleAllTypesRow(importSheet(bytes, AllTypesRow.class, "Types").get(0));
     }
 
     // Per-format sheet limits match POI SpreadsheetVersion (XLS=EXCEL97, XLSX=EXCEL2007). Only XLS differs in value.
@@ -1125,60 +1054,49 @@ public class PxlExcelExportTests {
 
     // A dropdown (exportOptionItems) exports without exception on HSSF/SXSSF too and the value round trips (data validation kept enabled).
     @ParameterizedTest
-    @EnumSource(value = PxlExcelEngine.class, names = {"HSSF", "SXSSF"})
-    public void dropdown_roundTrip_perEngine(final PxlExcelEngine engine) throws Exception {
+    @MethodSource("nonDefaultEnginesAndDestinations")
+    public void dropdown_roundTrip_perEngine(final PxlExcelEngine engine, final ExportDest dest) throws Exception {
         final OptionItemsRow row = new OptionItemsRow();
         row.setChoice("Red");
 
-        final File file = TestPaths.exportFile(testInfo, ext(engine));
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(OptionItemsRow.class, Arrays.asList(row), "Opt")
-                .override(engineOption(engine, true))
-                .toFile(file);
+                .override(engineOption(engine, true)), dest, testInfo, ext(engine));
 
-        final OptionItemsRow out = pxl.importExcel()
-                .sheet(OptionItemsRow.class, Arrays.asList("Opt"))
-                .fromFile(file).get(0);
-        assertThat(out.getChoice()).isEqualTo("Red");
+        assertThat(importSheet(bytes, OptionItemsRow.class, "Opt").get(0).getChoice()).isEqualTo("Red");
     }
 
     // Grouping (splitting sheets by field value) works on HSSF/SXSSF too (the workbook option takes precedence over the class and overrides the engine).
     @ParameterizedTest
-    @EnumSource(value = PxlExcelEngine.class, names = {"HSSF", "SXSSF"})
-    public void grouping_splitsIntoSheets_perEngine(final PxlExcelEngine engine) throws Exception {
+    @MethodSource("nonDefaultEnginesAndDestinations")
+    public void grouping_splitsIntoSheets_perEngine(final PxlExcelEngine engine, final ExportDest dest) throws Exception {
         final GroupedWorkbook workbook = new GroupedWorkbook();
         workbook.setWorkbookName("Grouped");
         workbook.setEmployees(Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"),
                 Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales")));
 
-        final File file = TestPaths.exportFile(testInfo, ext(engine));
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(engineOption(engine, false))
-                .toFile(file);
+                .override(engineOption(engine, false)), dest, testInfo, ext(engine));
 
-        try (Workbook poi = WorkbookFactory.create(file)) {
+        try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             assertThat(poi.getSheet("Employees - Engineering")).as("Engineering group sheet").isNotNull();
             assertThat(poi.getSheet("Employees - Sales")).as("Sales group sheet").isNotNull();
         }
 
-        final List<Employee> engineering = pxl.importExcel()
-                .sheet(Employee.class, Arrays.asList("Employees - Engineering"))
-                .fromFile(file);
-        assertThat(engineering).extracting(Employee::getName).containsExactly("Alice");
+        assertThat(importSheet(bytes, Employee.class, "Employees - Engineering"))
+                .extracting(Employee::getName)
+                .containsExactly("Alice");
     }
 
     // Sample/template export creates a header row + example row on HSSF (.xls) too.
-    @Test
-    public void sampleExport_hssf_writesHeaderAndSampleRow() throws Exception {
-        final File file = TestPaths.exportFile(testInfo, ".xls");
-        pxl.exportSampleExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sampleExport_hssf_writesHeaderAndSampleRow(final ExportDest dest) throws Exception {
+        try (Workbook poi = workbookOf(pxl.exportSampleExcel()
                 .workbook(AllTypesWorkbook.class)
-                .override(engineOption(PxlExcelEngine.HSSF, false))
-                .toFile(file);
-
-        try (Workbook poi = WorkbookFactory.create(file)) {
+                .override(engineOption(PxlExcelEngine.HSSF, false)), dest, testInfo, XLS)) {
             final Sheet sheet = poi.getSheet("AllTypes");
             assertThat(sheet).as("AllTypes sheet must be created").isNotNull();
             assertThat(sheet.getRow(0)).as("header row must exist").isNotNull();
@@ -1187,15 +1105,12 @@ public class PxlExcelExportTests {
     }
 
     // On SXSSF streaming too, the auto-size path (trackColumnForAutoSizing -> autoSizeColumns) works and column widths fall within the clamp range.
-    @Test
-    public void sxssf_autoSizeColumn_appliedWithinClamp() throws Exception {
-        final File file = TestPaths.exportFile(testInfo, ".xlsx");
-        pxl.exportExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sxssf_autoSizeColumn_appliedWithinClamp(final ExportDest dest) throws Exception {
+        try (Workbook poi = workbookOf(pxl.exportExcel()
                 .sheet(AllTypesRow.class, Arrays.asList(Fixtures.sampleAllTypesRow()), "Types")
-                .override(engineOption(PxlExcelEngine.SXSSF, false))
-                .toFile(file);
-
-        try (Workbook poi = WorkbookFactory.create(file)) {
+                .override(engineOption(PxlExcelEngine.SXSSF, false)), dest, testInfo)) {
             final Cell textCell = firstDataCell(poi, "Types", "Text");
             final int width = poi.getSheet("Types").getColumnWidth(textCell.getColumnIndex());
             // autoSizeColumns clamps to [MIN=2000, MAX=15000] -> being within that range means the auto-size path ran correctly.
@@ -1207,8 +1122,9 @@ public class PxlExcelExportTests {
     // Grouping export: null group key (a null grouping-field value) and a null row object
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportGrouping_nullGroupKeyValue_createsUngroupedSheet() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportGrouping_nullGroupKeyValue_createsUngroupedSheet(final ExportDest dest) throws Exception {
         // An employee whose grouping field (department) is null lands in the "(ungrouped)" group sheet.
         final GroupedWorkbook workbook = new GroupedWorkbook();
         workbook.setWorkbookName("Grouped");
@@ -1216,20 +1132,17 @@ public class PxlExcelExportTests {
                 Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"),
                 Fixtures.employee("Dana", 28, "40000", true, LocalDate.of(2021, 5, 1), Grade.C, null)));   // null department
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        try (Workbook poi = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toFile(excelFile);
-
-        try (Workbook poi = WorkbookFactory.create(excelFile)) {
+                .override(noValidationOption()), dest, testInfo)) {
             assertThat(poi.getSheet("Employees - Engineering")).isNotNull();
             assertThat(poi.getSheet("Employees - (ungrouped)")).as("null grouping value -> (ungrouped) sheet").isNotNull();
         }
     }
 
-    @Test
-    public void exportGrouping_nullRowObject_throwsNamingPosition() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportGrouping_nullRowObject_throwsNamingPosition(final ExportDest dest) {
         // The grouping branch reads a field off every row to build its key, so it meets a null row before the
         // write loop does. It is rejected by the same up-front check, with the same message.
         final GroupedWorkbook workbook = new GroupedWorkbook();
@@ -1238,12 +1151,10 @@ public class PxlExcelExportTests {
                 Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"),
                 null));
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final PxlDataException exception = assertThrows(PxlDataException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .workbook(workbook)
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
 
         assertThat(exception.getMessage()).contains("Employees").contains("2");
     }
@@ -1252,8 +1163,9 @@ public class PxlExcelExportTests {
     // A null row object names its position rather than an innocent column
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportExcel_nullRowObject_throwsNamingPosition() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportExcel_nullRowObject_throwsNamingPosition(final ExportDest dest) {
         // Reading a field off a null row raises a NullPointerException, which used to arrive as a
         // PxlCellCodecException tagged with the first column - a column that did nothing wrong, since no codec ran.
         // The failure now says what is actually wrong and where, and no cell-codec error is reported.
@@ -1262,12 +1174,10 @@ public class PxlExcelExportTests {
                 null,
                 Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales"));
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final PxlDataException exception = assertThrows(PxlDataException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .sheet(Employee.class, employees, "Employees")
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
 
         assertThat(exception.getMessage())
                 .as("names the sheet and the one-based position of the null element")
@@ -1279,8 +1189,9 @@ public class PxlExcelExportTests {
                 .doesNotContain("Name");
     }
 
+    // Not swept: the guarantee under test is about the file system, which only the file destination touches.
     @Test
-    public void exportExcel_nullRowObject_writesNothing() throws Exception {
+    public void exportExcel_nullRowObject_writesNothing() {
         // The check runs before the destination is opened, so the failure leaves no partial file behind -
         // the same guarantee the builder's prepare()/writeTo() ordering gives every other export failure.
         final List<Employee> employees = Arrays.asList(

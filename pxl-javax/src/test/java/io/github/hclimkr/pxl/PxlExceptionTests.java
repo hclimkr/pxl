@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -23,11 +25,17 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.XLSX;
+import static io.github.hclimkr.pxl.tcdata.TestExports.emit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Exception scenario tests - file/validation/special double/duplicate sheet/password/stream-reader formula, plus type parsing failures (bool/bigdecimal/biginteger/localdate/duration/period), integer/byte out-of-range, ERROR cell, no default constructor, RowIndex type/unsupported type/grouping field typo, and which validation pass reports a violation when a @PxlSheet field carries @Valid.
+ * <p>
+ * A failure has to be raised on every terminal alike, so each test that exports is swept across
+ * {@link ExportDest}. What stays a plain {@code @Test} is a test whose subject is a config-step guard or one
+ * destination's own mechanics - a null destination, a source file that does not exist.
  */
 public class PxlExceptionTests {
 
@@ -91,31 +99,29 @@ public class PxlExceptionTests {
     // export: Bean Validation violation (required value missing)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportValidation_blankRequiredField_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportValidation_blankRequiredField_throws(final ExportDest dest) {
         final ValidatedRow row = new ValidatedRow();
         row.setName(null);      // @NotBlank violation
         row.setAge(20);
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         // Data validation is enabled by default (null option), so validation is performed on export.
         assertThrows(PxlValidationException.class, () ->
-                pxl.exportExcel()
-                        .sheet(ValidatedRow.class, Arrays.asList(row), "V")
-                        .toStream(outputStream));
+                emit(pxl.exportExcel()
+                        .sheet(ValidatedRow.class, Arrays.asList(row), "V"), dest, testInfo));
     }
 
-    @Test
-    public void exportValidation_nullRequiredField_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportValidation_nullRequiredField_throws(final ExportDest dest) {
         final ValidatedRow row = new ValidatedRow();
         row.setName("Alice");
         row.setAge(null);       // @NotNull violation
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlValidationException.class, () ->
-                pxl.exportExcel()
-                        .sheet(ValidatedRow.class, Arrays.asList(row), "V")
-                        .toStream(outputStream));
+                emit(pxl.exportExcel()
+                        .sheet(ValidatedRow.class, Arrays.asList(row), "V"), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
@@ -164,8 +170,9 @@ public class PxlExceptionTests {
         return row;
     }
 
-    @Test
-    public void exportWorkbook_cascadingSheetField_violatingRow_throwsWithSheetTag() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_cascadingSheetField_violatingRow_throwsWithSheetTag(final ExportDest dest) {
         final CascadeWorkbook workbook = new CascadeWorkbook();
         workbook.setWorkbookName("Cascade");
         workbook.setRows(Arrays.asList(blankNameRow()));
@@ -177,17 +184,17 @@ public class PxlExceptionTests {
             // The workbook-object pass runs first on export and carries no location, so it used to report this one
             // untagged. With the cascade skipped it no longer sees the row, and the tagged pass reports it instead.
             final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
-                    pxl.exportExcel()
-                            .workbook(workbook)
-                            .toStream(new ByteArrayOutputStream()));
+                    emit(pxl.exportExcel()
+                            .workbook(workbook), dest, testInfo));
             assertThat(ex.getMessage()).contains("sheet 'Rows'");
         } finally {
             Pxl.resetMessageLocale();
         }
     }
 
-    @Test
-    public void exportWorkbook_nonCascadingSheetField_violatingRow_throwsWithSheetTag() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_nonCascadingSheetField_violatingRow_throwsWithSheetTag(final ExportDest dest) {
         final NoCascadeWorkbook workbook = new NoCascadeWorkbook();
         workbook.setWorkbookName("NoCascade");
         workbook.setRows(Arrays.asList(blankNameRow()));
@@ -197,9 +204,8 @@ public class PxlExceptionTests {
 
             // Without the cascade the row collection pass is the one that catches it, and it does tag the sheet.
             final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
-                    pxl.exportExcel()
-                            .workbook(workbook)
-                            .toStream(new ByteArrayOutputStream()));
+                    emit(pxl.exportExcel()
+                            .workbook(workbook), dest, testInfo));
             assertThat(ex.getMessage()).contains("sheet 'Rows'");
             assertThat(ex.getMessage()).doesNotContain("row ");
         } finally {
@@ -250,8 +256,9 @@ public class PxlExceptionTests {
     // Skipping the sheet cascade must not take any other constraint away
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportWorkbook_sheetCollectionConstraint_stillValidated() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_sheetCollectionConstraint_stillValidated(final ExportDest dest) {
         final ConstrainedCascadeWorkbook workbook = new ConstrainedCascadeWorkbook();
         workbook.setWorkbookName("Constrained");
         workbook.setRows(Collections.emptyList());      // @NotEmpty violation on the sheet field itself
@@ -259,14 +266,14 @@ public class PxlExceptionTests {
         // The skipped cascade is only the descent into the elements. A constraint on the collection is a constraint
         // of the workbook object, and the workbook-object pass still checks it.
         final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
-                pxl.exportExcel()
-                        .workbook(workbook)
-                        .toStream(new ByteArrayOutputStream()));
+                emit(pxl.exportExcel()
+                        .workbook(workbook), dest, testInfo));
         assertThat(ex.getMessage()).contains("'Rows' must not be empty.");
     }
 
-    @Test
-    public void exportWorkbook_exportDisabledSheet_violatingRow_doesNotThrow() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_exportDisabledSheet_violatingRow_doesNotThrow(final ExportDest dest) throws Exception {
         final CountingRow exported = new CountingRow();
         exported.setName("Alice");
         exported.setAge(30);
@@ -278,13 +285,13 @@ public class PxlExceptionTests {
 
         // A sheet that is not written is not validated either, @Valid on the field notwithstanding - so a violating
         // row there cannot fail an export that never includes it.
-        pxl.exportExcel()
-                .workbook(workbook)
-                .toStream(new ByteArrayOutputStream());
+        emit(pxl.exportExcel()
+                .workbook(workbook), dest, testInfo);
     }
 
-    @Test
-    public void exportWorkbook_ownFieldConstraint_stillValidated() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_ownFieldConstraint_stillValidated(final ExportDest dest) {
         final CountingRow row = new CountingRow();
         row.setName("Alice");
         row.setAge(30);
@@ -295,14 +302,14 @@ public class PxlExceptionTests {
 
         // Nothing about the sheet rule touches a plain constraint on the workbook object itself.
         final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
-                pxl.exportExcel()
-                        .workbook(workbook)
-                        .toStream(new ByteArrayOutputStream()));
+                emit(pxl.exportExcel()
+                        .workbook(workbook), dest, testInfo));
         assertThat(ex.getMessage()).contains("'WorkbookName' must not be blank.");
     }
 
-    @Test
-    public void exportWorkbook_nonSheetFieldCascade_stillValidated() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_nonSheetFieldCascade_stillValidated(final ExportDest dest) {
         final CountingRow row = new CountingRow();
         row.setName("Alice");
         row.setAge(30);
@@ -317,9 +324,8 @@ public class PxlExceptionTests {
 
         // Only @PxlSheet fields are exempt from cascading; every other @Valid still descends as the user declared.
         final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
-                pxl.exportExcel()
-                        .workbook(workbook)
-                        .toStream(new ByteArrayOutputStream()));
+                emit(pxl.exportExcel()
+                        .workbook(workbook), dest, testInfo));
         assertThat(ex.getMessage()).contains("'Label' must not be blank.");
     }
 
@@ -363,8 +369,9 @@ public class PxlExceptionTests {
         assertThat(ex.getMessage()).contains("'WorkbookName' must not be blank.");
     }
 
-    @Test
-    public void exportWorkbook_nestedRowListCascade_stillValidated() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_nestedRowListCascade_stillValidated(final ExportDest dest) {
         final CountingRow row = new CountingRow();
         row.setName("Alice");
         row.setAge(30);
@@ -381,9 +388,8 @@ public class PxlExceptionTests {
         workbook.setMeta(meta);
 
         final PxlValidationException ex = assertThrows(PxlValidationException.class, () ->
-                pxl.exportExcel()
-                        .workbook(workbook)
-                        .toStream(new ByteArrayOutputStream()));
+                emit(pxl.exportExcel()
+                        .workbook(workbook), dest, testInfo));
         assertThat(ex.getMessage()).contains("'Name' must not be blank.");
     }
 
@@ -392,84 +398,80 @@ public class PxlExceptionTests {
     // export: double NaN / Infinity fails fast
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportDouble_nan_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportDouble_nan_throws(final ExportDest dest) {
         final AllTypesRow row = Fixtures.sampleAllTypesRow();
         row.setWrapDouble(Double.NaN);
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlCellCodecException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .sheet(AllTypesRow.class, Arrays.asList(row), "AllTypes")
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
     }
 
-    @Test
-    public void exportDouble_infinity_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportDouble_infinity_throws(final ExportDest dest) {
         final AllTypesRow row = Fixtures.sampleAllTypesRow();
         row.setPrimDouble(Double.POSITIVE_INFINITY);
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlCellCodecException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .sheet(AllTypesRow.class, Arrays.asList(row), "AllTypes")
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
     // export: duplicate sheet names (explicit list form)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportWorkbook_duplicateSheetNames_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_duplicateSheetNames_throws(final ExportDest dest) {
         final List<Employee> some = Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, null, null, "Engineering"));
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         // Specifying the same sheet name ("Dup") twice -> exception
         assertThrows(PxlDataException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .sheet(Employee.class, some, "Dup")
                         .sheet(Employee.class, new ArrayList<Employee>(), "Dup")
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
     }
 
-    @Test
-    public void exportWorkbook_duplicateSheetNamesDifferentCase_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbook_duplicateSheetNamesDifferentCase_throws(final ExportDest dest) {
         // "Dup" and "DUP" are one sheet to a workbook, so the export is rejected up front rather than failing
         // later when POI refuses the second sheet - and the message names the offender.
         final List<Employee> some = Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, null, null, "Engineering"));
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final PxlDataException exception = assertThrows(PxlDataException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .sheet(Employee.class, some, "Dup")
                         .sheet(Employee.class, new ArrayList<Employee>(), "DUP")
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
 
         assertThat(exception).hasMessageContaining("DUP");
     }
 
-    @Test
-    public void exportSampleWorkbook_duplicateSheetNamesDifferentCase_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSampleWorkbook_duplicateSheetNamesDifferentCase_throws(final ExportDest dest) {
         // A sample export names its sheets the same way, so it is checked the same way.
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final PxlDataException exception = assertThrows(PxlDataException.class, () ->
-                pxl.exportSampleExcel()
+                emit(pxl.exportSampleExcel()
                         .sheet(Employee.class, "Dup")
-                        .sheet(Employee.class, "DUP")
-                        .toStream(outputStream));
+                        .sheet(Employee.class, "DUP"), dest, testInfo));
 
         assertThat(exception).hasMessageContaining("DUP");
     }
 
-    @Test
-    public void exportWorkbookObject_duplicateSheetNamesDifferentCase_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportWorkbookObject_duplicateSheetNamesDifferentCase_throws(final ExportDest dest) {
         // The workbook form is checked on the names its @PxlSheet fields resolve to. Field order is not
         // guaranteed, so either of the two names may be reported as the duplicate.
         final List<Employee> some = Arrays.asList(
@@ -480,12 +482,10 @@ public class PxlExceptionTests {
         workbook.setEmployees(some);
         workbook.setStaff(some);
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final PxlDataException exception = assertThrows(PxlDataException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .workbook(workbook)
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
 
         assertThat(exception.getMessage().toUpperCase(Locale.ROOT)).contains("EMPLOYEES");
     }
@@ -494,53 +494,49 @@ public class PxlExceptionTests {
     // export: mixing workbook() and sheet() (mutually exclusive) -> exception
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportBuilder_workbookAndSheetMixed_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportBuilder_workbookAndSheetMixed_throws(final ExportDest dest) {
         final GroupedWorkbook workbook = new GroupedWorkbook();
         final List<Employee> some = Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, null, null, "Engineering"));
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         // Specifying both workbook(Object) and sheet(...) -> exception
         assertThrows(PxlArgumentException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .workbook(workbook)
-                        .sheet(Employee.class, some, "People")
-                        .toStream(outputStream));
+                        .sheet(Employee.class, some, "People"), dest, testInfo));
     }
 
-    @Test
-    public void exportSampleBuilder_workbookAndSheetMixed_throws() {
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSampleBuilder_workbookAndSheetMixed_throws(final ExportDest dest) {
         // Specifying both workbook(Class) and sheet(...) -> exception
         assertThrows(PxlArgumentException.class, () ->
-                pxl.exportSampleExcel()
+                emit(pxl.exportSampleExcel()
                         .workbook(AllTypesWorkbook.class)
-                        .sheet(Employee.class, "People")
-                        .toStream(outputStream));
+                        .sheet(Employee.class, "People"), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
     // export: neither workbook() nor sheet() specified -> exception
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportBuilder_nothingSpecified_throws() {
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportBuilder_nothingSpecified_throws(final ExportDest dest) {
         // Neither workbook(...) nor sheet(...) specified -> exception
         assertThrows(PxlArgumentException.class, () ->
-                pxl.exportExcel()
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                emit(pxl.exportExcel()
+                        .override(noValidationOption()), dest, testInfo));
     }
 
-    @Test
-    public void exportSampleBuilder_nothingSpecified_throws() {
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSampleBuilder_nothingSpecified_throws(final ExportDest dest) {
         // Neither workbook(...) nor sheet(...) specified -> exception
         assertThrows(PxlArgumentException.class, () ->
-                pxl.exportSampleExcel()
-                        .toStream(outputStream));
+                emit(pxl.exportSampleExcel(), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
@@ -579,19 +575,21 @@ public class PxlExceptionTests {
     // import: wrong password
     // ------------------------------------------------------------------
 
-    @Test
-    public void importExcel_wrongPassword_throws() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_wrongPassword_throws(final ExportDest dest) throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, null, null, "Engineering");
 
         final PxlExportWorkbookOption exportOption = PxlExportWorkbookOption.builder()
                 .exportDataValidation(false)
                 .exportPassword("secret")
                 .build();
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        // The password has to be handed to emit as well: toWorkbook() gives the workbook up unencrypted by
+        // contract, so without it the WORKBOOK run would write plaintext - which opens under any password at all
+        // and would leave this test asserting nothing.
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, Arrays.asList(alice), "People")
-                .override(exportOption)
-                .toFile(excelFile);
+                .override(exportOption), dest, testInfo, XLSX, "secret");
 
         final PxlImportWorkbookOption importOption = PxlImportWorkbookOption.builder()
                 .importPassword("wrong")
@@ -601,24 +599,23 @@ public class PxlExceptionTests {
                 pxl.importExcel()
                         .override(importOption)
                         .sheet(Employee.class, Arrays.asList("People"))
-                        .fromFile(excelFile));
+                        .fromStream(new ByteArrayInputStream(bytes)));
     }
 
     // ------------------------------------------------------------------
     // Stream reader: formula cells cannot be evaluated
     // ------------------------------------------------------------------
 
-    @Test
-    public void importStreamReader_formulaCell_throws() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importStreamReader_formulaCell_throws(final ExportDest dest) throws Exception {
         final FormulaRow row = new FormulaRow();
         row.setLabel("calc");
         row.setFormula("=2+3");
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final PxlImportSheetOption sheetOption = PxlImportSheetOption.builder()
                 .importHeaderRowIndex(1)
@@ -633,7 +630,7 @@ public class PxlExceptionTests {
                 pxl.importExcel()
                         .override(workbookOption)
                         .sheet(FormulaRow.class, Arrays.asList("Formula"))
-                        .fromFile(excelFile));
+                        .fromStream(new ByteArrayInputStream(bytes)));
     }
 
     // ------------------------------------------------------------------
@@ -794,8 +791,9 @@ public class PxlExceptionTests {
             "javaDate", "localDate", "localTime", "localDateTime", "zonedDateTime", "offsetTime", "offsetDateTime",
             "duration", "period"};
 
-    @Test
-    public void scalarTemporalTypes_invalidExportSample_throwCellCodec() throws PxlNullPointerException {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void scalarTemporalTypes_invalidExportSample_throwCellCodec(final ExportDest dest) throws PxlNullPointerException {
         for (final String fieldName : NUMERIC_TEMPORAL_FIELD_NAMES) {
             final PxlExportColumnOption columnOption = PxlExportColumnOption.builder()
                     .fieldName(fieldName)
@@ -809,10 +807,9 @@ public class PxlExceptionTests {
                     .build();
 
             assertThrows(PxlCellCodecException.class,
-                    () -> pxl.exportSampleExcel()
+                    () -> emit(pxl.exportSampleExcel()
                             .sheet(AllTypesRow.class, "Sample")
-                            .override(workbookOption)
-                            .toWorkbook(),
+                            .override(workbookOption), dest, testInfo),
                     fieldName + " field: an invalid exportSample must be rejected with PxlCellCodecException");
         }
     }
@@ -856,19 +853,18 @@ public class PxlExceptionTests {
                 importTyped(sheetWithValue("U", "x"), UnsupportedTypeRow.class));
     }
 
-    @Test
-    public void exportGrouping_fieldTypo_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportGrouping_fieldTypo_throws(final ExportDest dest) {
         final GroupingTypoWorkbook workbook = new GroupingTypoWorkbook();
         workbook.setWorkbookName("G");
         workbook.setEmployees(Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering")));
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlArgumentException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .workbook(workbook)
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
@@ -1050,6 +1046,7 @@ public class PxlExceptionTests {
                 .sheet(Employee.class, null));
     }
 
+    // Not swept: these are rejected at the config step, before any terminal is in play.
     @Test
     public void exportExcelBuilder_invalidArgs_throwPxlExceptions() {
         assertThrows(PxlNullPointerException.class, () -> pxl.exportExcel()

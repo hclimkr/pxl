@@ -14,15 +14,18 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.emit;
+import static io.github.hclimkr.pxl.tcdata.TestExports.workbookOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -32,6 +35,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Verifies header/data row and column indices (export+import) and the guards on them, hidden row/column exclusion,
  * exportColumnFilter, sheet-level exportEnabled/exportSampleEnabled/importEnabled, sheet names (aliases name={...}
  * and the fall back to the field name), importLastDataRowIndex bounds, and exportRowHeightInPoints.
+ * <p>
+ * Every test that exports is swept across {@link ExportDest}: what a sheet option writes has to be the same on
+ * every terminal. The import-only and option-accessor tests never reach a terminal at all.
  */
 public class PxlSheetOptionTests {
 
@@ -49,13 +55,10 @@ public class PxlSheetOptionTests {
         this.testInfo = testInfo;
     }
 
-    private static byte[] exportWorkbookBytes(final Object workbook) throws Exception {
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+    private byte[] exportWorkbookBytes(final Object workbook, final ExportDest dest) throws Exception {
+        return emit(pxl.exportExcel()
                 .workbook(workbook)
-                .override(noValidationOption())
-                .toStream(outputStream);
-        return outputStream.toByteArray();
+                .override(noValidationOption()), dest, testInfo);
     }
 
     private static List<Employee> twoEmployees() {
@@ -68,20 +71,17 @@ public class PxlSheetOptionTests {
     // Header/data row and column indices (export + import) round-trip
     // ------------------------------------------------------------------
 
-    @Test
-    public void sheetIndexShift_customIndices_roundTrips() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetIndexShift_customIndices_roundTrips(final ExportDest dest) throws Exception {
         final IndexShiftWorkbook workbook = new IndexShiftWorkbook();
         workbook.setWorkbookName("Shifted");
         workbook.setData(twoEmployees());
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .workbook(workbook)
-                .override(noValidationOption())
-                .toFile(excelFile);
+        final byte[] bytes = exportWorkbookBytes(workbook, dest);
 
         // verify export positions: header row is 1-based 3 = 0-based 2, first data column is 1-based 2 = 0-based 1
-        try (Workbook poi = WorkbookFactory.create(excelFile)) {
+        try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             final Sheet sheet = poi.getSheet("Data");
             assertThat(sheet.getRow(0)).as("empty row (0) above the header row").isNull();
             final Row header = sheet.getRow(2);
@@ -94,7 +94,7 @@ public class PxlSheetOptionTests {
         final IndexShiftWorkbook imported = pxl.importExcel()
                 .workbookName("Shifted")
                 .workbook(IndexShiftWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getData()).hasSize(2);
         assertThat(imported.getData()).extracting(Employee::getName).containsExactly("Alice", "Bob");
@@ -230,36 +230,35 @@ public class PxlSheetOptionTests {
     // exportColumnFilter (auto filter)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportColumnFilter_autoFilterApplied() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportColumnFilter_autoFilterApplied(final ExportDest dest) throws Exception {
         final ColumnFilterWorkbook workbook = new ColumnFilterWorkbook();
         workbook.setWorkbookName("Filter");
         workbook.setRows(twoEmployees());
 
-        final byte[] bytes = exportWorkbookBytes(workbook);
+        final byte[] bytes = exportWorkbookBytes(workbook, dest);
         try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             final XSSFSheet sheet = (XSSFSheet) poi.getSheet("Filtered");
             assertThat(sheet.getCTWorksheet().isSetAutoFilter()).as("auto filter should be set").isTrue();
         }
     }
 
-    @Test
-    public void exportColumnFilter_notRequested_noAutoFilter() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportColumnFilter_notRequested_noAutoFilter(final ExportDest dest) throws Exception {
         // Without this the test above would pass just as well if every sheet were filtered regardless of the flag.
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), "People")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("People");
             assertThat(sheet.getCTWorksheet().isSetAutoFilter()).as("the flag defaults to false").isFalse();
-        } finally {
-            workbook.close();
         }
     }
 
-    @Test
-    public void exportColumnFilter_sheetOptionFalse_overridesAnnotation() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportColumnFilter_sheetOptionFalse_overridesAnnotation(final ExportDest dest) throws Exception {
         final ColumnFilterWorkbook workbook = new ColumnFilterWorkbook();
         workbook.setWorkbookName("Filter");
         workbook.setRows(twoEmployees());
@@ -272,20 +271,17 @@ public class PxlSheetOptionTests {
                         .build()))
                 .build();
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+        try (Workbook poi = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(option)
-                .toStream(outputStream);
-
-        try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+                .override(option), dest, testInfo)) {
             final XSSFSheet sheet = (XSSFSheet) poi.getSheet("Filtered");
             assertThat(sheet.getCTWorksheet().isSetAutoFilter()).as("the option outranks the annotation").isFalse();
         }
     }
 
-    @Test
-    public void exportColumnFilter_sheetFormOption_spansHeaderAndDataRows() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportColumnFilter_sheetFormOption_spansHeaderAndDataRows(final ExportDest dest) throws Exception {
         // The sheet form carries no @PxlSheet, so the option is the only source of the flag. Employee binds seven
         // columns and two rows follow the header, which puts the filter over A1:G3.
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
@@ -295,22 +291,19 @@ public class PxlSheetOptionTests {
                         .build()))
                 .build();
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), "People")
-                .override(option)
-                .toWorkbook();
-        try {
+                .override(option), dest, testInfo)) {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("People");
             assertThat(sheet.getCTWorksheet().getAutoFilter().getRef())
                     .as("the filter should span the header row and both data rows")
                     .isEqualTo("A1:G3");
-        } finally {
-            workbook.close();
         }
     }
 
-    @Test
-    public void exportColumnFilter_shiftedIndices_followsHeaderRowAndFirstColumn() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportColumnFilter_shiftedIndices_followsHeaderRowAndFirstColumn(final ExportDest dest) throws Exception {
         // With the header pushed to 1-based row 3 and the columns to 1-based column 2, the filter has to start
         // where the sheet actually begins (B3) rather than at A1, and end on the last written row and column (H5).
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
@@ -322,15 +315,11 @@ public class PxlSheetOptionTests {
                         .build()))
                 .build();
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), "People")
-                .override(option)
-                .toWorkbook();
-        try {
+                .override(option), dest, testInfo)) {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("People");
             assertThat(sheet.getCTWorksheet().getAutoFilter().getRef()).isEqualTo("B3:H5");
-        } finally {
-            workbook.close();
         }
     }
 
@@ -338,16 +327,13 @@ public class PxlSheetOptionTests {
     // Sheet-level exportSampleEnabled
     // ------------------------------------------------------------------
 
-    @Test
-    public void sheetSampleDisabled_excludedFromSample() throws Exception {
-        final Workbook workbook = pxl.exportSampleExcel()
-                .workbook(SampleToggleWorkbook.class)
-                .toWorkbook();
-        try {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetSampleDisabled_excludedFromSample(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportSampleExcel()
+                .workbook(SampleToggleWorkbook.class), dest, testInfo)) {
             assertThat(workbook.getSheet("WithSample")).as("sheet included in sample").isNotNull();
             assertThat(workbook.getSheet("NoSample")).as("exportSampleEnabled=false sheet is excluded from sample").isNull();
-        } finally {
-            workbook.close();
         }
     }
 
@@ -355,23 +341,20 @@ public class PxlSheetOptionTests {
     // Sheet-level importEnabled
     // ------------------------------------------------------------------
 
-    @Test
-    public void sheetImportDisabled_notImported() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetImportDisabled_notImported(final ExportDest dest) throws Exception {
         final ImportToggleWorkbook source = new ImportToggleWorkbook();
         source.setWorkbookName("Toggle");
         source.setEnabled(twoEmployees());
         source.setDisabled(twoEmployees());
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .workbook(source)
-                .override(noValidationOption())
-                .toFile(excelFile);
+        final byte[] bytes = exportWorkbookBytes(source, dest);
 
         final ImportToggleWorkbook imported = pxl.importExcel()
                 .workbookName("Toggle")
                 .workbook(ImportToggleWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getEnabled()).as("enabled sheet is imported").hasSize(2);
         assertThat(imported.getDisabled()).as("importEnabled=false sheet is not imported").isNull();
@@ -381,18 +364,17 @@ public class PxlSheetOptionTests {
     // importLastDataRowIndex bounds
     // ------------------------------------------------------------------
 
-    @Test
-    public void importLastDataRowIndex_limitsRows() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importLastDataRowIndex_limitsRows(final ExportDest dest) throws Exception {
         // export 3 people
-        final File excelFile = TestPaths.exportFile(testInfo);
         final List<Employee> three = Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, null, Grade.A, "Engineering"),
                 Fixtures.employee("Bob", 42, "72000", false, null, Grade.B, "Sales"),
                 Fixtures.employee("Carol", 35, "68000", true, null, Grade.A, "Finance"));
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, three, "People")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         // 1-based: header row 1, data 2/3/4. importLastDataRowIndex=3 -> only data 2..3 (Alice, Bob)
         final PxlImportSheetOption sheetOption = PxlImportSheetOption.builder()
@@ -405,7 +387,7 @@ public class PxlSheetOptionTests {
         final List<Employee> rows = pxl.importExcel()
                 .override(option)
                 .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(rows).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
@@ -414,13 +396,14 @@ public class PxlSheetOptionTests {
     // exportRowHeightInPoints
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportRowHeight_customHeight_applied() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportRowHeight_customHeight_applied(final ExportDest dest) throws Exception {
         final RowHeightWorkbook workbook = new RowHeightWorkbook();
         workbook.setWorkbookName("Heights");
         workbook.setRows(twoEmployees());
 
-        final byte[] bytes = exportWorkbookBytes(workbook);
+        final byte[] bytes = exportWorkbookBytes(workbook, dest);
         try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             final Sheet sheet = poi.getSheet("Tall");
             // the data row (0-based 1) height should be near 40pt
@@ -496,8 +479,9 @@ public class PxlSheetOptionTests {
     // Explicit exportLastDataRowIndex caps the number of written data rows
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportLastDataRowIndex_capsWrittenRows() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportLastDataRowIndex_capsWrittenRows(final ExportDest dest) throws Exception {
         // A non-default (explicit) exportLastDataRowIndex exercises the 1-based -> 0-based bound calculation
         // and limits how many data rows are actually written, below the number of row objects.
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
@@ -509,16 +493,14 @@ public class PxlSheetOptionTests {
                 Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales"),
                 Fixtures.employee("Carol", 35, "68000", true, LocalDate.of(2019, 3, 20), Grade.A, "Finance"));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, employees, "People")
-                .override(option)
-                .toFile(excelFile);
+                .override(option), dest, testInfo);
 
         // header at 0-based 0, first data row at 0-based 1, exportLastDataRowIndex=2 -> exclusive bound 2 -> only row 1
         final List<Employee> imported = pxl.importExcel()
                 .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
         assertThat(imported).extracting(Employee::getName).containsExactly("Alice");
     }
 
@@ -526,19 +508,16 @@ public class PxlSheetOptionTests {
     // name(): the field name stands in when none is declared; only the first alias is written
     // ------------------------------------------------------------------
 
-    @Test
-    public void sheetName_notDeclared_usesFieldName() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetName_notDeclared_usesFieldName(final ExportDest dest) throws Exception {
         final FieldNameSheetWorkbook workbook = new FieldNameSheetWorkbook();
         workbook.setWorkbookName("ByFieldName");
         workbook.setEmployees(twoEmployees());
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .workbook(workbook)
-                .override(noValidationOption())
-                .toFile(excelFile);
+        final byte[] bytes = exportWorkbookBytes(workbook, dest);
 
-        try (Workbook poi = WorkbookFactory.create(excelFile)) {
+        try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             assertThat(poi.getSheet("employees")).as("the field name becomes the sheet name").isNotNull();
         }
 
@@ -546,19 +525,20 @@ public class PxlSheetOptionTests {
         final FieldNameSheetWorkbook imported = pxl.importExcel()
                 .workbookName("ByFieldName")
                 .workbook(FieldNameSheetWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getEmployees()).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
 
-    @Test
-    public void sheetName_aliasArray_exportsUnderTheFirstName() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetName_aliasArray_exportsUnderTheFirstName(final ExportDest dest) throws Exception {
         // Import accepts any of the aliases, but a sheet can only be written under one of them: the first.
         final AliasSheetWorkbook workbook = new AliasSheetWorkbook();
         workbook.setWorkbookName("Aliased");
         workbook.setData(twoEmployees());
 
-        final byte[] bytes = exportWorkbookBytes(workbook);
+        final byte[] bytes = exportWorkbookBytes(workbook, dest);
         try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             assertThat(poi.getSheetName(0)).isEqualTo("Crew");
             assertThat(poi.getSheet("Employee")).as("the remaining aliases are not written as sheets").isNull();
@@ -569,50 +549,51 @@ public class PxlSheetOptionTests {
     // Sheet row/column index guards (export). The import side of the same guards lives in PxlExcelImportTests.
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportSheetIndices_invalidCombination_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSheetIndices_invalidCombination_throws(final ExportDest dest) {
         // A negative index.
-        assertThrows(PxlDataException.class, () -> exportWithSheetOption(PxlExportSheetOption.builder()
+        assertThrows(PxlDataException.class, () -> exportWithSheetOption(dest, PxlExportSheetOption.builder()
                 .exportHeaderRowIndex(-1)
                 .build()));
 
         // The first data row must come after the header row.
-        assertThrows(PxlDataException.class, () -> exportWithSheetOption(PxlExportSheetOption.builder()
+        assertThrows(PxlDataException.class, () -> exportWithSheetOption(dest, PxlExportSheetOption.builder()
                 .exportHeaderRowIndex(3)
                 .exportFirstDataRowIndex(2)
                 .build()));
 
         // The row range must not be inverted.
-        assertThrows(PxlDataException.class, () -> exportWithSheetOption(PxlExportSheetOption.builder()
+        assertThrows(PxlDataException.class, () -> exportWithSheetOption(dest, PxlExportSheetOption.builder()
                 .exportFirstDataRowIndex(5)
                 .exportLastDataRowIndex(3)
                 .build()));
 
         // Neither must the column range.
-        assertThrows(PxlDataException.class, () -> exportWithSheetOption(PxlExportSheetOption.builder()
+        assertThrows(PxlDataException.class, () -> exportWithSheetOption(dest, PxlExportSheetOption.builder()
                 .exportFirstDataColumnIndex(5)
                 .exportLastDataColumnIndex(3)
                 .build()));
     }
 
-    private static void exportWithSheetOption(final PxlExportSheetOption sheetOption) throws Exception {
+    private void exportWithSheetOption(final ExportDest dest, final PxlExportSheetOption sheetOption) throws Exception {
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
                 .exportDataValidation(false)
                 .exportSheetOptions(Arrays.asList(sheetOption))
                 .build();
 
-        pxl.exportExcel()
+        emit(pxl.exportExcel()
                 .sheet(Employee.class, twoEmployees(), "People")
-                .override(option)
-                .toStream(new ByteArrayOutputStream());
+                .override(option), dest, testInfo);
     }
 
     // ------------------------------------------------------------------
     // Sheet-level exportEnabled / importEnabled through a runtime option (the annotation paths are covered above)
     // ------------------------------------------------------------------
 
-    @Test
-    public void sheetExportDisabled_sheetOption_excludesSheet() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetExportDisabled_sheetOption_excludesSheet(final ExportDest dest) throws Exception {
         final SampleToggleWorkbook workbook = new SampleToggleWorkbook();
         workbook.setWorkbookName("Toggle");
         workbook.setWithSample(twoEmployees());
@@ -627,30 +608,23 @@ public class PxlSheetOptionTests {
                         .build()))
                 .build();
 
-        final Workbook poiWorkbook = pxl.exportExcel()
+        try (Workbook poiWorkbook = workbookOf(pxl.exportExcel()
                 .workbook(workbook)
-                .override(option)
-                .toWorkbook();
-        try {
+                .override(option), dest, testInfo)) {
             assertThat(poiWorkbook.getSheet("WithSample")).isNotNull();
             assertThat(poiWorkbook.getSheet("NoSample")).as("exportEnabled=false from the option").isNull();
-        } finally {
-            poiWorkbook.close();
         }
     }
 
-    @Test
-    public void sheetImportDisabled_sheetOptionEnables_isImported() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetImportDisabled_sheetOptionEnables_isImported(final ExportDest dest) throws Exception {
         final ImportToggleWorkbook source = new ImportToggleWorkbook();
         source.setWorkbookName("Toggle");
         source.setEnabled(twoEmployees());
         source.setDisabled(twoEmployees());
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
-                .workbook(source)
-                .override(noValidationOption())
-                .toFile(excelFile);
+        final byte[] bytes = exportWorkbookBytes(source, dest);
 
         // The sheet declares importEnabled=false; the option puts it back.
         final PxlImportWorkbookOption option = PxlImportWorkbookOption.builder()
@@ -664,7 +638,7 @@ public class PxlSheetOptionTests {
                 .workbookName("Toggle")
                 .override(option)
                 .workbook(ImportToggleWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getEnabled()).hasSize(2);
         assertThat(imported.getDisabled()).as("the option outranks importEnabled=false").hasSize(2);
@@ -674,15 +648,16 @@ public class PxlSheetOptionTests {
     // exportSampleEnabled governs the sample export alone
     // ------------------------------------------------------------------
 
-    @Test
-    public void sheetSampleDisabled_dataExport_stillWritesSheet() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void sheetSampleDisabled_dataExport_stillWritesSheet(final ExportDest dest) throws Exception {
         // The counterpart of sheetSampleDisabled_excludedFromSample: the flag has no say over a data export.
         final SampleToggleWorkbook workbook = new SampleToggleWorkbook();
         workbook.setWorkbookName("Toggle");
         workbook.setWithSample(twoEmployees());
         workbook.setNoSample(twoEmployees());
 
-        final byte[] bytes = exportWorkbookBytes(workbook);
+        final byte[] bytes = exportWorkbookBytes(workbook, dest);
         try (Workbook poi = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             assertThat(poi.getSheet("WithSample")).isNotNull();
             assertThat(poi.getSheet("NoSample")).as("exportSampleEnabled=false is not exportEnabled=false").isNotNull();

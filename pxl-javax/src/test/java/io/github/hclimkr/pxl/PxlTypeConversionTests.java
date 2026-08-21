@@ -11,10 +11,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +23,8 @@ import java.time.*;
 import java.util.*;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.emit;
+import static io.github.hclimkr.pxl.tcdata.TestExports.workbookOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -50,19 +53,17 @@ public class PxlTypeConversionTests {
     }
 
     // Result of exporting an AllTypesRow list to a real file as a single sheet and importing it back. (file name = test method name)
-    private List<AllTypesRow> roundTrip(final List<AllTypesRow> rows) throws Exception {
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+    private List<AllTypesRow> roundTrip(final ExportDest dest, final List<AllTypesRow> rows) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(AllTypesRow.class, rows, "Types")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
         return pxl.importExcel()
                 .sheet(AllTypesRow.class, Arrays.asList("Types"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
     }
 
-    private AllTypesRow roundTrip1(final AllTypesRow row) throws Exception {
-        return roundTrip(Arrays.asList(row)).get(0);
+    private AllTypesRow roundTrip1(final ExportDest dest, final AllTypesRow row) throws Exception {
+        return roundTrip(dest, Arrays.asList(row)).get(0);
     }
 
     private static String repeat(final String unit, final int count) {
@@ -108,8 +109,9 @@ public class PxlTypeConversionTests {
     // Round-trip: various values per type
     // ==================================================================
 
-    @Test
-    public void integerTypes_boundaryValues_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void integerTypes_boundaryValues_roundTrip(final ExportDest dest) throws Exception {
         final AllTypesRow max = Fixtures.baseAllTypesRow();
         max.setPrimByte(Byte.MAX_VALUE);
         max.setWrapByte(Byte.MAX_VALUE);
@@ -136,7 +138,7 @@ public class PxlTypeConversionTests {
         zero.setPrimInt(0);
         zero.setWrapLong(0L);
 
-        final List<AllTypesRow> out = roundTrip(Arrays.asList(max, min, zero));
+        final List<AllTypesRow> out = roundTrip(dest, Arrays.asList(max, min, zero));
 
         assertThat(out.get(0).getPrimByte()).isEqualTo(Byte.MAX_VALUE);
         assertThat(out.get(0).getWrapByte()).isEqualTo(Byte.MAX_VALUE);
@@ -158,15 +160,16 @@ public class PxlTypeConversionTests {
         assertThat(out.get(2).getWrapLong()).isEqualTo(0L);
     }
 
-    @Test
-    public void integerWrappers_null_roundTripsAsNull() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void integerWrappers_null_roundTripsAsNull(final ExportDest dest) throws Exception {
         final AllTypesRow row = Fixtures.baseAllTypesRow();
         row.setWrapByte(null);
         row.setWrapShort(null);
         row.setWrapInt(null);
         row.setWrapLong(null);
 
-        final AllTypesRow out = roundTrip1(row);
+        final AllTypesRow out = roundTrip1(dest, row);
 
         assertThat(out.getWrapByte()).isNull();
         assertThat(out.getWrapShort()).isNull();
@@ -175,8 +178,9 @@ public class PxlTypeConversionTests {
         assertThat(out.getPrimInt()).isEqualTo(row.getPrimInt());
     }
 
-    @Test
-    public void floatTypes_variousValues_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void floatTypes_variousValues_roundTrip(final ExportDest dest) throws Exception {
         final AllTypesRow a = Fixtures.baseAllTypesRow();
         a.setPrimDouble(0.0);
         a.setWrapDouble(-2.25);
@@ -193,7 +197,7 @@ public class PxlTypeConversionTests {
         nulls.setWrapDouble(null);
         nulls.setWrapFloat(null);
 
-        final List<AllTypesRow> out = roundTrip(Arrays.asList(a, b, nulls));
+        final List<AllTypesRow> out = roundTrip(dest, Arrays.asList(a, b, nulls));
 
         assertThat(out.get(0).getPrimDouble()).isEqualTo(0.0);
         assertThat(out.get(0).getWrapDouble()).isEqualTo(-2.25);
@@ -209,8 +213,9 @@ public class PxlTypeConversionTests {
         assertThat(out.get(2).getWrapFloat()).isNull();
     }
 
-    @Test
-    public void bigNumbers_variousValues_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void bigNumbers_variousValues_roundTrip(final ExportDest dest) throws Exception {
         final AllTypesRow big = Fixtures.baseAllTypesRow();
         big.setBigInt(new BigInteger("123456789012345678901234567890"));
         big.setBigDec(new BigDecimal("3.14159265358979323846"));
@@ -227,7 +232,7 @@ public class PxlTypeConversionTests {
         nulls.setBigInt(null);
         nulls.setBigDec(null);
 
-        final List<AllTypesRow> out = roundTrip(Arrays.asList(big, neg, zeroScale, nulls));
+        final List<AllTypesRow> out = roundTrip(dest, Arrays.asList(big, neg, zeroScale, nulls));
 
         assertThat(out.get(0).getBigInt()).isEqualTo(new BigInteger("123456789012345678901234567890"));
         assertThat(out.get(0).getBigDec()).isEqualByComparingTo(new BigDecimal("3.14159265358979323846"));
@@ -239,8 +244,9 @@ public class PxlTypeConversionTests {
         assertThat(out.get(3).getBigDec()).isNull();
     }
 
-    @Test
-    public void boolean_trueFalseNull_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void boolean_trueFalseNull_roundTrip(final ExportDest dest) throws Exception {
         final AllTypesRow t = Fixtures.baseAllTypesRow();
         t.setPrimBool(true);
         t.setWrapBool(Boolean.TRUE);
@@ -250,7 +256,7 @@ public class PxlTypeConversionTests {
         final AllTypesRow n = Fixtures.baseAllTypesRow();
         n.setWrapBool(null);
 
-        final List<AllTypesRow> out = roundTrip(Arrays.asList(t, f, n));
+        final List<AllTypesRow> out = roundTrip(dest, Arrays.asList(t, f, n));
 
         assertThat(out.get(0).isPrimBool()).isTrue();
         assertThat(out.get(0).getWrapBool()).isTrue();
@@ -259,8 +265,9 @@ public class PxlTypeConversionTests {
         assertThat(out.get(2).getWrapBool()).isNull();
     }
 
-    @Test
-    public void char_variousValues_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void char_variousValues_roundTrip(final ExportDest dest) throws Exception {
         final AllTypesRow letter = Fixtures.baseAllTypesRow();
         letter.setPrimChar('Z');
         letter.setWrapChar('a');
@@ -273,7 +280,7 @@ public class PxlTypeConversionTests {
         final AllTypesRow nullChar = Fixtures.baseAllTypesRow();
         nullChar.setWrapChar(null);
 
-        final List<AllTypesRow> out = roundTrip(Arrays.asList(letter, digit, symbol, nullChar));
+        final List<AllTypesRow> out = roundTrip(dest, Arrays.asList(letter, digit, symbol, nullChar));
 
         assertThat(out.get(0).getPrimChar()).isEqualTo('Z');
         assertThat(out.get(0).getWrapChar()).isEqualTo('a');
@@ -284,8 +291,9 @@ public class PxlTypeConversionTests {
         assertThat(out.get(3).getWrapChar()).isNull();
     }
 
-    @Test
-    public void string_specialCases_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void string_specialCases_roundTrip(final ExportDest dest) throws Exception {
         final String longText = repeat("ab", 150);
 
         final AllTypesRow plain = Fixtures.baseAllTypesRow();
@@ -305,7 +313,7 @@ public class PxlTypeConversionTests {
         final AllTypesRow longRow = Fixtures.baseAllTypesRow();
         longRow.setText(longText);
 
-        final List<AllTypesRow> out = roundTrip(Arrays.asList(
+        final List<AllTypesRow> out = roundTrip(dest, Arrays.asList(
                 plain, leadingZero, innerSpace, outerSpace, onlySpaces, empty, symbols, longRow));
 
         assertThat(out.get(0).getText()).isEqualTo("Hello, World!");
@@ -318,8 +326,9 @@ public class PxlTypeConversionTests {
         assertThat(out.get(7).getText()).isEqualTo(longText);
     }
 
-    @Test
-    public void enum_allConstantsAndNull_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void enum_allConstantsAndNull_roundTrip(final ExportDest dest) throws Exception {
         final List<AllTypesRow> rows = new ArrayList<>();
         for (final Grade grade : Grade.values()) {
             final AllTypesRow row = Fixtures.baseAllTypesRow();
@@ -336,7 +345,7 @@ public class PxlTypeConversionTests {
         nullEnums.setCategory(null);
         rows.add(nullEnums);
 
-        final List<AllTypesRow> out = roundTrip(rows);
+        final List<AllTypesRow> out = roundTrip(dest, rows);
 
         final Grade[] grades = Grade.values();
         for (int i = 0; i < grades.length; i++) {
@@ -351,8 +360,9 @@ public class PxlTypeConversionTests {
         assertThat(last.getCategory()).isNull();
     }
 
-    @Test
-    public void dateTime_variousValues_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void dateTime_variousValues_roundTrip(final ExportDest dest) throws Exception {
         final ZoneId zone = ZoneId.systemDefault();
 
         final LocalDateTime midnight = LocalDateTime.of(2000, 1, 1, 0, 0, 0);
@@ -388,7 +398,7 @@ public class PxlTypeConversionTests {
         nulls.setDuration(null);
         nulls.setPeriod(null);
 
-        final List<AllTypesRow> out = roundTrip(Arrays.asList(a, b, nulls));
+        final List<AllTypesRow> out = roundTrip(dest, Arrays.asList(a, b, nulls));
 
         assertThat(out.get(0).getJavaDate()).isEqualTo(a.getJavaDate());
         assertThat(out.get(0).getLocalDate()).isEqualTo(LocalDate.of(2000, 1, 1));
@@ -414,8 +424,9 @@ public class PxlTypeConversionTests {
         assertThat(out.get(2).getPeriod()).isNull();
     }
 
-    @Test
-    public void customObject_variousValues_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void customObject_variousValues_roundTrip(final ExportDest dest) throws Exception {
         final AllTypesRow a = Fixtures.baseAllTypesRow();
         a.setPoint(new Point(-3, -7));
         a.setMoney(new Money("EUR", 999999999L));
@@ -426,7 +437,7 @@ public class PxlTypeConversionTests {
         nulls.setPoint(null);
         nulls.setMoney(null);
 
-        final List<AllTypesRow> out = roundTrip(Arrays.asList(a, b, nulls));
+        final List<AllTypesRow> out = roundTrip(dest, Arrays.asList(a, b, nulls));
 
         assertThat(out.get(0).getPoint().getX()).isEqualTo(-3);
         assertThat(out.get(0).getPoint().getY()).isEqualTo(-7);
@@ -438,8 +449,9 @@ public class PxlTypeConversionTests {
         assertThat(out.get(2).getMoney()).isNull();
     }
 
-    @Test
-    public void collection_positionFidelity_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void collection_positionFidelity_roundTrip(final ExportDest dest) throws Exception {
         final AllTypesRow multi = Fixtures.baseAllTypesRow();
         multi.setStringList(Arrays.asList("Apple", "Banana", "Cherry"));
         multi.setIntList(Arrays.asList(10, 20, 30));
@@ -455,7 +467,7 @@ public class PxlTypeConversionTests {
         final AllTypesRow edgeNull = Fixtures.baseAllTypesRow();
         edgeNull.setStringList(Arrays.asList(null, "B", null));
 
-        final List<AllTypesRow> out = roundTrip(Arrays.asList(multi, single, innerNull, edgeNull));
+        final List<AllTypesRow> out = roundTrip(dest, Arrays.asList(multi, single, innerNull, edgeNull));
 
         assertThat(out.get(0).getStringList()).containsExactly("Apple", "Banana", "Cherry");
         assertThat(out.get(0).getIntList()).containsExactly(10, 20, 30);
@@ -468,8 +480,9 @@ public class PxlTypeConversionTests {
         assertThat(out.get(3).getStringList()).containsExactly(null, "B", null);
     }
 
-    @Test
-    public void collection_emptyAndNull_roundTripsAsNull() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void collection_emptyAndNull_roundTripsAsNull(final ExportDest dest) throws Exception {
         final AllTypesRow empty = Fixtures.baseAllTypesRow();
         empty.setStringList(new ArrayList<>());
         empty.setIntList(new ArrayList<>());
@@ -479,7 +492,7 @@ public class PxlTypeConversionTests {
         nulls.setIntList(null);
         nulls.setGradeList(null);
 
-        final List<AllTypesRow> out = roundTrip(Arrays.asList(empty, nulls));
+        final List<AllTypesRow> out = roundTrip(dest, Arrays.asList(empty, nulls));
 
         // An empty collection is exported as an empty cell and becomes null on import.
         assertThat(out.get(0).getStringList()).isNull();
@@ -488,8 +501,9 @@ public class PxlTypeConversionTests {
         assertThat(out.get(1).getStringList()).isNull();
     }
 
-    @Test
-    public void allNullableFields_null_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void allNullableFields_null_roundTrip(final ExportDest dest) throws Exception {
         final AllTypesRow row = Fixtures.baseAllTypesRow();
         row.setText(null);
         row.setLeadingZero(null);
@@ -520,7 +534,7 @@ public class PxlTypeConversionTests {
         row.setIntList(null);
         row.setGradeList(null);
 
-        final AllTypesRow out = roundTrip1(row);
+        final AllTypesRow out = roundTrip1(dest, row);
 
         assertThat(out.getText()).isNull();
         assertThat(out.getWrapInt()).isNull();
@@ -713,22 +727,21 @@ public class PxlTypeConversionTests {
         assertThat(row.getPer()).isEqualTo(Period.of(1, 6, 0));
     }
 
-    @Test
-    public void long_withPattern_preservesLargeValue() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void long_withPattern_preservesLargeValue(final ExportDest dest) throws Exception {
         final long big = 9007199254740993L;   // 2^53 + 1
 
         final LongPatternRow row = new LongPatternRow();
         row.setBig(big);
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(LongPatternRow.class, Arrays.asList(row), "Big")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final LongPatternRow out = pxl.importExcel()
                 .sheet(LongPatternRow.class, Arrays.asList("Big"))
-                .fromFile(excelFile).get(0);
+                .fromStream(new ByteArrayInputStream(bytes)).get(0);
         assertThat(out.getBig()).isEqualTo(big);
     }
 
@@ -1072,8 +1085,9 @@ public class PxlTypeConversionTests {
         assertThat(row.getPrimFloat()).isEqualTo(0.0F);
     }
 
-    @Test
-    public void primitives_decimalFormatPattern_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void primitives_decimalFormatPattern_roundTrip(final ExportDest dest) throws Exception {
         // A DecimalFormat pattern makes each primitive exported as text and re-parsed via DecimalFormat on import,
         // covering the primitive codec's exported-to-string / DecimalFormat branches on both directions.
         final PrimitivePatternRow row = new PrimitivePatternRow();
@@ -1081,22 +1095,21 @@ public class PxlTypeConversionTests {
         row.setIntCount(89012);
         row.setDoubleAmt(1234.5);
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(PrimitivePatternRow.class, Arrays.asList(row), "PP")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final PrimitivePatternRow out = pxl.importExcel()
                 .sheet(PrimitivePatternRow.class, Arrays.asList("PP"))
-                .fromFile(excelFile).get(0);
+                .fromStream(new ByteArrayInputStream(bytes)).get(0);
         assertThat(out.getLongCount()).isEqualTo(1234567L);
         assertThat(out.getIntCount()).isEqualTo(89012);
         assertThat(out.getDoubleAmt()).isEqualTo(1234.5);
     }
 
-    @Test
-    public void numberWrappers_decimalFormatPattern_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void numberWrappers_decimalFormatPattern_roundTrip(final ExportDest dest) throws Exception {
         // A DecimalFormat pattern on the wrapper (and remaining primitive) numeric types makes each value
         // exported as text and re-parsed via DecimalFormat on import, covering each numeric codec's
         // exported-to-string / DecimalFormat branch on both directions (chosen values survive the pattern round-trip exactly).
@@ -1116,15 +1129,13 @@ public class PxlTypeConversionTests {
         row.setBigInt(new BigInteger("123456789"));
         row.setBigDec(new BigDecimal("98765.25"));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(NumberPatternRow.class, Arrays.asList(row), "NP")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final NumberPatternRow out = pxl.importExcel()
                 .sheet(NumberPatternRow.class, Arrays.asList("NP"))
-                .fromFile(excelFile).get(0);
+                .fromStream(new ByteArrayInputStream(bytes)).get(0);
         assertThat(out.getWrapByte()).isEqualTo((byte) 100);
         assertThat(out.getPrimByte()).isEqualTo((byte) -50);
         assertThat(out.getWrapShort()).isEqualTo((short) 12345);
@@ -1146,19 +1157,18 @@ public class PxlTypeConversionTests {
     // exercising every element branch of the Collection codec plus each element codec's string path.
     // ==================================================================
 
-    private CollectionTypesRow roundTripCollections(final CollectionTypesRow row) throws Exception {
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+    private CollectionTypesRow roundTripCollections(final ExportDest dest, final CollectionTypesRow row) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(CollectionTypesRow.class, Arrays.asList(row), "C")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
         return pxl.importExcel()
                 .sheet(CollectionTypesRow.class, Arrays.asList("C"))
-                .fromFile(excelFile).get(0);
+                .fromStream(new ByteArrayInputStream(bytes)).get(0);
     }
 
-    @Test
-    public void collectionTypes_scalarElements_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void collectionTypes_scalarElements_roundTrip(final ExportDest dest) throws Exception {
         final CollectionTypesRow row = new CollectionTypesRow();
         row.setBytes(Arrays.asList((byte) 1, (byte) -2));
         row.setShorts(Arrays.asList((short) 300, (short) -400));
@@ -1172,7 +1182,7 @@ public class PxlTypeConversionTests {
         row.setUuids(Arrays.asList(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
                 UUID.fromString("00112233-4455-6677-8899-aabbccddeeff")));
 
-        final CollectionTypesRow out = roundTripCollections(row);
+        final CollectionTypesRow out = roundTripCollections(dest, row);
 
         assertThat(out.getBytes()).containsExactly((byte) 1, (byte) -2);
         assertThat(out.getShorts()).containsExactly((short) 300, (short) -400);
@@ -1189,8 +1199,9 @@ public class PxlTypeConversionTests {
                 UUID.fromString("00112233-4455-6677-8899-aabbccddeeff"));
     }
 
-    @Test
-    public void collectionTypes_dateTimeElements_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void collectionTypes_dateTimeElements_roundTrip(final ExportDest dest) throws Exception {
         final ZoneId zone = ZoneId.systemDefault();
         final Date date1 = Date.from(LocalDateTime.of(2023, 1, 2, 3, 4, 5).atZone(zone).toInstant());
         final Date date2 = Date.from(LocalDateTime.of(2024, 6, 7, 8, 9, 10).atZone(zone).toInstant());
@@ -1209,7 +1220,7 @@ public class PxlTypeConversionTests {
         row.setDurations(Arrays.asList(Duration.ofSeconds(1), Duration.ofHours(2).plusMinutes(3)));
         row.setPeriods(Arrays.asList(Period.of(1, 2, 3), Period.ofDays(5)));
 
-        final CollectionTypesRow out = roundTripCollections(row);
+        final CollectionTypesRow out = roundTripCollections(dest, row);
 
         assertThat(out.getLocalDates()).containsExactly(LocalDate.of(2023, 1, 2), LocalDate.of(2024, 3, 4));
         assertThat(out.getLocalTimes()).containsExactly(LocalTime.of(1, 2, 3), LocalTime.of(4, 5, 6));
@@ -1222,13 +1233,14 @@ public class PxlTypeConversionTests {
         assertThat(out.getPeriods()).containsExactly(Period.of(1, 2, 3), Period.ofDays(5));
     }
 
-    @Test
-    public void collectionTypes_customObjectElements_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void collectionTypes_customObjectElements_roundTrip(final ExportDest dest) throws Exception {
         // A collection of a custom-convertible element type routes each element through the object codec.
         final CollectionTypesRow row = new CollectionTypesRow();
         row.setMoneys(Arrays.asList(new Money("USD", 100L), new Money("EUR", 200L)));
 
-        final CollectionTypesRow out = roundTripCollections(row);
+        final CollectionTypesRow out = roundTripCollections(dest, row);
 
         assertThat(out.getMoneys()).extracting(Money::getCurrency).containsExactly("USD", "EUR");
         assertThat(out.getMoneys()).extracting(Money::getAmount).containsExactly(100L, 200L);
@@ -1319,8 +1331,9 @@ public class PxlTypeConversionTests {
     // import-formatter (cached-pattern) branches on both directions.
     // ==================================================================
 
-    @Test
-    public void dateTimeTypes_customPattern_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void dateTimeTypes_customPattern_roundTrip(final ExportDest dest) throws Exception {
         final DateTimePatternRow row = new DateTimePatternRow();
         row.setLocalDate(LocalDate.of(2023, 6, 15));
         row.setLocalTime(LocalTime.of(10, 30, 45));
@@ -1328,15 +1341,13 @@ public class PxlTypeConversionTests {
         row.setOffsetTime(OffsetTime.of(10, 30, 45, 0, ZoneOffset.ofHours(9)));
         row.setOffsetDateTime(OffsetDateTime.of(2023, 6, 15, 10, 30, 45, 0, ZoneOffset.ofHours(9)));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(DateTimePatternRow.class, Arrays.asList(row), "DT")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final DateTimePatternRow out = pxl.importExcel()
                 .sheet(DateTimePatternRow.class, Arrays.asList("DT"))
-                .fromFile(excelFile).get(0);
+                .fromStream(new ByteArrayInputStream(bytes)).get(0);
         assertThat(out.getLocalDate()).isEqualTo(LocalDate.of(2023, 6, 15));
         assertThat(out.getLocalTime()).isEqualTo(LocalTime.of(10, 30, 45));
         assertThat(out.getLocalDateTime()).isEqualTo(LocalDateTime.of(2023, 6, 15, 10, 30, 45));
@@ -1497,21 +1508,20 @@ public class PxlTypeConversionTests {
         assertThat(row.getCategory()).isEqualTo(Category.FOOD);
     }
 
-    @Test
-    public void enum_customConverter_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void enum_customConverter_roundTrip(final ExportDest dest) throws Exception {
         // ConverterEnum exports via @PxlExportConverter (toCode -> "2") and imports via @PxlImportConverter (fromCode).
         final ConverterEnumRow row = new ConverterEnumRow();
         row.setCode(ConverterEnum.TWO);
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(ConverterEnumRow.class, Arrays.asList(row), "E")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final ConverterEnumRow out = pxl.importExcel()
                 .sheet(ConverterEnumRow.class, Arrays.asList("E"))
-                .fromFile(excelFile).get(0);
+                .fromStream(new ByteArrayInputStream(bytes)).get(0);
         assertThat(out.getCode()).isEqualTo(ConverterEnum.TWO);
     }
 
@@ -1519,22 +1529,21 @@ public class PxlTypeConversionTests {
     // Object codec: a custom object whose export converter is a STATIC method
     // ==================================================================
 
-    @Test
-    public void object_staticExportConverter_roundTrip() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void object_staticExportConverter_roundTrip(final ExportDest dest) throws Exception {
         // StaticConverterObject exports via a static @PxlExportConverter (toStaticString) and imports via a
         // static @PxlImportConverter (fromString).
         final StaticConverterObjectRow row = new StaticConverterObjectRow();
         row.setValue(StaticConverterObject.fromString("hello"));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(StaticConverterObjectRow.class, Arrays.asList(row), "O")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final StaticConverterObjectRow out = pxl.importExcel()
                 .sheet(StaticConverterObjectRow.class, Arrays.asList("O"))
-                .fromFile(excelFile).get(0);
+                .fromStream(new ByteArrayInputStream(bytes)).get(0);
         assertThat(out.getValue().getValue()).isEqualTo("hello");
     }
 
@@ -1542,8 +1551,9 @@ public class PxlTypeConversionTests {
     // Numeric masking: exportMasking (no pattern) renders each numeric value as text and masks it
     // ==================================================================
 
-    @Test
-    public void numberMasking_exportMasksAllDigits() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void numberMasking_exportMasksAllDigits(final ExportDest dest) throws Exception {
         final NumberMaskingRow row = new NumberMaskingRow();
         row.setWrapByte((byte) 12);
         row.setPrimByte((byte) 34);
@@ -1560,11 +1570,9 @@ public class PxlTypeConversionTests {
         row.setBigInt(new BigInteger("999"));
         row.setBigDec(new BigDecimal("12.34"));
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(NumberMaskingRow.class, Arrays.asList(row), "M")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             final Sheet sheet = workbook.getSheet("M");
             final Row header = sheet.getRow(0);
             final Row data = sheet.getRow(1);
@@ -1574,8 +1582,6 @@ public class PxlTypeConversionTests {
                 assertThat(dataCell.getStringCellValue()).as(headerCell.getStringCellValue())
                         .isNotEmpty().doesNotContainPattern("[0-9]");
             }
-        } finally {
-            workbook.close();
         }
     }
 
@@ -1594,22 +1600,19 @@ public class PxlTypeConversionTests {
 
     private static final UUID OTHER_UUID_VALUE = UUID.fromString(OTHER_UUID_TEXT);
 
-    private UuidRow roundTripUuid(final UuidRow row) throws Exception {
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+    private UuidRow roundTripUuid(final ExportDest dest, final UuidRow row) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(UuidRow.class, Arrays.asList(row), "U")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
         return pxl.importExcel()
                 .sheet(UuidRow.class, Arrays.asList("U"))
-                .fromFile(excelFile).get(0);
+                .fromStream(new ByteArrayInputStream(bytes)).get(0);
     }
 
-    private Workbook exportUuidWorkbook(final UuidRow row) throws Exception {
-        return pxl.exportExcel()
+    private Workbook exportUuidWorkbook(final ExportDest dest, final UuidRow row) throws Exception {
+        return workbookOf(pxl.exportExcel()
                 .sheet(UuidRow.class, Arrays.asList(row), "U")
-                .override(noValidationOption())
-                .toWorkbook();
+                .override(noValidationOption()), dest, testInfo);
     }
 
     // Locates the data cell by its header text, so the assertion does not depend on the column order.
@@ -1623,35 +1626,38 @@ public class PxlTypeConversionTests {
         return null;
     }
 
-    @Test
-    public void uuid_roundTrip_preservesValue() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void uuid_roundTrip_preservesValue(final ExportDest dest) throws Exception {
         final UuidRow row = new UuidRow();
         row.setId(UUID_VALUE);
         row.setExact(OTHER_UUID_VALUE);
 
-        final UuidRow out = roundTripUuid(row);
+        final UuidRow out = roundTripUuid(dest, row);
 
         assertThat(out.getId()).isEqualTo(UUID_VALUE);
         assertThat(out.getExact()).isEqualTo(OTHER_UUID_VALUE);
     }
 
-    @Test
-    public void uuid_nilValue_roundTrips() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void uuid_nilValue_roundTrips(final ExportDest dest) throws Exception {
         // The nil UUID is an ordinary value, not a stand-in for null: folding it into null would break the round-trip.
         final UuidRow row = new UuidRow();
         row.setId(new UUID(0L, 0L));
 
-        final UuidRow out = roundTripUuid(row);
+        final UuidRow out = roundTripUuid(dest, row);
 
         assertThat(out.getId()).isEqualTo(new UUID(0L, 0L));
     }
 
-    @Test
-    public void uuid_export_writesCanonicalLowerCaseText() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void uuid_export_writesCanonicalLowerCaseText(final ExportDest dest) throws Exception {
         final UuidRow row = new UuidRow();
         row.setId(UUID.fromString(UUID_TEXT.toUpperCase(Locale.ROOT)));
 
-        final Workbook workbook = exportUuidWorkbook(row);
+        final Workbook workbook = exportUuidWorkbook(dest, row);
         try {
             assertThat(dataStringOf(workbook, "Id")).isEqualTo(UUID_TEXT);
         } finally {
@@ -1740,12 +1746,13 @@ public class PxlTypeConversionTests {
         assertThrows(PxlCellCodecException.class, () -> importList(bytes, "U", UuidRow.class));
     }
 
-    @Test
-    public void uuid_exportMasking_masksHexDigits() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void uuid_exportMasking_masksHexDigits(final ExportDest dest) throws Exception {
         final UuidRow row = new UuidRow();
         row.setMasked(UUID_VALUE);
 
-        final Workbook workbook = exportUuidWorkbook(row);
+        final Workbook workbook = exportUuidWorkbook(dest, row);
         try {
             // The "[0-9a-f]" mask replaces every hexadecimal digit of the canonical form, leaving its hyphens.
             assertThat(dataStringOf(workbook, "Masked")).isEqualTo("********-****-****-****-************");
@@ -1762,24 +1769,26 @@ public class PxlTypeConversionTests {
         assertThrows(PxlValidationException.class, () -> importList(bytes, "U", UuidRow.class));
     }
 
-    @Test
-    public void uuidCollection_roundTrip_preservesNullPositions() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void uuidCollection_roundTrip_preservesNullPositions(final ExportDest dest) throws Exception {
         final UuidRow row = new UuidRow();
         row.setIds(Arrays.asList(UUID_VALUE, null, OTHER_UUID_VALUE));
 
-        final UuidRow out = roundTripUuid(row);
+        final UuidRow out = roundTripUuid(dest, row);
 
         assertThat(out.getIds()).containsExactly(UUID_VALUE, null, OTHER_UUID_VALUE);
     }
 
-    @Test
-    public void uuidCollection_export_joinsCanonicalStrings() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void uuidCollection_export_joinsCanonicalStrings(final ExportDest dest) throws Exception {
         // Guards the collection element branch of the dispatcher: a UUID element type resolves to no custom converter
         // any more, so without that branch this export fails as an unsupported element type.
         final UuidRow row = new UuidRow();
         row.setIds(Arrays.asList(UUID_VALUE, OTHER_UUID_VALUE));
 
-        final Workbook workbook = exportUuidWorkbook(row);
+        final Workbook workbook = exportUuidWorkbook(dest, row);
         try {
             assertThat(dataStringOf(workbook, "Ids")).isEqualTo(UUID_TEXT + ";" + OTHER_UUID_TEXT);
         } finally {

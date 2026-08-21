@@ -15,6 +15,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTWorkbook;
 import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTWorkbookPr;
 
@@ -32,6 +34,7 @@ import java.util.List;
 import java.util.Set;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.emit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -417,15 +420,14 @@ public class PxlExcelImportTests {
     // PXL exports the 7 date/time columns without a pattern/masking (-> NUMERIC date-formatted cells), then the
     // stream reader decodes each date-formatted StreamingCell via POI's getXxxCellValue()/isCellDateFormatted path.
     // (This is the path a former StreamingCell workaround side-stepped; the workaround is no longer needed.)
-    @Test
-    public void importExcel_dateTimeColumns_streaming_readFromNumericDateCells() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_dateTimeColumns_streaming_readFromNumericDateCells(final ExportDest dest) throws Exception {
         final AllTypesRow expected = Fixtures.sampleAllTypesRow();
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(AllTypesRow.class, Arrays.asList(expected), "AllTypes")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         // The stream reader does not support getFirstRowNum(), so the header/data row indices (1-based) are specified.
         final PxlImportSheetOption sheetOption = PxlImportSheetOption.builder()
@@ -440,7 +442,7 @@ public class PxlExcelImportTests {
         final List<AllTypesRow> rows = pxl.importExcel()
                 .override(option)
                 .sheet(AllTypesRow.class, Arrays.asList("AllTypes"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(rows).hasSize(1);
         final AllTypesRow row = rows.get(0);
@@ -646,8 +648,9 @@ public class PxlExcelImportTests {
     // CSV-only attributes on an Excel source
     // ------------------------------------------------------------------
 
-    @Test
-    public void importExcel_csvCharsetAndDelimiterAttributes_ignored() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_csvCharsetAndDelimiterAttributes_ignored(final ExportDest dest) throws Exception {
         // importCsvCharset/importCsvDelimiter are declared on both the workbook and the sheet with values no CSV
         // could ever be opened with - a charset name this JVM does not carry, and the quote character CSVFormat
         // rejects as a delimiter. An Excel source is one file whose encoding the format itself carries and which has
@@ -656,15 +659,13 @@ public class PxlExcelImportTests {
         source.setEmployees(Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering")));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(source)
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final IgnoredCsvAttrsWorkbook imported = pxl.importExcel()
                 .workbook(IgnoredCsvAttrsWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getEmployees()).extracting(Employee::getName).containsExactly("Alice");
     }
@@ -673,8 +674,9 @@ public class PxlExcelImportTests {
     // Superclass sheet inheritance / override (importOverrideSuperClassSheet)
     // ------------------------------------------------------------------
 
-    @Test
-    public void importExcel_inheritedSheet_overrideResolves() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_inheritedSheet_overrideResolves(final ExportDest dest) throws Exception {
         // Prepare a file with Employees/Departments sheets using PXL.
         final CompanyWorkbook source = new CompanyWorkbook();
         source.setWorkbookName("Acme");
@@ -685,16 +687,14 @@ public class PxlExcelImportTests {
                 Fixtures.department("ENG", "Engineering", 12),
                 Fixtures.department("SAL", "Sales", 7)));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(source)
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final SubCompanyWorkbook sub = pxl.importExcel()
                 .workbookName("Acme")
                 .workbook(SubCompanyWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         // employees is not overridden -> both superclass and subclass fields are bound.
         assertThat(sub.employees).as("subclass employees").hasSize(2);
@@ -708,7 +708,7 @@ public class PxlExcelImportTests {
     /**
      * Writes an .xlsx carrying the Employees and Departments sheets, the source the override tests read back.
      */
-    private File companyFixtureFile() throws Exception {
+    private byte[] companyFixture(final ExportDest dest) throws Exception {
         final CompanyWorkbook source = new CompanyWorkbook();
         source.setEmployees(Arrays.asList(
                 Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering"),
@@ -717,35 +717,34 @@ public class PxlExcelImportTests {
                 Fixtures.department("ENG", "Engineering", 12),
                 Fixtures.department("SAL", "Sales", 7)));
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        return emit(pxl.exportExcel()
                 .workbook(source)
-                .override(noValidationOption())
-                .toFile(excelFile);
-        return excelFile;
+                .override(noValidationOption()), dest, testInfo);
     }
 
-    @Test
-    public void importExcel_inheritedSheet_overrideDifferentCase_resolves() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_inheritedSheet_overrideDifferentCase_resolves(final ExportDest dest) throws Exception {
         // Sheet names are matched ignoring case, so an override declared in a different case ("DEPARTMENTS" against
         // the super's "Departments") names the same sheet and overrides it - otherwise both fields would bind the
         // one physical sheet that matches either name.
         final SubCaseCompanyWorkbook sub = pxl.importExcel()
                 .workbook(SubCaseCompanyWorkbook.class)
-                .fromFile(companyFixtureFile());
+                .fromStream(new ByteArrayInputStream(companyFixture(dest)));
 
         assertThat(sub.departments).as("subclass departments").hasSize(2);
         assertThat(((SuperCompanyWorkbook) sub).departments).as("superclass departments (overridden)").isNull();
     }
 
-    @Test
-    public void importExcel_inheritedSheet_overrideBySheetNameNotFieldName_resolves() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_inheritedSheet_overrideBySheetNameNotFieldName_resolves(final ExportDest dest) throws Exception {
         // The override is keyed on the sheet name, not the field name: a field named depts that lists "Departments"
         // among its candidate names still suppresses the super's departments field. One overlapping candidate is
         // enough - the unused "Divisions" alias does not matter.
         final SubAliasOverrideCompanyWorkbook sub = pxl.importExcel()
                 .workbook(SubAliasOverrideCompanyWorkbook.class)
-                .fromFile(companyFixtureFile());
+                .fromStream(new ByteArrayInputStream(companyFixture(dest)));
 
         assertThat(sub.depts).as("subclass depts").hasSize(2);
         assertThat(((SuperCompanyWorkbook) sub).departments).as("superclass departments (overridden)").isNull();
@@ -753,37 +752,40 @@ public class PxlExcelImportTests {
         assertThat(((SuperCompanyWorkbook) sub).employees).as("superclass employees").hasSize(2);
     }
 
-    @Test
-    public void importExcel_inheritedSheet_overrideWithDifferentSheetName_doesNotOverride() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_inheritedSheet_overrideWithDifferentSheetName_doesNotOverride(final ExportDest dest) throws Exception {
         // Shadowing the field is not by itself an override: this departments field names a different sheet
         // ("Divisions"), so the super's "Departments" binds as usual and the subclass field finds no such sheet.
         final SubOtherNameOverrideCompanyWorkbook sub = pxl.importExcel()
                 .workbook(SubOtherNameOverrideCompanyWorkbook.class)
-                .fromFile(companyFixtureFile());
+                .fromStream(new ByteArrayInputStream(companyFixture(dest)));
 
         assertThat(sub.departments).as("subclass departments (no such sheet)").isNull();
         assertThat(((SuperCompanyWorkbook) sub).departments).as("superclass departments").hasSize(2);
     }
 
-    @Test
-    public void importExcel_inheritedSheet_overrideOnDisabledSheet_doesNotOverride() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_inheritedSheet_overrideOnDisabledSheet_doesNotOverride(final ExportDest dest) throws Exception {
         // A sheet excluded from import claims no name, so its override never takes effect:
         // the super's departments field is bound as usual.
         final SubDisabledOverrideCompanyWorkbook sub = pxl.importExcel()
                 .workbook(SubDisabledOverrideCompanyWorkbook.class)
-                .fromFile(companyFixtureFile());
+                .fromStream(new ByteArrayInputStream(companyFixture(dest)));
 
         assertThat(sub.departments).as("subclass departments (import disabled)").isNull();
         assertThat(((SuperCompanyWorkbook) sub).departments).as("superclass departments").hasSize(2);
     }
 
-    @Test
-    public void importExcel_inheritedSheet_overrideDeclaredOnSuperClass_bindsBoth() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_inheritedSheet_overrideDeclaredOnSuperClass_bindsBoth(final ExportDest dest) throws Exception {
         // The flag runs from a subclass toward its superclass only. Declared on the superclass it suppresses
         // nothing - the subclass field is resolved first - so both fields bind the same sheet.
         final SubOverrideCompanyWorkbook sub = pxl.importExcel()
                 .workbook(SubOverrideCompanyWorkbook.class)
-                .fromFile(companyFixtureFile());
+                .fromStream(new ByteArrayInputStream(companyFixture(dest)));
 
         assertThat(sub.departments).as("subclass departments").hasSize(2);
         assertThat(((SuperOverrideCompanyWorkbook) sub).departments).as("superclass departments").hasSize(2);
@@ -1006,16 +1008,15 @@ public class PxlExcelImportTests {
     // Stream reader import (importUsingStreamReader) - the header/data row indices are specified.
     // ------------------------------------------------------------------
 
-    @Test
-    public void importExcel_streamReader_readsAllRows() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_streamReader_readsAllRows(final ExportDest dest) throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
         final Employee bob = Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales");
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, Arrays.asList(alice, bob), "People")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         // The stream reader does not support getFirstRowNum(), so the header/data row indices (1-based) are specified.
         final PxlImportSheetOption sheetOption = PxlImportSheetOption.builder()
@@ -1030,7 +1031,7 @@ public class PxlExcelImportTests {
         final List<Employee> people = pxl.importExcel()
                 .override(workbookOption)
                 .sheet(Employee.class, Arrays.asList("People"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(people).extracting(Employee::getName).containsExactly("Alice", "Bob");
     }
@@ -1039,22 +1040,21 @@ public class PxlExcelImportTests {
     // Sheet-form import - specifying the return collection type (collectionClass)
     // ------------------------------------------------------------------
 
-    @Test
-    public void importExcel_sheet_intoSet_returnsSet() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_sheet_intoSet_returnsSet(final ExportDest dest) throws Exception {
         final Employee alice = Fixtures.employee("Alice", 30, "50000", true, LocalDate.of(2020, 1, 15), Grade.A, "Engineering");
         final Employee bob = Fixtures.employee("Bob", 42, "72000", false, LocalDate.of(2018, 7, 1), Grade.B, "Sales");
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(Employee.class, Arrays.asList(alice, bob), "People")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         // collectionClass=Set.class -> the return must be a Set implementation (default sheet() returns a List).
         @SuppressWarnings("unchecked") final Set<Employee> people =
                 pxl.importExcel()
                         .sheet(Employee.class, Set.class, Arrays.asList("People"))
-                        .fromFile(excelFile);
+                        .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(people).isInstanceOf(Set.class);
         assertThat(people).isNotInstanceOf(List.class);
@@ -1065,21 +1065,20 @@ public class PxlExcelImportTests {
     // Formula (exportStringAsFormula) - the computed result is read on non-streaming import.
     // ------------------------------------------------------------------
 
-    @Test
-    public void importExcel_formulaCell_evaluated() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importExcel_formulaCell_evaluated(final ExportDest dest) throws Exception {
         final FormulaRow row = new FormulaRow();
         row.setLabel("calc");
         row.setFormula("=2+3");
 
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(FormulaRow.class, Arrays.asList(row), "Formula")
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final List<FormulaRow> rows = pxl.importExcel()
                 .sheet(FormulaRow.class, Arrays.asList("Formula"))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).getLabel()).isEqualTo("calc");

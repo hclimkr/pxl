@@ -17,13 +17,15 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.util.*;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.emit;
+import static io.github.hclimkr.pxl.tcdata.TestExports.workbookOf;
 import static org.assertj.core.api.Assertions.*;
 
 /**
@@ -31,6 +33,9 @@ import static org.assertj.core.api.Assertions.*;
  * <p>
  * Verifies that, via messages.properties (staff.column.role=Role, staff.column.fullName=Full Name, staff.sheet=Staff),
  * sheet/column names are translated on export and re-matched by the translated header/sheet names on import.
+ * <p>
+ * A translated name has to come out the same on every terminal, so each test that exports is swept across
+ * {@link ExportDest}. The diagnostic-message and loader-boundary groups at the end never export at all.
  */
 public class PxlI18nTests {
 
@@ -64,15 +69,12 @@ public class PxlI18nTests {
     // export: sheet/column names are translated when written
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportI18n_bundle_translatesSheetAndHeaders() throws Exception {
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportI18n_bundle_translatesSheetAndHeaders(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .workbook(sampleWorkbook())
-                .override(noValidationOption())
-                .toStream(outputStream);
-
-        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+                .override(noValidationOption()), dest, testInfo)) {
             // sheet key staff.sheet -> "Staff"
             final Sheet sheet = workbook.getSheet("Staff");
             assertThat(sheet).as("sheet name should be translated to 'Staff'").isNotNull();
@@ -91,18 +93,17 @@ public class PxlI18nTests {
     // import: re-matched by translated header/sheet names (round-trip)
     // ------------------------------------------------------------------
 
-    @Test
-    public void importI18n_translatedNames_roundTrips() throws Exception {
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importI18n_translatedNames_roundTrips(final ExportDest dest) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(sampleWorkbook())
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final I18nWorkbook imported = pxl.importExcel()
                 .workbookName("W")
                 .workbook(I18nWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getPeople()).as("should match via translated sheet/header names").hasSize(1);
         final I18nRow row = imported.getPeople().get(0);
@@ -147,15 +148,12 @@ public class PxlI18nTests {
                 .build();
     }
 
-    @Test
-    public void exportI18n_optionOverriddenNames_translatedThroughBundle() throws Exception {
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportI18n_optionOverriddenNames_translatedThroughBundle(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .workbook(sampleWorkbook())
-                .override(overriddenNameExportOption())
-                .toStream(outputStream);
-
-        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+                .override(overriddenNameExportOption()), dest, testInfo)) {
             // staff.override.sheet -> "Overridden Staff": the overriding name goes through the bundle as well
             final Sheet sheet = workbook.getSheet("Overridden Staff");
             assertThat(sheet).as("the sheet name supplied by the option should be translated too").isNotNull();
@@ -170,13 +168,12 @@ public class PxlI18nTests {
         }
     }
 
-    @Test
-    public void importI18n_optionOverriddenNames_matchThroughBundle() throws Exception {
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importI18n_optionOverriddenNames_matchThroughBundle(final ExportDest dest) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(sampleWorkbook())
-                .override(overriddenNameExportOption())
-                .toFile(excelFile);
+                .override(overriddenNameExportOption()), dest, testInfo);
 
         // The import side resolves the overriding names through the bundle as well, so the translated
         // sheet/header written above are found again.
@@ -184,7 +181,7 @@ public class PxlI18nTests {
                 .workbookName("W")
                 .override(overriddenNameImportOption())
                 .workbook(I18nWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getPeople()).as("should match via the translated overriding names").hasSize(1);
         assertThat(imported.getPeople().get(0).getRole()).isEqualTo("admin");
@@ -206,15 +203,12 @@ public class PxlI18nTests {
         return workbook;
     }
 
-    @Test
-    public void exportI18nCountry_bundle_usesCountryVariant() throws Exception {
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportI18nCountry_bundle_usesCountryVariant(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .workbook(sampleCountryWorkbook())
-                .override(noValidationOption())
-                .toStream(outputStream);
-
-        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+                .override(noValidationOption()), dest, testInfo)) {
             // language=ko, country=KR -> messages_ko.properties (Korean translation, different from the English base)
             final Sheet sheet = workbook.getSheet("직원");
             assertThat(sheet).as("sheet name should be the Korean translation").isNotNull();
@@ -228,19 +222,18 @@ public class PxlI18nTests {
         }
     }
 
-    @Test
-    public void importI18nCountry_translatedNames_roundTrips() throws Exception {
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importI18nCountry_translatedNames_roundTrips(final ExportDest dest) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(sampleCountryWorkbook())
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
 
         final I18nCountryWorkbook imported =
                 pxl.importExcel()
                         .workbookName("W")
                         .workbook(I18nCountryWorkbook.class)
-                        .fromFile(excelFile);
+                        .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getPeople()).hasSize(1);
         assertThat(imported.getPeople().get(0).getRole()).isEqualTo("admin");
@@ -257,8 +250,9 @@ public class PxlI18nTests {
         return ResourceBundle.getBundle("messages", Locale.ROOT);
     }
 
-    @Test
-    public void exportI18n_optionResourceBundle_overridesAnnotationBaseName() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportI18n_optionResourceBundle_overridesAnnotationBaseName(final ExportDest dest) throws Exception {
         // I18nCountryWorkbook declares ko_KR, so left alone it writes "직원"/"역할". Handing the option the base
         // bundle must displace that entirely - the annotated triple is not consulted at all.
         final PxlExportWorkbookOption option = PxlExportWorkbookOption.builder()
@@ -266,13 +260,9 @@ public class PxlI18nTests {
                 .exportDataValidation(false)
                 .build();
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .workbook(sampleCountryWorkbook())
-                .override(option)
-                .toStream(outputStream);
-
-        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+                .override(option), dest, testInfo)) {
             assertThat(workbook.getSheet("Staff")).as("the injected bundle should decide the sheet name").isNotNull();
             assertThat(workbook.getSheet("직원")).as("the annotated ko_KR bundle should not be loaded").isNull();
 
@@ -284,18 +274,17 @@ public class PxlI18nTests {
         }
     }
 
-    @Test
-    public void importI18n_optionResourceBundle_overridesAnnotationBaseName() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importI18n_optionResourceBundle_overridesAnnotationBaseName(final ExportDest dest) throws Exception {
         // Written with the English names above, the same workbook binds them back only because the import side
         // resolves its names through the injected bundle too - its own annotation would look for the Korean ones.
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(sampleCountryWorkbook())
                 .override(PxlExportWorkbookOption.builder()
                         .exportResourceBundle(baseBundle())
                         .exportDataValidation(false)
-                        .build())
-                .toFile(excelFile);
+                        .build()), dest, testInfo);
 
         final I18nCountryWorkbook imported = pxl.importExcel()
                 .workbookName("W")
@@ -303,29 +292,28 @@ public class PxlI18nTests {
                         .importResourceBundle(baseBundle())
                         .build())
                 .workbook(I18nCountryWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getPeople()).as("should match via the injected bundle's names").hasSize(1);
         assertThat(imported.getPeople().get(0).getRole()).isEqualTo("admin");
         assertThat(imported.getPeople().get(0).getFullName()).isEqualTo("Bob");
     }
 
-    @Test
-    public void importI18n_optionResourceBundle_unknownAnnotationBaseName_doesNotThrow() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void importI18n_optionResourceBundle_unknownAnnotationBaseName_doesNotThrow(final ExportDest dest) throws Exception {
         // I18nMissingBundleWorkbook names a bundle that does not exist, which on its own is a PxlI18nException.
         // An injected bundle takes its place before it is ever loaded, so the import succeeds.
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .workbook(sampleCountryWorkbook())
                 .override(PxlExportWorkbookOption.builder()
                         .exportResourceBundle(baseBundle())
                         .exportDataValidation(false)
-                        .build())
-                .toFile(excelFile);
+                        .build()), dest, testInfo);
 
         assertThatThrownBy(() -> pxl.importExcel()
                 .workbook(I18nMissingBundleWorkbook.class)
-                .fromFile(excelFile))
+                .fromStream(new ByteArrayInputStream(bytes)))
                 .as("without a bundle the missing base name should fail")
                 .isInstanceOf(PxlI18nException.class);
 
@@ -334,7 +322,7 @@ public class PxlI18nTests {
                         .importResourceBundle(baseBundle())
                         .build())
                 .workbook(I18nMissingBundleWorkbook.class)
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
 
         assertThat(imported.getPeople()).as("the injected bundle should replace the missing one").hasSize(1);
         assertThat(imported.getPeople().get(0).getFullName()).isEqualTo("Bob");
@@ -359,12 +347,11 @@ public class PxlI18nTests {
         return samples;
     }
 
-    @Test
-    public void exportSampleI18n_scalarAndCollection_translatesEveryElement() throws Exception {
-        final Workbook workbook = pxl.exportSampleExcel()
-                .workbook(I18nSampleWorkbook.class)
-                .toWorkbook();
-        try {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSampleI18n_scalarAndCollection_translatesEveryElement(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportSampleExcel()
+                .workbook(I18nSampleWorkbook.class), dest, testInfo)) {
             final Sheet sheet = workbook.getSheet("Staff");
             assertThat(sheet).as("sheet name should be translated to 'Staff'").isNotNull();
 
@@ -379,33 +366,27 @@ public class PxlI18nTests {
             // cell holds the canonical names.
             assertThat(samples.get("Grades")).isEqualTo("A;B");
             assertThat(samples.get("Grade")).isEqualTo("A");
-        } finally {
-            workbook.close();
         }
     }
 
-    @Test
-    public void exportSampleI18n_customCollectionSeparator_splitsOnTheColumnSeparator() throws Exception {
-        final Workbook workbook = pxl.exportSampleExcel()
-                .workbook(I18nSampleWorkbook.class)
-                .toWorkbook();
-        try {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSampleI18n_customCollectionSeparator_splitsOnTheColumnSeparator(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportSampleExcel()
+                .workbook(I18nSampleWorkbook.class), dest, testInfo)) {
             final Map<String, String> samples = samplesByHeader(workbook.getSheet("Staff"));
 
             // The separator comes from exportCollectionSeparator ("::"), not from the bundle value, so changing it
             // keeps working without touching the bundle.
             assertThat(samples.get("Tags")).isEqualTo("Administrator::User");
-        } finally {
-            workbook.close();
         }
     }
 
-    @Test
-    public void exportSampleI18n_nonStringColumn_keepsSampleAndUnknownHeaderVerbatim() throws Exception {
-        final Workbook workbook = pxl.exportSampleExcel()
-                .workbook(I18nSampleWorkbook.class)
-                .toWorkbook();
-        try {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportSampleI18n_nonStringColumn_keepsSampleAndUnknownHeaderVerbatim(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportSampleExcel()
+                .workbook(I18nSampleWorkbook.class), dest, testInfo)) {
             final Map<String, String> samples = samplesByHeader(workbook.getSheet("Staff"));
 
             // "count" is not in the bundle, so the header passes through untranslated.
@@ -413,17 +394,14 @@ public class PxlI18nTests {
             // The sample of a numeric column is never translated: "1234" is a bundle key (1234=9999), and applying it
             // would put a value the column never declared into the cell.
             assertThat(samples.get("count")).isEqualTo("1234");
-        } finally {
-            workbook.close();
         }
     }
 
-    @Test
-    public void exportOptionItemsI18n_stringColumnTranslated_enumColumnVerbatim() throws Exception {
-        final Workbook workbook = pxl.exportSampleExcel()
-                .workbook(I18nSampleWorkbook.class)
-                .toWorkbook();
-        try {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportOptionItemsI18n_stringColumnTranslated_enumColumnVerbatim(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportSampleExcel()
+                .workbook(I18nSampleWorkbook.class), dest, testInfo)) {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("Staff");
 
             final List<List<String>> optionLists = new ArrayList<>();
@@ -436,8 +414,6 @@ public class PxlI18nTests {
             assertThat(optionLists).contains(Arrays.asList("Administrator", "User"));
             // Enum column: the cell always holds the canonical constant, so the items are used as declared.
             assertThat(optionLists).contains(Arrays.asList("staff.grade.a", "staff.grade.b"));
-        } finally {
-            workbook.close();
         }
     }
 
@@ -585,20 +561,19 @@ public class PxlI18nTests {
         }
     }
 
-    @Test
-    public void exportExcel_missingConfig_throwsLocalizedMessageThroughApi() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportExcel_missingConfig_throwsLocalizedMessageThroughApi(final ExportDest dest) {
         // Throw a real exception through the public API to verify the whole chain (throw -> terminal PxlException wrapping -> localized message) works.
         // The terminal wraps in PxlException(cause) so the message gets a class prefix; verified with hasMessageContaining.
         try {
             Pxl.setMessageLocale(Locale.ENGLISH);
-            assertThatThrownBy(() -> pxl.exportExcel()
-                    .toStream(new ByteArrayOutputStream()))
+            assertThatThrownBy(() -> emit(pxl.exportExcel(), dest, testInfo))
                     .isInstanceOf(PxlArgumentException.class)
                     .hasMessageContaining("either workbook(Object) or sheet(...) must be specified.");
 
             Pxl.setMessageLocale(Locale.KOREAN);
-            assertThatThrownBy(() -> pxl.exportExcel()
-                    .toStream(new ByteArrayOutputStream()))
+            assertThatThrownBy(() -> emit(pxl.exportExcel(), dest, testInfo))
                     .isInstanceOf(PxlArgumentException.class)
                     .hasMessageContaining("workbook(Object) 또는 sheet(...) 중 하나를 지정해야 합니다.");
         } finally {

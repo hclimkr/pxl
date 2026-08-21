@@ -16,10 +16,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -30,6 +31,8 @@ import java.util.Date;
 import java.util.List;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.emit;
+import static io.github.hclimkr.pxl.tcdata.TestExports.workbookOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -39,6 +42,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * <p>
  * Each test corresponds to a "fixed" item in {@code .claude_doc/pxl-issues-and-history.md} and fails to catch
  * any side effect (bug reintroduction) caused by source refactoring.
+ * <p>
+ * A fix has to hold on every terminal, so each test that exports is swept across {@link ExportDest}. The
+ * import-only ones build their input with raw POI or a CSV string and never export at all.
  */
 public class PxlRegressionTests {
 
@@ -56,15 +62,13 @@ public class PxlRegressionTests {
         this.testInfo = testInfo;
     }
 
-    private <T> List<T> roundTrip(final String sheetName, final List<T> rows, final Class<T> rowClass) throws Exception {
-        final File excelFile = TestPaths.exportFile(testInfo);
-        pxl.exportExcel()
+    private <T> List<T> roundTrip(final ExportDest dest, final String sheetName, final List<T> rows, final Class<T> rowClass) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(rowClass, rows, sheetName)
-                .override(noValidationOption())
-                .toFile(excelFile);
+                .override(noValidationOption()), dest, testInfo);
         return pxl.importExcel()
                 .sheet(rowClass, Arrays.asList(sheetName))
-                .fromFile(excelFile);
+                .fromStream(new ByteArrayInputStream(bytes));
     }
 
     private static byte[] buildStringSheet(final String sheetName, final String[] headers, final String[][] dataRows) throws Exception {
@@ -94,14 +98,15 @@ public class PxlRegressionTests {
     // Date seconds-loss fix (2026-07-10): default-pattern java.util.Date round-trips down to seconds
     // ------------------------------------------------------------------
 
-    @Test
-    public void dateSeconds_defaultPattern_preserved() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void dateSeconds_defaultPattern_preserved(final ExportDest dest) throws Exception {
         final Date when = Date.from(LocalDateTime.of(2023, 6, 15, 10, 30, 45).atZone(ZoneId.systemDefault()).toInstant());
 
         final DateOnlyRow row = new DateOnlyRow();
         row.setWhen(when);
 
-        final DateOnlyRow out = roundTrip("Dates", Arrays.asList(row), DateOnlyRow.class).get(0);
+        final DateOnlyRow out = roundTrip(dest, "Dates", Arrays.asList(row), DateOnlyRow.class).get(0);
         // The seconds (45) must not be lost as 00
         assertThat(out.getWhen()).isEqualTo(when);
     }
@@ -110,18 +115,17 @@ public class PxlRegressionTests {
     // M8: trimming leading/trailing whitespace of an annotation-derived export column name
     // ------------------------------------------------------------------
 
-    @Test
-    public void annotationColumnName_withWhitespace_trimmed() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void annotationColumnName_withWhitespace_trimmed(final ExportDest dest) throws Exception {
         final SpacedNameRow row = new SpacedNameRow();
         row.setValue("v");
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        pxl.exportExcel()
+        final byte[] bytes = emit(pxl.exportExcel()
                 .sheet(SpacedNameRow.class, Arrays.asList(row), "Spaced")
-                .override(noValidationOption())
-                .toStream(outputStream);
+                .override(noValidationOption()), dest, testInfo);
 
-        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             final String header = workbook.getSheet("Spaced").getRow(0).getCell(0).getStringCellValue();
             // "  Padded Name  " -> trimmed at both ends -> "Padded Name" (inner whitespace preserved)
             assertThat(header).isEqualTo("Padded Name");
@@ -132,48 +136,47 @@ public class PxlRegressionTests {
     // Guard: invalid exportMasking regex -> exception at build time
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportMasking_invalidRegex_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportMasking_invalidRegex_throws(final ExportDest dest) {
         final BadMaskingRow row = new BadMaskingRow();
         row.setValue("v");
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlArgumentException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .sheet(BadMaskingRow.class, Arrays.asList(row), "Mask")
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
     // Guard: invalid date pattern -> exception at build time
     // ------------------------------------------------------------------
 
-    @Test
-    public void columnPattern_invalid_throws() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void columnPattern_invalid_throws(final ExportDest dest) {
         final BadPatternRow row = new BadPatternRow();
         row.setDate(LocalDate.of(2023, 1, 1));
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlArgumentException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .sheet(BadPatternRow.class, Arrays.asList(row), "Bad")
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
     // L12: exportStringAsFormula fallback safely writes quote-prefixed text instead of a raw "="
     // ------------------------------------------------------------------
 
-    @Test
-    public void formulaCell_invalidFallback_quotePrefixed() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void formulaCell_invalidFallback_quotePrefixed(final ExportDest dest) throws Exception {
         final FormulaRow row = new FormulaRow();
         row.setLabel("calc");
         row.setFormula("=(");   // invalid formula -> setCellFormula fails -> quote-prefix fallback
 
         // Exports without exception and round-trips as literal text.
-        final FormulaRow out = roundTrip("Formula", Arrays.asList(row), FormulaRow.class).get(0);
+        final FormulaRow out = roundTrip(dest, "Formula", Arrays.asList(row), FormulaRow.class).get(0);
         assertThat(out.getLabel()).isEqualTo("calc");
         assertThat(out.getFormula()).isEqualTo("=(");
     }
@@ -182,17 +185,16 @@ public class PxlRegressionTests {
     // M9-B: a misdeclared converter fails fast at build time
     // ------------------------------------------------------------------
 
-    @Test
-    public void misdeclaredConverter_failsFast() {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void misdeclaredConverter_failsFast(final ExportDest dest) {
         final BadConverterRow row = new BadConverterRow();
         row.setBad(new BadExportConverterObject());
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         assertThrows(PxlArgumentException.class, () ->
-                pxl.exportExcel()
+                emit(pxl.exportExcel()
                         .sheet(BadConverterRow.class, Arrays.asList(row), "BadConv")
-                        .override(noValidationOption())
-                        .toStream(outputStream));
+                        .override(noValidationOption()), dest, testInfo));
     }
 
     // ------------------------------------------------------------------
@@ -254,20 +256,17 @@ public class PxlRegressionTests {
     // Guard: exportOptionItems containing commas still create a dropdown without crashing
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportOptionItems_commaItems_dropdownPresent() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportOptionItems_commaItems_dropdownPresent(final ExportDest dest) throws Exception {
         final OptionItemsCommaRow row = new OptionItemsCommaRow();
         row.setChoice("AT&T");
 
         // Option null -> exportDataValidation defaults to true. Comma items are handled via a hidden sheet, creating a dropdown without exception.
-        final Workbook workbook = pxl.exportExcel()
-                .sheet(OptionItemsCommaRow.class, Arrays.asList(row), "Opt")
-                .toWorkbook();
-        try {
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
+                .sheet(OptionItemsCommaRow.class, Arrays.asList(row), "Opt"), dest, testInfo)) {
             final XSSFSheet sheet = (XSSFSheet) workbook.getSheet("Opt");
             assertThat(sheet.getDataValidations()).isNotEmpty();
-        } finally {
-            workbook.close();
         }
     }
 

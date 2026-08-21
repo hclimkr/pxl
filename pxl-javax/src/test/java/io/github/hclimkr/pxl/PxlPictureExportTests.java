@@ -1,9 +1,10 @@
 package io.github.hclimkr.pxl;
 
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
+import io.github.hclimkr.pxl.tcdata.ExportDest;
 import io.github.hclimkr.pxl.tcdata.PicturePrecedenceRow;
 import io.github.hclimkr.pxl.tcdata.PictureRow;
-import io.github.hclimkr.pxl.tcdata.TestPaths;
+import io.github.hclimkr.pxl.tcdata.TestExports;
 import io.github.hclimkr.pxl.type.PxlExcelEngine;
 import io.github.hclimkr.pxl.util.PxlCellUtils;
 import org.apache.poi.hssf.usermodel.HSSFShape;
@@ -15,9 +16,12 @@ import org.apache.poi.xssf.usermodel.XSSFShape;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -29,6 +33,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
+import static io.github.hclimkr.pxl.tcdata.TestExports.XLS;
+import static io.github.hclimkr.pxl.tcdata.TestExports.workbookOf;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -39,6 +45,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>
  * The last group calls {@link PxlCellUtils#addPicturesToCell} directly to check the anchor coordinates each file
  * format expects, since the anchor unit differs between XLS and XLSX and only the placement can tell them apart.
+ * <p>
+ * An embedded picture has to survive whichever terminal produced the workbook, so every test that exports is swept
+ * across {@link ExportDest} with {@link TestExports#workbookOf}. The {@code addPicturesToCell} group builds its own
+ * POI workbook and never exports at all.
  */
 public class PxlPictureExportTests {
 
@@ -47,6 +57,14 @@ public class PxlPictureExportTests {
     @BeforeAll
     public static void setUpBeforeClass() {
         pxl = new Pxl();
+    }
+
+    // Captures the current test method name to match the export file name.
+    private TestInfo testInfo;
+
+    @BeforeEach
+    public void bindTestInfo(final TestInfo testInfo) {
+        this.testInfo = testInfo;
     }
 
     // Creates a small PNG filled with the given color and returns its file: URL string. (Different colors yield different bytes, so they are not deduplicated.)
@@ -66,8 +84,9 @@ public class PxlPictureExportTests {
     // Single image + collection (multiple images) embedding
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportPicture_singleAndCollection_embedded(@TempDir final Path dir) throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPicture_singleAndCollection_embedded(final ExportDest dest, @TempDir final Path dir) throws Exception {
         final String photoUrl = createPng(dir, "photo.png", Color.RED);
         final List<String> galleryUrls = Arrays.asList(
                 createPng(dir, "g1.png", Color.GREEN),
@@ -78,18 +97,14 @@ public class PxlPictureExportTests {
         row.setPhoto(photoUrl);
         row.setGallery(galleryUrls);
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(PictureRow.class, Arrays.asList(row), "Pictures")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             final List<? extends PictureData> pictures = workbook.getAllPictures();
             // 1 single + 3 gallery = 4 (different colors, so not deduplicated)
             assertThat(pictures).hasSize(4);
             // Embedded images are written as PNG.
             assertThat(pictures).allMatch(p -> p.getPictureType() == Workbook.PICTURE_TYPE_PNG);
-        } finally {
-            workbook.close();
         }
     }
 
@@ -97,8 +112,9 @@ public class PxlPictureExportTests {
     // Invalid image URLs are skipped without exception (only valid ones embedded)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportPicture_invalidUrl_skipped(@TempDir final Path dir) throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPicture_invalidUrl_skipped(final ExportDest dest, @TempDir final Path dir) throws Exception {
         final String validUrl = createPng(dir, "valid.png", Color.MAGENTA);
         final String missingUrl = dir.resolve("does-not-exist.png").toUri().toURL().toString();
 
@@ -106,35 +122,28 @@ public class PxlPictureExportTests {
         row.setPhoto(missingUrl);                                   // nonexistent file -> skipped
         row.setGallery(Arrays.asList(validUrl, missingUrl));        // 1 valid + 1 invalid
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(PictureRow.class, Arrays.asList(row), "Pictures")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             // Exports without exception, and only the 1 valid image is embedded.
             final List<? extends PictureData> pictures = workbook.getAllPictures();
             assertThat(pictures).hasSize(1);
-        } finally {
-            workbook.close();
         }
     }
 
-    @Test
-    public void exportPicture_nullValue_writesNullStringWithoutPicture() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPicture_nullValue_writesNullStringWithoutPicture(final ExportDest dest) throws Exception {
         // A null value is resolved to exportNullString before any codec runs, so a picture column with nothing in it
         // never reaches the picture path - there is no location to load and nothing to skip.
         final PictureRow row = new PictureRow();
         row.setPhoto(null);
         row.setGallery(null);
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(PictureRow.class, Arrays.asList(row), "Pictures")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             assertThat(workbook.getAllPictures()).isEmpty();
-        } finally {
-            workbook.close();
         }
     }
 
@@ -142,8 +151,9 @@ public class PxlPictureExportTests {
     // Which form a value starting with '=' is written in (issue L7)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportPicture_collectionFirstElementStartingWithEquals_embedsValidElement(@TempDir final Path dir) throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPicture_collectionFirstElementStartingWithEquals_embedsValidElement(final ExportDest dest, @TempDir final Path dir) throws Exception {
         // The Collection path never tested for a leading '=' the way the String path used to, and it still does not:
         // an element that looks like a formula is just another location that fails to load, so the valid element
         // beside it is embedded regardless. Putting it first makes the joined cell string start with '=', which is
@@ -153,19 +163,16 @@ public class PxlPictureExportTests {
         final PictureRow row = new PictureRow();
         row.setGallery(Arrays.asList("=SUM(1,2)", validUrl));
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(PictureRow.class, Arrays.asList(row), "Pictures")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             assertThat(workbook.getAllPictures()).hasSize(1);
-        } finally {
-            workbook.close();
         }
     }
 
-    @Test
-    public void exportPicture_valueStartingWithEquals_takesPicturePath() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPicture_valueStartingWithEquals_takesPicturePath(final ExportDest dest) throws Exception {
         // The column's options decide the form, so a picture column stays a picture column even when the value looks
         // like a formula. It used to be diverted into the text path and written quote-prefixed, which no
         // exportStringAsPicture column had asked for. The location is not loadable here, so it is skipped the way any
@@ -174,16 +181,12 @@ public class PxlPictureExportTests {
         row.setPictureOnly("=SUM(1,2)");
         row.setPictureAndFormula("=1+2");
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(PicturePrecedenceRow.class, Arrays.asList(row), "Precedence")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             final Cell cell = workbook.getSheet("Precedence").getRow(1).getCell(0);
             assertThat(cell.getCellType()).isEqualTo(CellType.BLANK);
             assertThat(cell.getCellStyle().getQuotePrefixed()).isFalse();
-        } finally {
-            workbook.close();
         }
     }
 
@@ -191,10 +194,11 @@ public class PxlPictureExportTests {
     // Anchor coordinates per file format (XLSX = EMU, XLS = fraction of the anchored cell)
     // ------------------------------------------------------------------
 
-    @Test
-    public void exportPicture_perEngine_writesFileWithEmbeddedPictures(final TestInfo testInfo, @TempDir final Path dir) throws Exception {
-        // The whole picture path end to end, once per engine, leaving both files under target/test-outputs so the
-        // placement can be looked at: the anchor unit differs between the formats and only opening them tells
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPicture_perEngine_writesWorkbookWithEmbeddedPictures(final ExportDest dest, @TempDir final Path dir) throws Exception {
+        // The whole picture path end to end, once per engine, leaving both artifacts under target/test-outputs so
+        // the placement can be looked at: the anchor unit differs between the formats and only opening them tells
         // whether the grid landed where it should.
         final String photoUrl = createPng(dir, "photo.png", Color.RED);
         final List<String> galleryUrls = Arrays.asList(
@@ -206,27 +210,20 @@ public class PxlPictureExportTests {
         row.setPhoto(photoUrl);
         row.setGallery(galleryUrls);
 
-        final File xlsFile = TestPaths.exportFile(testInfo, ".xls");
-        pxl.exportExcel()
+        // 1 single + 3 gallery images survive the write in both formats.
+        try (Workbook hssf = workbookOf(pxl.exportExcel()
                 .sheet(PictureRow.class, Arrays.asList(row), "Pictures")
                 .override(PxlExportWorkbookOption.builder()
                         .exportExcelEngine(PxlExcelEngine.HSSF)
                         .exportDataValidation(false)
-                        .build())
-                .toFile(xlsFile);
+                        .build()), dest, testInfo, XLS)) {
+            assertThat(hssf.getAllPictures()).hasSize(4);
+        }
 
-        final File xlsxFile = TestPaths.exportFile(testInfo, ".xlsx");
-        pxl.exportExcel()
+        try (Workbook xssf = workbookOf(pxl.exportExcel()
                 .sheet(PictureRow.class, Arrays.asList(row), "Pictures")
-                .override(noValidationOption())
-                .toFile(xlsxFile);
-
-        // 1 single + 3 gallery images survive the write in both formats.
-        for (final File file : Arrays.asList(xlsFile, xlsxFile)) {
-            assertThat(file).exists();
-            try (Workbook workbook = WorkbookFactory.create(file)) {
-                assertThat(workbook.getAllPictures()).hasSize(4);
-            }
+                .override(noValidationOption()), dest, testInfo)) {
+            assertThat(xssf.getAllPictures()).hasSize(4);
         }
     }
 
@@ -307,23 +304,20 @@ public class PxlPictureExportTests {
         }
     }
 
-    @Test
-    public void exportPicture_bothPictureAndFormula_formulaWins() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void exportPicture_bothPictureAndFormula_formulaWins(final ExportDest dest) throws Exception {
         // With both options set the formula wins, so the cell holds the formula rather than an image location.
         final PicturePrecedenceRow row = new PicturePrecedenceRow();
         row.setPictureOnly("=SUM(1,2)");
         row.setPictureAndFormula("=1+2");
 
-        final Workbook workbook = pxl.exportExcel()
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
                 .sheet(PicturePrecedenceRow.class, Arrays.asList(row), "Precedence")
-                .override(noValidationOption())
-                .toWorkbook();
-        try {
+                .override(noValidationOption()), dest, testInfo)) {
             final Cell cell = workbook.getSheet("Precedence").getRow(1).getCell(1);
             assertThat(cell.getCellType()).isEqualTo(CellType.FORMULA);
             assertThat(cell.getCellFormula()).isEqualTo("1+2");
-        } finally {
-            workbook.close();
         }
     }
 }
