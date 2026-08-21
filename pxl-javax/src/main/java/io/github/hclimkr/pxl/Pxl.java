@@ -16,7 +16,7 @@ import java.util.Locale;
 /**
  * Public entry point for Excel/CSV file binding.
  *
- * <p>All import/export operations are performed with fluent builders.</p>
+ * <p>All export/import operations are performed with fluent builders.</p>
  * <ul>
  *   <li>export: {@link #exportExcel()} / {@link #exportCsv()} - data -> workbook/file/stream</li>
  *   <li>sample: {@link #exportSampleExcel()} / {@link #exportSampleCsv()} - class -> template with one sample data row (each column's exportSample value)</li>
@@ -38,11 +38,11 @@ public final class Pxl {
 
     /**
      * Creates a {@link Pxl} instance, initializing the bean-validation {@link Validator} shared by the
-     * import/export builders it creates.
+     * export/import builders it creates.
      *
      * <p>Bean validation is <strong>optional</strong>: if no provider (e.g. hibernate-validator) or no EL
      * implementation (e.g. jakarta.el) is on the classpath, initialization is skipped gracefully - a warning
-     * is logged and the {@link Validator} is left {@code null}, so import/export proceeds with bean validation
+     * is logged and the {@link Validator} is left {@code null}, so export/import proceeds with bean validation
      * simply disabled (no exception is thrown). Add a provider and EL to enable it.</p>
      *
      * <p>The validator skips one kind of cascade: validating a workbook object does not descend into the rows of a

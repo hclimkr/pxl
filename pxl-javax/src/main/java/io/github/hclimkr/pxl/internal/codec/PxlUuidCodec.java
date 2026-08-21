@@ -15,8 +15,8 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@link UUID} column values - parses cells and strings into {@link UUID} on import and writes
- * {@link UUID} into cells on export. A UUID only has meaning as text, so it is always written as a string cell in its
+ * Codec for {@link UUID} column values - writes {@link UUID} into cells on export and parses cells and
+ * strings into {@link UUID} on import. A UUID only has meaning as text, so it is always written as a string cell in its
  * canonical lower-case 8-4-4-4-12 form ({@link UUID#toString()}).
  *
  * <p>Import accepts the canonical form only, in either case. The check is made here rather than left to
@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * form, a braced {@code "{...}"} form and a {@code "urn:uuid:"} prefix are all rejected, since export only ever writes
  * the canonical form.
  *
- * <p>The column's {@code importPattern}/{@code exportPattern} carry no meaning for a UUID and are ignored;
+ * <p>The column's {@code exportPattern}/{@code importPattern} carry no meaning for a UUID and are ignored;
  * {@code exportTrim} and {@code exportMasking} apply to the canonical string as they do for any other type.
  */
 final class PxlUuidCodec {
@@ -44,6 +44,68 @@ final class PxlUuidCodec {
     private PxlUuidCodec() {
 
         throw new AssertionError("no instances of this class");
+    }
+
+    /**
+     * Writes a {@link UUID} value into a cell. Accepts a {@link UUID} directly or a {@link String} (the sample export
+     * value, which is parsed by the same rules as an imported one; blank becomes {@code null}). A {@code null} value
+     * blanks the cell. The value is always written as text in its canonical form, after the column's export trim and
+     * masking are applied.
+     *
+     * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
+     * @param object     the source value ({@link UUID} or {@link String})
+     * @param columnMeta resolved export metadata for the column
+     * @return the string representation of the written value, or {@code null} when the value is {@code null}
+     * @throws PxlCellCodecException if a string value is not a canonical UUID or the object type cannot be converted to {@link UUID}
+     */
+    static String buildUuidCell(final Cell cell,
+                                final Object object,
+                                final PxlExportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        UUID uuidValue;
+
+        if (object instanceof String) {
+            // The sample value is a string, so parse it and then export it again.
+            final String stringValue = (String) object;
+
+            if (StringUtils.isBlank(stringValue)) {
+                uuidValue = null;
+            } else {
+                uuidValue = toUuid(stringValue, true);
+            }
+        } else if (object instanceof UUID) {
+            uuidValue = (UUID) object;
+        } else {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "UUID"));
+        }
+
+        if (Objects.isNull(uuidValue)) {
+            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
+            return null;
+        } else {
+            final String cellString = makeUuidExportString(uuidValue, columnMeta);
+            Optional.ofNullable(cell).ifPresent(c -> c.setCellValue(cellString));
+            return cellString;
+        }
+    }
+
+    /**
+     * Renders the export string for a {@link UUID}: its canonical lower-case form, with the column's export trim and
+     * masking applied over it. There is no numeric or date form to fall back on, so no export pattern is consulted.
+     *
+     * @param uuidValue  the value to render
+     * @param columnMeta resolved export metadata for the column
+     * @return the export string representation, or {@code null} when the value is {@code null}
+     */
+    private static String makeUuidExportString(final UUID uuidValue,
+                                               final PxlExportColumnMeta columnMeta) {
+
+        if (Objects.isNull(uuidValue)) {
+            return null;
+        }
+
+        return PxlStringCodec.makeExportString(uuidValue.toString(), columnMeta);
     }
 
     /**
@@ -111,71 +173,9 @@ final class PxlUuidCodec {
     }
 
     /**
-     * Writes a {@link UUID} value into a cell. Accepts a {@link UUID} directly or a {@link String} (the sample export
-     * value, which is parsed by the same rules as an imported one; blank becomes {@code null}). A {@code null} value
-     * blanks the cell. The value is always written as text in its canonical form, after the column's export trim and
-     * masking are applied.
-     *
-     * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
-     * @param object     the source value ({@link UUID} or {@link String})
-     * @param columnMeta resolved export metadata for the column
-     * @return the string representation of the written value, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if a string value is not a canonical UUID or the object type cannot be converted to {@link UUID}
-     */
-    static String buildUuidCell(final Cell cell,
-                                final Object object,
-                                final PxlExportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        UUID uuidValue;
-
-        if (object instanceof String) {
-            // The sample value is a string, so parse it and then export it again.
-            final String stringValue = (String) object;
-
-            if (StringUtils.isBlank(stringValue)) {
-                uuidValue = null;
-            } else {
-                uuidValue = toUuid(stringValue, true);
-            }
-        } else if (object instanceof UUID) {
-            uuidValue = (UUID) object;
-        } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "UUID"));
-        }
-
-        if (Objects.isNull(uuidValue)) {
-            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
-            return null;
-        } else {
-            final String cellString = makeUuidExportString(uuidValue, columnMeta);
-            Optional.ofNullable(cell).ifPresent(c -> c.setCellValue(cellString));
-            return cellString;
-        }
-    }
-
-    /**
-     * Renders the export string for a {@link UUID}: its canonical lower-case form, with the column's export trim and
-     * masking applied over it. There is no numeric or date form to fall back on, so no export pattern is consulted.
-     *
-     * @param uuidValue  the value to render
-     * @param columnMeta resolved export metadata for the column
-     * @return the export string representation, or {@code null} when the value is {@code null}
-     */
-    private static String makeUuidExportString(final UUID uuidValue,
-                                               final PxlExportColumnMeta columnMeta) {
-
-        if (Objects.isNull(uuidValue)) {
-            return null;
-        }
-
-        return PxlStringCodec.makeExportString(uuidValue.toString(), columnMeta);
-    }
-
-    /**
      * Converts a non-blank string to a {@link UUID}, reporting failures with the diagnostic keys of the calling
-     * direction. Both directions parse strings: import reads a cell, and export resolves a string sample value before
-     * writing it back out. The string must match the canonical form before {@link UUID#fromString(String)} is asked to
+     * direction. Both directions parse strings: export resolves a string sample value before writing it back out,
+     * and import reads a cell. The string must match the canonical form before {@link UUID#fromString(String)} is asked to
      * build the value.
      *
      * @param stringValue the source string

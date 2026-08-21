@@ -29,7 +29,7 @@ import static io.github.hclimkr.pxl.tcdata.TestExports.workbookOf;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * i18n (import/exportI18nBaseName, Language) verification.
+ * i18n (export/importI18nBaseName, Language) verification.
  * <p>
  * Verifies that, via messages.properties (staff.column.role=Role, staff.column.fullName=Full Name, staff.sheet=Staff),
  * sheet/column names are translated on export and re-matched by the translated header/sheet names on import.

@@ -64,13 +64,19 @@ public final class PxlImportColumnOption {
     private final String importPattern = null;
 
     /**
-     * Specifies the string that represents the boolean value true for BOOLEAN cell types on import.
+     * Specifies the string that represents the boolean value true on import.
+     * <p>
+     * A String column renders a BOOLEAN cell as this string, and a Boolean column interprets this string
+     * (case-insensitive) as true.
      */
     @Builder.Default
     private final String importTrueString = null;
 
     /**
-     * Specifies the string that represents the boolean value false for BOOLEAN cell types on import.
+     * Specifies the string that represents the boolean value false on import.
+     * <p>
+     * A String column renders a BOOLEAN cell as this string, and a Boolean column interprets this string
+     * (case-insensitive) as false.
      */
     @Builder.Default
     private final String importFalseString = null;

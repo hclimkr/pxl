@@ -21,16 +21,15 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Date} column values - parses cells/strings into {@link Date} on import and
- * writes {@link Date} into cells on export.
+ * Codec for {@link Date} column values - writes {@link Date} into cells on export and parses
+ * cells/strings into {@link Date} on import.
  *
- * <p>Import reads date-formatted NUMERIC cells via POI, other numerics as Excel date
+ * <p>Export writes either a formatted string (when exported to string) or a numeric Excel-date cell (when no
+ * pattern/masking applies). Import reads date-formatted NUMERIC cells via POI, other numerics as Excel date
  * serials, and strings via the column's cached {@link SimpleDateFormat} (falling back to the built-in read
  * formatters, then an ISO-8601 instant). Every one of those parsers must match the value in full, so a string
  * carrying anything beyond the date is rejected rather than read up to the point where it stops making sense
- * ({@code PxlDateTimeSupport.parseFullyAsDate}). A BOOLEAN cell is rejected as an unsupported cell type. Export
- * writes either a formatted string (when exported to string) or a numeric Excel-date cell (when no
- * pattern/masking applies).
+ * ({@code PxlDateTimeSupport.parseFullyAsDate}). A BOOLEAN cell is rejected as an unsupported cell type.
  */
 final class PxlJavaDateCodec {
 
@@ -40,6 +39,94 @@ final class PxlJavaDateCodec {
     private PxlJavaDateCodec() {
 
         throw new AssertionError("no instances of this class");
+    }
+
+    /**
+     * Writes the given value as a {@link Date} cell and returns the exported string. A {@link String}
+     * source is parsed with the export formatter, which must match it in full; a {@link Date} source is used directly. A
+     * {@code null} result blanks the cell; otherwise the cell is written as a formatted string when
+     * exported to string, or as a numeric Excel-date cell when no pattern/masking applies.
+     *
+     * @param cell       the target cell, or {@code null} to only compute the string
+     * @param object     the source value (a {@link String} or {@link Date})
+     * @param columnMeta the resolved export metadata for this column
+     * @return the exported string, or {@code null} when blank
+     * @throws PxlCellCodecException if the source is unsupported or the string is not a valid date
+     */
+    static String buildJavaDateCell(final Cell cell,
+                                    final Object object,
+                                    final PxlExportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        SimpleDateFormat exportJavaDateFormatter = columnMeta.getExportJavaDateFormatterCache();
+        if (Objects.isNull(exportJavaDateFormatter)) {
+            exportJavaDateFormatter = PxlCodecConstants.javaDateWriteFormatter.get();
+        }
+
+        Date dateValue;
+
+        if (object instanceof String) {
+            final String stringValue = (String) object;
+
+            if (StringUtils.isBlank(stringValue)) {
+                dateValue = null;
+            } else {
+                try {
+                    dateValue = PxlDateTimeSupport.parseFullyAsDate(exportJavaDateFormatter, stringValue, "Date");
+                } catch (PxlCellCodecException pxlCellCodecException) {
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Date"), pxlCellCodecException);
+                }
+            }
+        } else if (object instanceof Date) {
+            dateValue = (Date) object;
+        } else {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Date"));
+        }
+
+        if (Objects.isNull(dateValue)) {
+            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
+            return null;
+        } else {
+            final String cellString = makeJavaDateExportString(dateValue, columnMeta);
+            if (Objects.nonNull(cell)) {
+                if (columnMeta.isExportedToString()) {
+                    cell.setCellValue(cellString);
+                } else {
+                    // When there is no pattern/masking, write it as a Numeric (Excel date serial) cell rather than a string.
+                    PxlDateCellSupport.writeNumericCell(cell, dateValue, columnMeta, PxlCodecConstants.javaDateExcelFormat);
+                }
+            }
+
+            return cellString;
+        }
+    }
+
+    /**
+     * Renders the export string for a {@link Date}: formats it with the configured export {@link SimpleDateFormat}
+     * (or the built-in default write formatter when none is set), then applies string-level export processing via
+     * {@link PxlStringCodec#makeExportString}.
+     *
+     * @param dateValue  the value to render
+     * @param columnMeta resolved export metadata for the column
+     * @return the export string representation, or {@code null} when the value is {@code null}
+     * @throws PxlCellCodecException if the export pattern cannot be applied to the value
+     */
+    private static String makeJavaDateExportString(final Date dateValue,
+                                                   final PxlExportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        if (Objects.isNull(dateValue)) {
+            return null;
+        }
+
+        SimpleDateFormat exportJavaDateFormatter = columnMeta.getExportJavaDateFormatterCache();
+        if (Objects.isNull(exportJavaDateFormatter)) {
+            exportJavaDateFormatter = PxlCodecConstants.javaDateWriteFormatter.get();
+        }
+
+        final String stringValue = exportJavaDateFormatter.format(dateValue);
+
+        return PxlStringCodec.makeExportString(stringValue, columnMeta);
     }
 
     /**
@@ -140,94 +227,6 @@ final class PxlJavaDateCodec {
         }
 
         throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Date"));
-    }
-
-    /**
-     * Writes the given value as a {@link Date} cell and returns the exported string. A {@link String}
-     * source is parsed with the export formatter, which must match it in full; a {@link Date} source is used directly. A
-     * {@code null} result blanks the cell; otherwise the cell is written as a formatted string when
-     * exported to string, or as a numeric Excel-date cell when no pattern/masking applies.
-     *
-     * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@link String} or {@link Date})
-     * @param columnMeta the resolved export metadata for this column
-     * @return the exported string, or {@code null} when blank
-     * @throws PxlCellCodecException if the source is unsupported or the string is not a valid date
-     */
-    static String buildJavaDateCell(final Cell cell,
-                                    final Object object,
-                                    final PxlExportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        SimpleDateFormat exportJavaDateFormatter = columnMeta.getExportJavaDateFormatterCache();
-        if (Objects.isNull(exportJavaDateFormatter)) {
-            exportJavaDateFormatter = PxlCodecConstants.javaDateWriteFormatter.get();
-        }
-
-        Date dateValue;
-
-        if (object instanceof String) {
-            final String stringValue = (String) object;
-
-            if (StringUtils.isBlank(stringValue)) {
-                dateValue = null;
-            } else {
-                try {
-                    dateValue = PxlDateTimeSupport.parseFullyAsDate(exportJavaDateFormatter, stringValue, "Date");
-                } catch (PxlCellCodecException pxlCellCodecException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Date"), pxlCellCodecException);
-                }
-            }
-        } else if (object instanceof Date) {
-            dateValue = (Date) object;
-        } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Date"));
-        }
-
-        if (Objects.isNull(dateValue)) {
-            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
-            return null;
-        } else {
-            final String cellString = makeJavaDateExportString(dateValue, columnMeta);
-            if (Objects.nonNull(cell)) {
-                if (columnMeta.isExportedToString()) {
-                    cell.setCellValue(cellString);
-                } else {
-                    // When there is no pattern/masking, write it as a Numeric (Excel date serial) cell rather than a string.
-                    PxlDateCellSupport.writeNumericCell(cell, dateValue, columnMeta, PxlCodecConstants.javaDateExcelFormat);
-                }
-            }
-
-            return cellString;
-        }
-    }
-
-    /**
-     * Renders the export string for a {@link Date}: formats it with the configured export {@link SimpleDateFormat}
-     * (or the built-in default write formatter when none is set), then applies string-level export processing via
-     * {@link PxlStringCodec#makeExportString}.
-     *
-     * @param dateValue  the value to render
-     * @param columnMeta resolved export metadata for the column
-     * @return the export string representation, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if the export pattern cannot be applied to the value
-     */
-    private static String makeJavaDateExportString(final Date dateValue,
-                                                   final PxlExportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        if (Objects.isNull(dateValue)) {
-            return null;
-        }
-
-        SimpleDateFormat exportJavaDateFormatter = columnMeta.getExportJavaDateFormatterCache();
-        if (Objects.isNull(exportJavaDateFormatter)) {
-            exportJavaDateFormatter = PxlCodecConstants.javaDateWriteFormatter.get();
-        }
-
-        final String stringValue = exportJavaDateFormatter.format(dateValue);
-
-        return PxlStringCodec.makeExportString(stringValue, columnMeta);
     }
 
 }

@@ -11,7 +11,7 @@ import java.util.List;
  * Workbook naming an i18n base name no resource answers to, for verifying that an injected bundle replaces it.
  * <p>
  * Loading the annotated base name is a {@code PxlI18nException} on its own. A bundle supplied through the option's
- * {@code import/exportResourceBundle} is used in its place before the annotated one is ever loaded, so the same
+ * {@code export/importResourceBundle} is used in its place before the annotated one is ever loaded, so the same
  * workbook then binds without error - which is what makes the injected bundle's precedence observable.
  */
 @Getter

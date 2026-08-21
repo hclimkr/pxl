@@ -18,8 +18,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@link BigDecimal} column values - parses cells and strings into {@link BigDecimal} on import and writes
- * {@link BigDecimal} into cells on export. A numeric cell is converted via {@code BigDecimal.valueOf(double)} (so its
+ * Codec for {@link BigDecimal} column values - writes {@link BigDecimal} into cells on export and parses cells and
+ * strings into {@link BigDecimal} on import. A numeric cell is converted via {@code BigDecimal.valueOf(double)} (so its
  * precision is limited by the underlying {@code double}); string input is parsed exactly via {@code new BigDecimal(String)}.
  * Boolean cells map to 1/0. Export always writes the value as text ({@link BigDecimal#toPlainString()}, quote-prefixed) to
  * preserve full precision rather than as a lossy numeric cell.
@@ -32,86 +32,6 @@ final class PxlBigDecimalCodec {
     private PxlBigDecimalCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses an Excel cell into a {@link BigDecimal}. NUMERIC cells are converted via {@code BigDecimal.valueOf(double)};
-     * STRING cells are delegated to the string overload; BOOLEAN cells map to 1 (true) or 0 (false); BLANK cells yield {@code null}.
-     *
-     * @param cell       the source cell
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@link BigDecimal}, or {@code null} for a blank cell
-     * @throws PxlCellCodecException if the cell type is unsupported
-     */
-    static BigDecimal parseBigDecimalValue(final Cell cell,
-                                           final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        BigDecimal bigDecimalValue = null;
-
-        final CellType cellType = cell.getCellType();
-        switch (cellType) {
-            case NUMERIC:
-                final double numericValue = cell.getNumericCellValue();
-                bigDecimalValue = PxlNumberSupport.requireFinite(numericValue, "BigDecimal");
-                break;
-
-            case STRING:
-                final String stringCellValue = cell.getStringCellValue();
-                bigDecimalValue = parseBigDecimalValue(stringCellValue, columnMeta);
-                break;
-
-            case BOOLEAN:
-                final boolean booleanCellValue = cell.getBooleanCellValue();
-                bigDecimalValue = BigDecimal.valueOf(BooleanUtils.toInteger(booleanCellValue));
-                break;
-
-            case BLANK:
-                // empty
-                break;
-
-            default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-        }
-
-        return bigDecimalValue;
-    }
-
-    /**
-     * Parses a string into a {@link BigDecimal}. Trims first when {@code importTrim} is enabled and returns {@code null} for
-     * blank input. When an import {@link DecimalFormat} is configured (parsing to {@link BigDecimal}) the whole string
-     * must match the pattern and its result is used ({@code PxlNumberSupport.parseFullyAsBigDecimal}, which also rejects
-     * the infinity/NaN tokens the formatter would otherwise hand back as a {@link Double}); otherwise
-     * {@code new BigDecimal(String)} parses the value exactly.
-     *
-     * @param s          the source string
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@link BigDecimal}, or {@code null} for blank input
-     * @throws PxlCellCodecException if the string is not a valid {@link BigDecimal}
-     */
-    static BigDecimal parseBigDecimalValue(final String s,
-                                           final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return null;
-        }
-
-        BigDecimal bigDecimalValue;
-
-        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
-        if (Objects.nonNull(importDecimalFormatter)) {
-            bigDecimalValue = PxlNumberSupport.parseFullyAsBigDecimal(importDecimalFormatter, stringValue, "BigDecimal");
-        } else {
-            try {
-                bigDecimalValue = new BigDecimal(stringValue);
-            } catch (NumberFormatException numberFormatException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "BigDecimal"), numberFormatException);
-            }
-        }
-
-        return bigDecimalValue;
     }
 
     /**
@@ -204,6 +124,86 @@ final class PxlBigDecimalCodec {
             // return NumberToTextConverter.toText(bigDecimalValue.doubleValue());
             return bigDecimalValue.toPlainString();
         }
+    }
+
+    /**
+     * Parses an Excel cell into a {@link BigDecimal}. NUMERIC cells are converted via {@code BigDecimal.valueOf(double)};
+     * STRING cells are delegated to the string overload; BOOLEAN cells map to 1 (true) or 0 (false); BLANK cells yield {@code null}.
+     *
+     * @param cell       the source cell
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@link BigDecimal}, or {@code null} for a blank cell
+     * @throws PxlCellCodecException if the cell type is unsupported
+     */
+    static BigDecimal parseBigDecimalValue(final Cell cell,
+                                           final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        BigDecimal bigDecimalValue = null;
+
+        final CellType cellType = cell.getCellType();
+        switch (cellType) {
+            case NUMERIC:
+                final double numericValue = cell.getNumericCellValue();
+                bigDecimalValue = PxlNumberSupport.requireFinite(numericValue, "BigDecimal");
+                break;
+
+            case STRING:
+                final String stringCellValue = cell.getStringCellValue();
+                bigDecimalValue = parseBigDecimalValue(stringCellValue, columnMeta);
+                break;
+
+            case BOOLEAN:
+                final boolean booleanCellValue = cell.getBooleanCellValue();
+                bigDecimalValue = BigDecimal.valueOf(BooleanUtils.toInteger(booleanCellValue));
+                break;
+
+            case BLANK:
+                // empty
+                break;
+
+            default:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+        }
+
+        return bigDecimalValue;
+    }
+
+    /**
+     * Parses a string into a {@link BigDecimal}. Trims first when {@code importTrim} is enabled and returns {@code null} for
+     * blank input. When an import {@link DecimalFormat} is configured (parsing to {@link BigDecimal}) the whole string
+     * must match the pattern and its result is used ({@code PxlNumberSupport.parseFullyAsBigDecimal}, which also rejects
+     * the infinity/NaN tokens the formatter would otherwise hand back as a {@link Double}); otherwise
+     * {@code new BigDecimal(String)} parses the value exactly.
+     *
+     * @param s          the source string
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@link BigDecimal}, or {@code null} for blank input
+     * @throws PxlCellCodecException if the string is not a valid {@link BigDecimal}
+     */
+    static BigDecimal parseBigDecimalValue(final String s,
+                                           final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return null;
+        }
+
+        BigDecimal bigDecimalValue;
+
+        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
+        if (Objects.nonNull(importDecimalFormatter)) {
+            bigDecimalValue = PxlNumberSupport.parseFullyAsBigDecimal(importDecimalFormatter, stringValue, "BigDecimal");
+        } else {
+            try {
+                bigDecimalValue = new BigDecimal(stringValue);
+            } catch (NumberFormatException numberFormatException) {
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "BigDecimal"), numberFormatException);
+            }
+        }
+
+        return bigDecimalValue;
     }
 
 }

@@ -37,9 +37,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Tests for various @PxlColumn property combinations.
  * <p>
- * Verifies pattern/importPattern/exportPattern, custom true/false strings, custom collection separators, exportNullString,
+ * Verifies pattern/exportPattern/importPattern, custom true/false strings, custom collection separators, exportNullString,
  * importTrim, column name aliases (name={...}), importUnique, exportOptionItems, exportEnumDropDownListStyle,
- * exportSampleEnabled against a data export, and column-level import/export enable toggles via actual
+ * exportSampleEnabled against a data export, and column-level export/import enable toggles via actual
  * round-trips/assertions.
  * <p>
  * Every test that exports is swept across {@link ExportDest}: what a column option renders has to be the same on
@@ -128,7 +128,7 @@ public class PxlColumnOptionTests {
     }
 
     // ------------------------------------------------------------------
-    // pattern / importPattern / exportPattern
+    // pattern / exportPattern / importPattern
     // ------------------------------------------------------------------
 
     @ParameterizedTest
@@ -406,7 +406,7 @@ public class PxlColumnOptionTests {
     }
 
     // ------------------------------------------------------------------
-    // Column-level import/export enable toggles
+    // Column-level export/import enable toggles
     // ------------------------------------------------------------------
 
     @ParameterizedTest

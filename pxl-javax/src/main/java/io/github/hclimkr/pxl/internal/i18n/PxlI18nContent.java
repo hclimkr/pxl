@@ -7,7 +7,7 @@ import java.util.ResourceBundle;
 /**
  * Content i18n channel: translates consumer-facing <strong>sheet and column names</strong> through a
  * consumer-provided resource bundle, configured per workbook via {@code @PxlWorkbook}
- * ({@code importI18n*}/{@code exportI18n*}).
+ * ({@code exportI18n*}/{@code importI18n*}).
  *
  * <p>This is one of the library's two independent i18n channels. It is a thin, content-semantic facade over
  * the shared {@link PxlI18n} loader (UTF-8 bundle loading + key resolution); the other channel - the

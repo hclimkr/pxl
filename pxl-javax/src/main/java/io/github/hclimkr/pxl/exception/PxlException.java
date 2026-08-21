@@ -15,7 +15,7 @@ import java.util.Objects;
  * Base checked exception for the Pxl library and the common supertype of every checked {@code Pxl*Exception}.
  *
  * <p>The class is {@code abstract}: it is never thrown itself, only its concrete subtypes are. Every
- * import/export failure crossing the {@link Pxl} boundary is normalized into one of them - a classified
+ * export/import failure crossing the {@link Pxl} boundary is normalized into one of them - a classified
  * failure into the matching subtype ({@link PxlIOException}, {@link PxlCellCodecException},
  * {@link PxlValidationException}, {@link PxlArgumentException}, ...), anything else into
  * {@link PxlSystemException}. Declaring {@code throws PxlException} therefore stays a valid contract for a

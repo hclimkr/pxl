@@ -4,8 +4,8 @@ import io.github.hclimkr.pxl.annotation.PxlColumn;
 import lombok.*;
 
 /**
- * DTO for verifying custom true/false string combinations (import/exportTrueString and FalseString).
- * For round-trip to work, the import and export strings must be set to the same values.
+ * DTO for verifying custom true/false string combinations (export/importTrueString and FalseString).
+ * For round-trip to work, the export and import strings must be set to the same values.
  */
 @Getter
 @Setter

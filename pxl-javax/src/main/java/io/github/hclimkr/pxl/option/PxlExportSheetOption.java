@@ -91,7 +91,7 @@ public final class PxlExportSheetOption {
 
     /**
      * Specifies the index of the starting row used as data on export.
-     * (The default is the second row. When set explicitly, use a 1-based value, and it must be greater than the value of exportHeaderRowIndex and less than or equal to the value of exportLastDataRowIndex.)
+     * (The default is the row right after the header row - the second row unless exportHeaderRowIndex moves it. When set explicitly, use a 1-based value, and it must be greater than the value of exportHeaderRowIndex and less than or equal to the value of exportLastDataRowIndex.)
      */
     @Builder.Default
     private final Integer exportFirstDataRowIndex = null;

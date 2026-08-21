@@ -4,8 +4,8 @@ import io.github.hclimkr.pxl.annotation.PxlExportConverter;
 import io.github.hclimkr.pxl.annotation.PxlImportConverter;
 
 /**
- * Enum that converts via custom @PxlImportConverter/@PxlExportConverter methods (a numeric code) rather than
- * toString/name matching, exercising the enum codec's converter-method import and export branches.
+ * Enum that converts via custom @PxlExportConverter/@PxlImportConverter methods (a numeric code) rather than
+ * toString/name matching, exercising the enum codec's converter-method export and import branches.
  */
 public enum ConverterEnum {
 

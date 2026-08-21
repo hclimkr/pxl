@@ -6,7 +6,7 @@ import lombok.*;
 
 /**
  * Custom object type.
- * Import round-trips via @PxlImportConverter (static method), export via @PxlExportConverter (instance method).
+ * Export goes through @PxlExportConverter (instance method), import round-trips via @PxlImportConverter (static method).
  */
 @Getter
 @Setter

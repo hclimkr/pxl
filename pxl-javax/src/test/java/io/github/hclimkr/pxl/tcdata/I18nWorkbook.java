@@ -8,7 +8,7 @@ import lombok.*;
 import java.util.List;
 
 /**
- * Workbook for verifying i18n (import/exportI18nBaseName / Language).
+ * Workbook for verifying i18n (export/importI18nBaseName / Language).
  * Sheet key staff.sheet -> "Staff", column keys staff.column.role/fullName -> translated to Role/Full Name.
  */
 @Getter

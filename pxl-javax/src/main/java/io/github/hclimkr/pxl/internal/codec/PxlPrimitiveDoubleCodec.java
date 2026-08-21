@@ -18,9 +18,9 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for primitive {@code double} column values - parses cells and strings into {@code double} on import and writes
- * {@code double} into cells on export. Numeric cells are taken as-is (no range check); boolean cells map to 1.0/0.0.
- * Because {@code double} cannot be {@code null}, blank input parses to {@code 0.0}. Both import and export reject NaN and
+ * Codec for primitive {@code double} column values - writes {@code double} into cells on export and parses cells and
+ * strings into {@code double} on import. Numeric cells are taken as-is (no range check); boolean cells map to 1.0/0.0.
+ * Because {@code double} cannot be {@code null}, blank input parses to {@code 0.0}. Both export and import reject NaN and
  * Infinity, keeping the two directions symmetric, and export renders plain numeric text via {@link NumberToTextConverter}
  * to avoid scientific-notation noise.
  */
@@ -32,89 +32,6 @@ final class PxlPrimitiveDoubleCodec {
     private PxlPrimitiveDoubleCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses an Excel cell into a {@code double}. NUMERIC cells are taken directly; STRING cells are delegated to the string
-     * overload; BOOLEAN cells map to 1.0 (true) or 0.0 (false); BLANK cells yield {@code 0.0}.
-     *
-     * @param cell       the source cell
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code double} (0.0 for a blank cell)
-     * @throws PxlCellCodecException if the cell type is unsupported
-     */
-    static double parsePrimitiveDoubleValue(final Cell cell,
-                                            final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        double doubleValue = 0.;
-
-        final CellType cellType = cell.getCellType();
-        switch (cellType) {
-            case NUMERIC:
-                final double numericValue = cell.getNumericCellValue();
-                doubleValue = numericValue;
-                break;
-
-            case STRING:
-                final String stringCellValue = cell.getStringCellValue();
-                doubleValue = parsePrimitiveDoubleValue(stringCellValue, columnMeta);
-                break;
-
-            case BOOLEAN:
-                final boolean booleanCellValue = cell.getBooleanCellValue();
-                doubleValue = (double) BooleanUtils.toInteger(booleanCellValue);
-                break;
-
-            case BLANK:
-                // empty
-                break;
-
-            default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-        }
-
-        PxlNumberSupport.requireFiniteForImport(doubleValue, "double");
-
-        return doubleValue;
-    }
-
-    /**
-     * Parses a string into a {@code double}. Trims first when {@code importTrim} is enabled and returns {@code 0.0} for blank
-     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
-     * ({@code PxlNumberSupport.parseFullyAsNumber}) and its parsed value is used; otherwise {@link Double#parseDouble(String)}
-     * is used.
-     *
-     * @param s          the source string
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code double} (0.0 for blank input)
-     * @throws PxlCellCodecException if the string is not a valid {@code double}
-     */
-    static double parsePrimitiveDoubleValue(final String s,
-                                            final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return (double) 0.;
-        }
-
-        double doubleValue;
-
-        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
-        if (Objects.nonNull(importDecimalFormatter)) {
-            doubleValue = PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "double").doubleValue();
-        } else {
-            try {
-                doubleValue = Double.parseDouble(stringValue);
-            } catch (NumberFormatException numberFormatException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "double"), numberFormatException);
-            }
-        }
-
-        PxlNumberSupport.requireFiniteForImport(doubleValue, "double");
-
-        return doubleValue;
     }
 
     /**
@@ -206,6 +123,89 @@ final class PxlPrimitiveDoubleCodec {
         } else {
             return NumberToTextConverter.toText(doubleValue);
         }
+    }
+
+    /**
+     * Parses an Excel cell into a {@code double}. NUMERIC cells are taken directly; STRING cells are delegated to the string
+     * overload; BOOLEAN cells map to 1.0 (true) or 0.0 (false); BLANK cells yield {@code 0.0}.
+     *
+     * @param cell       the source cell
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@code double} (0.0 for a blank cell)
+     * @throws PxlCellCodecException if the cell type is unsupported
+     */
+    static double parsePrimitiveDoubleValue(final Cell cell,
+                                            final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        double doubleValue = 0.;
+
+        final CellType cellType = cell.getCellType();
+        switch (cellType) {
+            case NUMERIC:
+                final double numericValue = cell.getNumericCellValue();
+                doubleValue = numericValue;
+                break;
+
+            case STRING:
+                final String stringCellValue = cell.getStringCellValue();
+                doubleValue = parsePrimitiveDoubleValue(stringCellValue, columnMeta);
+                break;
+
+            case BOOLEAN:
+                final boolean booleanCellValue = cell.getBooleanCellValue();
+                doubleValue = (double) BooleanUtils.toInteger(booleanCellValue);
+                break;
+
+            case BLANK:
+                // empty
+                break;
+
+            default:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+        }
+
+        PxlNumberSupport.requireFiniteForImport(doubleValue, "double");
+
+        return doubleValue;
+    }
+
+    /**
+     * Parses a string into a {@code double}. Trims first when {@code importTrim} is enabled and returns {@code 0.0} for blank
+     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and its parsed value is used; otherwise {@link Double#parseDouble(String)}
+     * is used.
+     *
+     * @param s          the source string
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@code double} (0.0 for blank input)
+     * @throws PxlCellCodecException if the string is not a valid {@code double}
+     */
+    static double parsePrimitiveDoubleValue(final String s,
+                                            final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return (double) 0.;
+        }
+
+        double doubleValue;
+
+        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
+        if (Objects.nonNull(importDecimalFormatter)) {
+            doubleValue = PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "double").doubleValue();
+        } else {
+            try {
+                doubleValue = Double.parseDouble(stringValue);
+            } catch (NumberFormatException numberFormatException) {
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "double"), numberFormatException);
+            }
+        }
+
+        PxlNumberSupport.requireFiniteForImport(doubleValue, "double");
+
+        return doubleValue;
     }
 
 }

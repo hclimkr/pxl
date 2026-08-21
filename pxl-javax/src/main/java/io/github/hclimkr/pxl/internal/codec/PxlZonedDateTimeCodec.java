@@ -20,13 +20,13 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link ZonedDateTime} column values - parses cells/strings into {@link ZonedDateTime}
- * on import and writes {@link ZonedDateTime} into cells on export.
+ * Codec for {@link ZonedDateTime} column values - writes {@link ZonedDateTime} into cells on export
+ * and parses cells/strings into {@link ZonedDateTime} on import.
  *
- * <p>NUMERIC cells are read as Excel serials and placed at the system default zone; a BOOLEAN cell is
- * rejected as an unsupported cell type. Strings are parsed with the column's cached formatter, then ISO-8601
- * with an explicit offset/zone ({@link DateTimeFormatter#ISO_ZONED_DATE_TIME}). On export to a numeric cell
- * only the local (wall-clock) part is stored, since Excel serials carry no zone.
+ * <p>On export to a numeric cell only the local (wall-clock) part is stored, since Excel serials carry no
+ * zone. On import, NUMERIC cells are read as Excel serials and placed at the system default zone, a BOOLEAN
+ * cell is rejected as an unsupported cell type, and strings are parsed with the column's cached formatter,
+ * then ISO-8601 with an explicit offset/zone ({@link DateTimeFormatter#ISO_ZONED_DATE_TIME}).
  */
 final class PxlZonedDateTimeCodec {
 
@@ -36,97 +36,6 @@ final class PxlZonedDateTimeCodec {
     private PxlZonedDateTimeCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses the given cell into a {@link ZonedDateTime} at the system default zone.
-     * Date-formatted NUMERIC cells use POI's local date-time; other numerics are
-     * Excel serials; STRING cells are delegated to the string parser; BOOLEAN cells are rejected as an
-     * unsupported cell type; BLANK cells yield {@code null}.
-     *
-     * @param cell       the cell to read
-     * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@link ZonedDateTime}, or {@code null} when blank
-     * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is invalid
-     */
-    static ZonedDateTime parseZonedDateTimeValue(final Cell cell,
-                                                 final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final ZoneId zoneId = ZoneId.systemDefault();
-        ZonedDateTime zonedDateTimeValue = null;
-
-        final CellType cellType = cell.getCellType();
-        switch (cellType) {
-            case NUMERIC:
-                try {
-                    zonedDateTimeValue = PxlDateCellSupport.readNumericCellAsLocalDateTime(cell, "ZonedDateTime").atZone(zoneId);
-                } catch (NumberFormatException numberFormatException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), "ZonedDateTime"), numberFormatException);
-                }
-                break;
-
-            case STRING:
-                final String stringCellValue = cell.getStringCellValue();
-                zonedDateTimeValue = parseZonedDateTimeValue(stringCellValue, columnMeta);
-                break;
-
-            case BOOLEAN:
-                // final boolean booleanCellValue = cell.getBooleanCellValue();
-                // zonedDateTimeValue = DateUtil.getLocalDateTime(BooleanUtils.toInteger(booleanCellValue)).atZone(zoneId);
-                // break;
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-
-            case BLANK:
-                // empty
-                break;
-
-            default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-        }
-
-        return zonedDateTimeValue;
-    }
-
-    /**
-     * Parses a string token into a {@link ZonedDateTime}. The column's cached formatter is tried
-     * first, then ISO-8601 parsing with an explicit offset/zone. The value is trimmed when {@code importTrim}
-     * is set; a blank value yields {@code null}.
-     *
-     * @param s          the raw string token
-     * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@link ZonedDateTime}, or {@code null} when blank
-     * @throws PxlCellCodecException if the value matches no known format
-     */
-    static ZonedDateTime parseZonedDateTimeValue(final String s,
-                                                 final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return null;
-        }
-
-        ZonedDateTime zonedDateTimeValue = null;
-
-        final DateTimeFormatter importDateTimeFormatter = columnMeta.getImportDateTimeFormatterCache();
-        if (Objects.nonNull(importDateTimeFormatter)) {
-            try {
-                zonedDateTimeValue = ZonedDateTime.parse(stringValue, importDateTimeFormatter);
-                return zonedDateTimeValue;
-            } catch (DateTimeParseException dateTimeParseException) {
-                // go to next parser
-            }
-        }
-
-        try {
-            zonedDateTimeValue = ZonedDateTime.parse(stringValue, DateTimeFormatter.ISO_ZONED_DATE_TIME);
-            return zonedDateTimeValue;
-        } catch (DateTimeParseException e) {
-            // go to next parser
-        }
-
-        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "ZonedDateTime"));
     }
 
     /**
@@ -225,6 +134,97 @@ final class PxlZonedDateTimeCodec {
         } catch (DateTimeException dateTimeException) {
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(zonedDateTimeValue), "ZonedDateTime"), dateTimeException);
         }
+    }
+
+    /**
+     * Parses the given cell into a {@link ZonedDateTime} at the system default zone.
+     * Date-formatted NUMERIC cells use POI's local date-time; other numerics are
+     * Excel serials; STRING cells are delegated to the string parser; BOOLEAN cells are rejected as an
+     * unsupported cell type; BLANK cells yield {@code null}.
+     *
+     * @param cell       the cell to read
+     * @param columnMeta the resolved import metadata for this column
+     * @return the parsed {@link ZonedDateTime}, or {@code null} when blank
+     * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is invalid
+     */
+    static ZonedDateTime parseZonedDateTimeValue(final Cell cell,
+                                                 final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final ZoneId zoneId = ZoneId.systemDefault();
+        ZonedDateTime zonedDateTimeValue = null;
+
+        final CellType cellType = cell.getCellType();
+        switch (cellType) {
+            case NUMERIC:
+                try {
+                    zonedDateTimeValue = PxlDateCellSupport.readNumericCellAsLocalDateTime(cell, "ZonedDateTime").atZone(zoneId);
+                } catch (NumberFormatException numberFormatException) {
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), "ZonedDateTime"), numberFormatException);
+                }
+                break;
+
+            case STRING:
+                final String stringCellValue = cell.getStringCellValue();
+                zonedDateTimeValue = parseZonedDateTimeValue(stringCellValue, columnMeta);
+                break;
+
+            case BOOLEAN:
+                // final boolean booleanCellValue = cell.getBooleanCellValue();
+                // zonedDateTimeValue = DateUtil.getLocalDateTime(BooleanUtils.toInteger(booleanCellValue)).atZone(zoneId);
+                // break;
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+
+            case BLANK:
+                // empty
+                break;
+
+            default:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+        }
+
+        return zonedDateTimeValue;
+    }
+
+    /**
+     * Parses a string token into a {@link ZonedDateTime}. The column's cached formatter is tried
+     * first, then ISO-8601 parsing with an explicit offset/zone. The value is trimmed when {@code importTrim}
+     * is set; a blank value yields {@code null}.
+     *
+     * @param s          the raw string token
+     * @param columnMeta the resolved import metadata for this column
+     * @return the parsed {@link ZonedDateTime}, or {@code null} when blank
+     * @throws PxlCellCodecException if the value matches no known format
+     */
+    static ZonedDateTime parseZonedDateTimeValue(final String s,
+                                                 final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return null;
+        }
+
+        ZonedDateTime zonedDateTimeValue = null;
+
+        final DateTimeFormatter importDateTimeFormatter = columnMeta.getImportDateTimeFormatterCache();
+        if (Objects.nonNull(importDateTimeFormatter)) {
+            try {
+                zonedDateTimeValue = ZonedDateTime.parse(stringValue, importDateTimeFormatter);
+                return zonedDateTimeValue;
+            } catch (DateTimeParseException dateTimeParseException) {
+                // go to next parser
+            }
+        }
+
+        try {
+            zonedDateTimeValue = ZonedDateTime.parse(stringValue, DateTimeFormatter.ISO_ZONED_DATE_TIME);
+            return zonedDateTimeValue;
+        } catch (DateTimeParseException e) {
+            // go to next parser
+        }
+
+        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "ZonedDateTime"));
     }
 
 }

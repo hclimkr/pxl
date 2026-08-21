@@ -15,7 +15,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Common base for the import and export binders. Provides shared bean-validation
+ * Common base for the export and import binders. Provides shared bean-validation
  * ({@code javax.validation}) of workbook/sheet/row objects and per-column uniqueness checks.
  */
 abstract class PxlAbstractBinder {

@@ -8,7 +8,7 @@ import lombok.*;
 import java.util.List;
 
 /**
- * Workbook for verifying i18n Country (import/exportI18nCountry).
+ * Workbook for verifying i18n Country (export/importI18nCountry).
  * language=ko + country=KR -> Locale(ko,KR) -> resolved from messages_ko.properties (via the ko_KR -> ko candidate chain),
  * so the Korean translations (역할, 성명, 직원) are used. (differs from the English base messages.properties)
  */

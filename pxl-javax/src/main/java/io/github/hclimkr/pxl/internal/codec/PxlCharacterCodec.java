@@ -14,8 +14,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Character} column values - parses cells/strings into {@link Character} on import and
- * writes {@link Character} into cells on export. The first character of the cell/string is taken; NUMERIC
+ * Codec for {@link Character} column values - writes {@link Character} into cells on export and parses
+ * cells/strings into {@link Character} on import. The first character of the cell/string is taken; NUMERIC
  * cells are stringified via {@link NumberToTextConverter} and BOOLEAN cells map to {@code '1'}/{@code '0'}.
  */
 final class PxlCharacterCodec {
@@ -26,6 +26,67 @@ final class PxlCharacterCodec {
     private PxlCharacterCodec() {
 
         throw new AssertionError("no instances of this class");
+    }
+
+    /**
+     * Writes the given value as a single-character string cell and returns it. A {@link String} source
+     * contributes its first character; a {@link Character} source is used directly. A {@code null} result
+     * blanks the cell.
+     *
+     * @param cell       the target cell, or {@code null} to only compute the string
+     * @param object     the source value (a {@link String} or {@link Character})
+     * @param columnMeta the resolved export metadata for this column
+     * @return the exported one-character string, or {@code null} when empty
+     * @throws PxlCellCodecException if the source is not a {@link String}/{@link Character}
+     */
+    static String buildCharacterCell(final Cell cell,
+                                     final Object object,
+                                     final PxlExportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        Character charValue;
+
+        if (object instanceof String) {
+            final String stringValue = (String) object;
+
+            if (StringUtils.isEmpty(stringValue)) {
+                charValue = null;
+            } else {
+                try {
+                    charValue = stringValue.charAt(0);
+                } catch (IndexOutOfBoundsException indexOutOfBoundsException) {
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Character"), indexOutOfBoundsException);
+                }
+            }
+        } else if (object instanceof Character) {
+            charValue = (Character) object;
+        } else {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Character"));
+        }
+
+        if (Objects.isNull(charValue)) {
+            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
+            return null;
+        } else {
+            final String cellString = makeCharacterExportString(charValue);
+            Optional.ofNullable(cell).ifPresent(c -> c.setCellValue(cellString));
+            return cellString;
+        }
+    }
+
+    /**
+     * Renders the export string for a {@link Character}: its {@link Character#toString()} form.
+     *
+     * @param charValue the value to render
+     * @return the single-character string, or {@code null} when the value is {@code null}
+     */
+    private static String makeCharacterExportString(final Character charValue) {
+
+        if (Objects.isNull(charValue)) {
+            return null;
+        }
+
+        return charValue.toString();
     }
 
     /**
@@ -100,67 +161,6 @@ final class PxlCharacterCodec {
         }
 
         return charValue;
-    }
-
-    /**
-     * Writes the given value as a single-character string cell and returns it. A {@link String} source
-     * contributes its first character; a {@link Character} source is used directly. A {@code null} result
-     * blanks the cell.
-     *
-     * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@link String} or {@link Character})
-     * @param columnMeta the resolved export metadata for this column
-     * @return the exported one-character string, or {@code null} when empty
-     * @throws PxlCellCodecException if the source is not a {@link String}/{@link Character}
-     */
-    static String buildCharacterCell(final Cell cell,
-                                     final Object object,
-                                     final PxlExportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        Character charValue;
-
-        if (object instanceof String) {
-            final String stringValue = (String) object;
-
-            if (StringUtils.isEmpty(stringValue)) {
-                charValue = null;
-            } else {
-                try {
-                    charValue = stringValue.charAt(0);
-                } catch (IndexOutOfBoundsException indexOutOfBoundsException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Character"), indexOutOfBoundsException);
-                }
-            }
-        } else if (object instanceof Character) {
-            charValue = (Character) object;
-        } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Character"));
-        }
-
-        if (Objects.isNull(charValue)) {
-            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
-            return null;
-        } else {
-            final String cellString = makeCharacterExportString(charValue);
-            Optional.ofNullable(cell).ifPresent(c -> c.setCellValue(cellString));
-            return cellString;
-        }
-    }
-
-    /**
-     * Renders the export string for a {@link Character}: its {@link Character#toString()} form.
-     *
-     * @param charValue the value to render
-     * @return the single-character string, or {@code null} when the value is {@code null}
-     */
-    private static String makeCharacterExportString(final Character charValue) {
-
-        if (Objects.isNull(charValue)) {
-            return null;
-        }
-
-        return charValue.toString();
     }
 
 }

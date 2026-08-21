@@ -16,92 +16,6 @@ import java.lang.annotation.*;
 public @interface PxlWorkbook {
 
     /**
-     * Specifies the Password used to remove document protection on import.
-     *
-     * @return the password used to open a protected document on import; defaults to {@link PxlConstants#DEFAULT_IMPORT_PASSWORD} ({@code ""}, no password)
-     */
-    String importPassword() default PxlConstants.DEFAULT_IMPORT_PASSWORD;
-
-    /**
-     * Specifies whether to validate the data to be imported.
-     *
-     * @return {@code true} to bean-validate imported data; defaults to {@link PxlConstants#DEFAULT_IMPORT_DATA_VALIDATION} ({@code true})
-     */
-    boolean importDataValidation() default PxlConstants.DEFAULT_IMPORT_DATA_VALIDATION;
-
-    /**
-     * Specifies whether to use the Stream Reader on import. (Works only with XLSX files.)
-     *
-     * @return {@code true} to read XLSX files with the streaming reader; defaults to {@link PxlConstants#DEFAULT_IMPORT_USING_STREAM_READER} ({@code false})
-     * @see <a href="https://github.com/pjfanning/excel-streaming-reader">excel-streaming-reader</a>
-     */
-    boolean importUsingStreamReader() default PxlConstants.DEFAULT_IMPORT_USING_STREAM_READER;
-
-    /**
-     * Specifies the value of RowCacheSize when importing with the Stream Reader.
-     *
-     * @return the streaming reader row-cache size (number of rows kept in memory); defaults to {@link PxlConstants#DEFAULT_IMPORT_STREAM_READER_ROW_CACHE_SIZE} ({@code 100})
-     */
-    int importStreamReaderRowCacheSize() default PxlConstants.DEFAULT_IMPORT_STREAM_READER_ROW_CACHE_SIZE;
-
-    /**
-     * Specifies the value of BufferSize when importing with the Stream Reader.
-     *
-     * @return the streaming reader buffer size in bytes read from the input resource; defaults to {@link PxlConstants#DEFAULT_IMPORT_STREAM_READER_BUFFER_SIZE} ({@code 4096})
-     */
-    int importStreamReaderBufferSize() default PxlConstants.DEFAULT_IMPORT_STREAM_READER_BUFFER_SIZE;
-
-    /**
-     * Specifies the Character Encoding Set of the CSV to import, for every sheet of the workbook.
-     * Ignored for an Excel source, which is one file whose encoding the format itself carries.
-     * <p>
-     * A sheet may depart from it with {@link PxlSheet#importCsvCharset()}, since a CSV workbook is read as one file
-     * per sheet. Left blank, the workbook falls back to {@link PxlConstants#DEFAULT_IMPORT_CSV_CHARSET}
-     * ({@code "UTF-8"}); a runtime workbook option overrides it.
-     *
-     * @return the character encoding used to read a CSV; defaults to {@link PxlConstants#UNSPECIFIED_IMPORT_CSV_CHARSET} ({@code ""}, i.e. fall back to {@code "UTF-8"})
-     * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
-     */
-    String importCsvCharset() default PxlConstants.UNSPECIFIED_IMPORT_CSV_CHARSET;
-
-    /**
-     * Specifies the Delimiter of the CSV to import, for every sheet of the workbook.
-     * Ignored for an Excel source, which has no delimiter.
-     * <p>
-     * A sheet may depart from it with {@link PxlSheet#importCsvDelimiter()}, since a CSV workbook is read as one file
-     * per sheet. Left at NUL, the workbook falls back to {@link PxlConstants#DEFAULT_IMPORT_CSV_DELIMITER}
-     * ({@code ','}); a runtime workbook option overrides it.
-     *
-     * @return the CSV field delimiter on import; defaults to {@link PxlConstants#UNSPECIFIED_IMPORT_CSV_DELIMITER} ({@code '\0'}, i.e. fall back to {@code ','})
-     */
-    char importCsvDelimiter() default PxlConstants.UNSPECIFIED_IMPORT_CSV_DELIMITER;
-
-    /**
-     * Specifies the BaseName of the Resource Bundle for internationalization support on import.
-     * <p>
-     * Once a base name is set, {@link PxlSheet#name()} and {@link PxlColumn#name()} - together with the sheet and
-     * column names an import option overrides them with - are read as keys of that bundle, and sheet/header matching
-     * runs against the translations. A key the bundle does not carry is matched as it stands.
-     *
-     * @return the resource-bundle base name for import i18n; defaults to {@link PxlConstants#DEFAULT_IMPORT_I18N_BASE_NAME} ({@code ""}, which disables i18n)
-     */
-    String importI18nBaseName() default PxlConstants.DEFAULT_IMPORT_I18N_BASE_NAME;
-
-    /**
-     * Specifies the Language of the Resource Bundle for internationalization support on import.
-     *
-     * @return the resource-bundle language for import i18n; defaults to {@link PxlConstants#DEFAULT_IMPORT_I18N_LANGUAGE} ({@code "en"})
-     */
-    String importI18nLanguage() default PxlConstants.DEFAULT_IMPORT_I18N_LANGUAGE;
-
-    /**
-     * Specifies the Country of the Resource Bundle for internationalization support on import.
-     *
-     * @return the resource-bundle country for import i18n; defaults to {@link PxlConstants#DEFAULT_IMPORT_I18N_COUNTRY} ({@code ""})
-     */
-    String importI18nCountry() default PxlConstants.DEFAULT_IMPORT_I18N_COUNTRY;
-
-    /**
      * Specifies the POI engine used to write the Excel workbook on export.
      * <p>
      * This selects the writer, not the file format: {@code HSSF} writes {@code .xls}, while {@code XSSF} and
@@ -224,5 +138,91 @@ public @interface PxlWorkbook {
      * @return the resource-bundle country for export i18n; defaults to {@link PxlConstants#DEFAULT_EXPORT_I18N_COUNTRY} ({@code ""})
      */
     String exportI18nCountry() default PxlConstants.DEFAULT_EXPORT_I18N_COUNTRY;
+
+    /**
+     * Specifies the Password used to remove document protection on import.
+     *
+     * @return the password used to open a protected document on import; defaults to {@link PxlConstants#DEFAULT_IMPORT_PASSWORD} ({@code ""}, no password)
+     */
+    String importPassword() default PxlConstants.DEFAULT_IMPORT_PASSWORD;
+
+    /**
+     * Specifies whether to validate the data to be imported.
+     *
+     * @return {@code true} to bean-validate imported data; defaults to {@link PxlConstants#DEFAULT_IMPORT_DATA_VALIDATION} ({@code true})
+     */
+    boolean importDataValidation() default PxlConstants.DEFAULT_IMPORT_DATA_VALIDATION;
+
+    /**
+     * Specifies whether to use the Stream Reader on import. (Works only with XLSX files.)
+     *
+     * @return {@code true} to read XLSX files with the streaming reader; defaults to {@link PxlConstants#DEFAULT_IMPORT_USING_STREAM_READER} ({@code false})
+     * @see <a href="https://github.com/pjfanning/excel-streaming-reader">excel-streaming-reader</a>
+     */
+    boolean importUsingStreamReader() default PxlConstants.DEFAULT_IMPORT_USING_STREAM_READER;
+
+    /**
+     * Specifies the value of RowCacheSize when importing with the Stream Reader.
+     *
+     * @return the streaming reader row-cache size (number of rows kept in memory); defaults to {@link PxlConstants#DEFAULT_IMPORT_STREAM_READER_ROW_CACHE_SIZE} ({@code 100})
+     */
+    int importStreamReaderRowCacheSize() default PxlConstants.DEFAULT_IMPORT_STREAM_READER_ROW_CACHE_SIZE;
+
+    /**
+     * Specifies the value of BufferSize when importing with the Stream Reader.
+     *
+     * @return the streaming reader buffer size in bytes read from the input resource; defaults to {@link PxlConstants#DEFAULT_IMPORT_STREAM_READER_BUFFER_SIZE} ({@code 4096})
+     */
+    int importStreamReaderBufferSize() default PxlConstants.DEFAULT_IMPORT_STREAM_READER_BUFFER_SIZE;
+
+    /**
+     * Specifies the Character Encoding Set of the CSV to import, for every sheet of the workbook.
+     * Ignored for an Excel source, which is one file whose encoding the format itself carries.
+     * <p>
+     * A sheet may depart from it with {@link PxlSheet#importCsvCharset()}, since a CSV workbook is read as one file
+     * per sheet. Left blank, the workbook falls back to {@link PxlConstants#DEFAULT_IMPORT_CSV_CHARSET}
+     * ({@code "UTF-8"}); a runtime workbook option overrides it.
+     *
+     * @return the character encoding used to read a CSV; defaults to {@link PxlConstants#UNSPECIFIED_IMPORT_CSV_CHARSET} ({@code ""}, i.e. fall back to {@code "UTF-8"})
+     * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/intl/encoding.doc.html">Java supported encodings</a>
+     */
+    String importCsvCharset() default PxlConstants.UNSPECIFIED_IMPORT_CSV_CHARSET;
+
+    /**
+     * Specifies the Delimiter of the CSV to import, for every sheet of the workbook.
+     * Ignored for an Excel source, which has no delimiter.
+     * <p>
+     * A sheet may depart from it with {@link PxlSheet#importCsvDelimiter()}, since a CSV workbook is read as one file
+     * per sheet. Left at NUL, the workbook falls back to {@link PxlConstants#DEFAULT_IMPORT_CSV_DELIMITER}
+     * ({@code ','}); a runtime workbook option overrides it.
+     *
+     * @return the CSV field delimiter on import; defaults to {@link PxlConstants#UNSPECIFIED_IMPORT_CSV_DELIMITER} ({@code '\0'}, i.e. fall back to {@code ','})
+     */
+    char importCsvDelimiter() default PxlConstants.UNSPECIFIED_IMPORT_CSV_DELIMITER;
+
+    /**
+     * Specifies the BaseName of the Resource Bundle for internationalization support on import.
+     * <p>
+     * Once a base name is set, {@link PxlSheet#name()} and {@link PxlColumn#name()} - together with the sheet and
+     * column names an import option overrides them with - are read as keys of that bundle, and sheet/header matching
+     * runs against the translations. A key the bundle does not carry is matched as it stands.
+     *
+     * @return the resource-bundle base name for import i18n; defaults to {@link PxlConstants#DEFAULT_IMPORT_I18N_BASE_NAME} ({@code ""}, which disables i18n)
+     */
+    String importI18nBaseName() default PxlConstants.DEFAULT_IMPORT_I18N_BASE_NAME;
+
+    /**
+     * Specifies the Language of the Resource Bundle for internationalization support on import.
+     *
+     * @return the resource-bundle language for import i18n; defaults to {@link PxlConstants#DEFAULT_IMPORT_I18N_LANGUAGE} ({@code "en"})
+     */
+    String importI18nLanguage() default PxlConstants.DEFAULT_IMPORT_I18N_LANGUAGE;
+
+    /**
+     * Specifies the Country of the Resource Bundle for internationalization support on import.
+     *
+     * @return the resource-bundle country for import i18n; defaults to {@link PxlConstants#DEFAULT_IMPORT_I18N_COUNTRY} ({@code ""})
+     */
+    String importI18nCountry() default PxlConstants.DEFAULT_IMPORT_I18N_COUNTRY;
 
 }

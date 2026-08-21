@@ -19,13 +19,12 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Duration} column values - parses cells/strings into {@link Duration} on
- * import and writes {@link Duration} into cells on export.
+ * Codec for {@link Duration} column values - writes {@link Duration} into cells on export and parses
+ * cells/strings into {@link Duration} on import.
  *
- * <p>NUMERIC and BOOLEAN cells are interpreted as a number of seconds. Strings are parsed by the column's
- * import pattern (via {@link DurationFormatUtils}) when set, otherwise by ISO-8601
- * {@link Duration#parse}. Export uses the column's export pattern when set, otherwise the
- * ISO-8601 form.
+ * <p>Export uses the column's export pattern when set, otherwise the ISO-8601 form. On import, NUMERIC and
+ * BOOLEAN cells are interpreted as a number of seconds, and strings are parsed by the column's import
+ * pattern (via {@link DurationFormatUtils}) when set, otherwise by ISO-8601 {@link Duration#parse}.
  */
 final class PxlDurationCodec {
 
@@ -35,88 +34,6 @@ final class PxlDurationCodec {
     private PxlDurationCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses the given cell into a {@link Duration}. NUMERIC cells are treated as a number of
-     * seconds (range-checked to {@code long}); BOOLEAN cells map to 1 or 0 seconds; STRING cells are
-     * delegated to the string parser; BLANK cells yield {@code null}.
-     *
-     * @param cell       the cell to read
-     * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@link Duration}, or {@code null} when blank
-     * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is out of range
-     */
-    static Duration parseDurationValue(final Cell cell,
-                                       final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        Duration durationValue = null;
-
-        final CellType cellType = cell.getCellType();
-        switch (cellType) {
-            case NUMERIC:
-                final double numericValue = cell.getNumericCellValue();
-                long longValue = PxlNumberSupport.requireWithinRange(numericValue, Long.MIN_VALUE, Long.MAX_VALUE, "Duration").longValue();
-                // Arbitrarily assume the value is given in (seconds).
-                durationValue = Duration.ofSeconds(longValue);
-                break;
-
-            case STRING:
-                final String stringCellValue = cell.getStringCellValue();
-                durationValue = parseDurationValue(stringCellValue, columnMeta);
-                break;
-
-            case BOOLEAN:
-                final boolean booleanCellValue = cell.getBooleanCellValue();
-                // Arbitrarily assume the value is given in (seconds).
-                durationValue = Duration.ofSeconds(BooleanUtils.toInteger(booleanCellValue));
-                break;
-
-            case BLANK:
-                // empty
-                break;
-
-            default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-        }
-
-        return durationValue;
-    }
-
-    /**
-     * Parses a string token into a {@link Duration}. When the column's import pattern is set it
-     * is tried first, falling back to ISO-8601 {@link Duration#parse} on mismatch. The value is
-     * trimmed when {@code importTrim} is set; a blank value yields {@code null}.
-     *
-     * @param s          the raw string token
-     * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@link Duration}, or {@code null} when blank
-     * @throws PxlCellCodecException if the value is not a valid duration
-     */
-    static Duration parseDurationValue(final String s,
-                                       final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return null;
-        }
-
-        final PxlTemporalAmountSupport.CompiledTemporalPattern importTemporalPattern = columnMeta.getImportTemporalPatternCache();
-        if (Objects.nonNull(importTemporalPattern)) {
-            try {
-                return PxlTemporalAmountSupport.parseDurationByPattern(stringValue, importTemporalPattern);
-            } catch (IllegalArgumentException ignored) {
-                // On pattern mismatch, fall back to ISO-8601 parsing
-            }
-        }
-
-        try {
-            return Duration.parse(stringValue);
-        } catch (DateTimeParseException dateTimeParseException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Duration"), dateTimeParseException);
-        }
     }
 
     /**
@@ -202,6 +119,88 @@ final class PxlDurationCodec {
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_VALUE_TOO_LARGE, String.valueOf(durationValue), "Duration"), arithmeticException);
         } catch (IllegalArgumentException illegalArgumentException) {
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(durationValue), "Duration"), illegalArgumentException);
+        }
+    }
+
+    /**
+     * Parses the given cell into a {@link Duration}. NUMERIC cells are treated as a number of
+     * seconds (range-checked to {@code long}); BOOLEAN cells map to 1 or 0 seconds; STRING cells are
+     * delegated to the string parser; BLANK cells yield {@code null}.
+     *
+     * @param cell       the cell to read
+     * @param columnMeta the resolved import metadata for this column
+     * @return the parsed {@link Duration}, or {@code null} when blank
+     * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is out of range
+     */
+    static Duration parseDurationValue(final Cell cell,
+                                       final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        Duration durationValue = null;
+
+        final CellType cellType = cell.getCellType();
+        switch (cellType) {
+            case NUMERIC:
+                final double numericValue = cell.getNumericCellValue();
+                long longValue = PxlNumberSupport.requireWithinRange(numericValue, Long.MIN_VALUE, Long.MAX_VALUE, "Duration").longValue();
+                // Arbitrarily assume the value is given in (seconds).
+                durationValue = Duration.ofSeconds(longValue);
+                break;
+
+            case STRING:
+                final String stringCellValue = cell.getStringCellValue();
+                durationValue = parseDurationValue(stringCellValue, columnMeta);
+                break;
+
+            case BOOLEAN:
+                final boolean booleanCellValue = cell.getBooleanCellValue();
+                // Arbitrarily assume the value is given in (seconds).
+                durationValue = Duration.ofSeconds(BooleanUtils.toInteger(booleanCellValue));
+                break;
+
+            case BLANK:
+                // empty
+                break;
+
+            default:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+        }
+
+        return durationValue;
+    }
+
+    /**
+     * Parses a string token into a {@link Duration}. When the column's import pattern is set it
+     * is tried first, falling back to ISO-8601 {@link Duration#parse} on mismatch. The value is
+     * trimmed when {@code importTrim} is set; a blank value yields {@code null}.
+     *
+     * @param s          the raw string token
+     * @param columnMeta the resolved import metadata for this column
+     * @return the parsed {@link Duration}, or {@code null} when blank
+     * @throws PxlCellCodecException if the value is not a valid duration
+     */
+    static Duration parseDurationValue(final String s,
+                                       final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return null;
+        }
+
+        final PxlTemporalAmountSupport.CompiledTemporalPattern importTemporalPattern = columnMeta.getImportTemporalPatternCache();
+        if (Objects.nonNull(importTemporalPattern)) {
+            try {
+                return PxlTemporalAmountSupport.parseDurationByPattern(stringValue, importTemporalPattern);
+            } catch (IllegalArgumentException ignored) {
+                // On pattern mismatch, fall back to ISO-8601 parsing
+            }
+        }
+
+        try {
+            return Duration.parse(stringValue);
+        } catch (DateTimeParseException dateTimeParseException) {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Duration"), dateTimeParseException);
         }
     }
 

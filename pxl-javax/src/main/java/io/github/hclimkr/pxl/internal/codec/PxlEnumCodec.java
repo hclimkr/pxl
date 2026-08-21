@@ -21,10 +21,10 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
- * Codec for Java {@code enum} column values - parses cells/strings into enum constants on import and
- * writes enum constants into cells on export.
+ * Codec for Java {@code enum} column values - writes enum constants into cells on export and parses
+ * cells/strings into enum constants on import.
  *
- * <p>Conversion honours any {@code @PxlImportConverter}/{@code @PxlExportConverter} method or a
+ * <p>Conversion honours any {@code @PxlExportConverter}/{@code @PxlImportConverter} method or a
  * {@link String} constructor; otherwise it matches a constant by its {@code toString} result (falling back
  * to {@link Enum#name()}), comparing case-insensitively and ignoring whitespace. BLANK/blank values map to
  * {@code null}.
@@ -37,70 +37,6 @@ public final class PxlEnumCodec {
     private PxlEnumCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses the given cell into an enum constant. NUMERIC cells are first stringified via
-     * {@link PxlStringCodec}; STRING cells are read directly; BOOLEAN cells are rejected as an unsupported
-     * cell type; BLANK cells yield {@code null}.
-     *
-     * @param cell       the cell to read
-     * @param columnMeta the resolved import metadata for this column
-     * @return the matching enum constant, or {@code null} when blank
-     * @throws PxlCellCodecException if the cell type is unsupported or the value cannot be converted
-     */
-    static Object parseEnumValue(final Cell cell,
-                                 final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        String cellValue = null;
-        Object enumValue = null;
-
-        final CellType cellType = cell.getCellType();
-        switch (cellType) {
-            case NUMERIC:
-                cellValue = PxlStringCodec.parseStringValue(cell, columnMeta);
-                enumValue = parseEnumValue(cellValue, columnMeta);
-                break;
-
-            case STRING:
-                final String stringCellValue = cell.getStringCellValue();
-                enumValue = parseEnumValue(stringCellValue, columnMeta);
-                break;
-
-            case BOOLEAN:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-
-            case BLANK:
-                // empty
-                break;
-
-            default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-        }
-
-        return enumValue;
-    }
-
-    /**
-     * Parses a string token into an enum constant using the column's import converter metadata. The value
-     * is trimmed when {@code importTrim} is set; a blank value yields {@code null}.
-     *
-     * @param s          the raw string token
-     * @param columnMeta the resolved import metadata for this column
-     * @return the matching enum constant, or {@code null} when blank
-     * @throws PxlCellCodecException if the value cannot be converted to the enum type
-     */
-    static Object parseEnumValue(final String s,
-                                 final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return null;
-        }
-
-        return importStringToEnum(stringValue, columnMeta.getImportCustomConverterMeta());
     }
 
     /**
@@ -188,6 +124,115 @@ public final class PxlEnumCodec {
     }
 
     /**
+     * Parses the given cell into an enum constant. NUMERIC cells are first stringified via
+     * {@link PxlStringCodec}; STRING cells are read directly; BOOLEAN cells are rejected as an unsupported
+     * cell type; BLANK cells yield {@code null}.
+     *
+     * @param cell       the cell to read
+     * @param columnMeta the resolved import metadata for this column
+     * @return the matching enum constant, or {@code null} when blank
+     * @throws PxlCellCodecException if the cell type is unsupported or the value cannot be converted
+     */
+    static Object parseEnumValue(final Cell cell,
+                                 final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        String cellValue = null;
+        Object enumValue = null;
+
+        final CellType cellType = cell.getCellType();
+        switch (cellType) {
+            case NUMERIC:
+                cellValue = PxlStringCodec.parseStringValue(cell, columnMeta);
+                enumValue = parseEnumValue(cellValue, columnMeta);
+                break;
+
+            case STRING:
+                final String stringCellValue = cell.getStringCellValue();
+                enumValue = parseEnumValue(stringCellValue, columnMeta);
+                break;
+
+            case BOOLEAN:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+
+            case BLANK:
+                // empty
+                break;
+
+            default:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+        }
+
+        return enumValue;
+    }
+
+    /**
+     * Parses a string token into an enum constant using the column's import converter metadata. The value
+     * is trimmed when {@code importTrim} is set; a blank value yields {@code null}.
+     *
+     * @param s          the raw string token
+     * @param columnMeta the resolved import metadata for this column
+     * @return the matching enum constant, or {@code null} when blank
+     * @throws PxlCellCodecException if the value cannot be converted to the enum type
+     */
+    static Object parseEnumValue(final String s,
+                                 final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return null;
+        }
+
+        return importStringToEnum(stringValue, columnMeta.getImportCustomConverterMeta());
+    }
+
+    /**
+     * Converts an enum value to its export string using the given converter metadata: a
+     * {@code @PxlExportConverter} method (static or instance) takes precedence, then a {@code toString}
+     * method, otherwise the constant's {@link Enum#name()}.
+     *
+     * @param enumValue     the enum value to convert
+     * @param converterMeta the resolved export converter metadata
+     * @return the string form, or {@code null} when either argument is {@code null}
+     * @throws PxlCellCodecException if the converter throws while producing the string
+     */
+    public static String exportEnumToString(final Object enumValue,
+                                            final PxlExportConverterMeta converterMeta)
+            throws PxlCellCodecException {
+
+        if (Objects.isNull(enumValue) || Objects.isNull(converterMeta)) {
+            return null;
+        }
+
+        final Class<?> enumClass = converterMeta.getValueClass();
+        final Method exportConverterMethod = converterMeta.getExportConverterMethod();
+        final Method toStringMethod = converterMeta.getToStringMethod();
+
+        String stringValue;
+
+        try {
+            if (Objects.nonNull(exportConverterMethod)) {
+                if (Modifier.isStatic(exportConverterMethod.getModifiers())) {
+                    stringValue = (String) exportConverterMethod.invoke(null, enumValue);
+                } else {
+                    stringValue = (String) exportConverterMethod.invoke(enumValue);
+                }
+                return stringValue;
+            } else if (Objects.nonNull(toStringMethod)) {
+                stringValue = (String) toStringMethod.invoke(enumValue);
+            } else {
+                stringValue = ((Enum<?>) enumValue).name();
+            }
+        } catch (Exception e) {
+            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_ENUM_FORMAT_ERROR, enumClass.getSimpleName()), cause);
+        }
+
+        return stringValue;
+    }
+
+    /**
      * Parses a string into an enum constant of the given class, building import converter metadata from the class.
      * This overload is reached from the export path only (a string export value is parsed before being written
      * back out), so failures are reported with the export-side diagnostic keys.
@@ -224,8 +269,8 @@ public final class PxlEnumCodec {
 
     /**
      * Parses a string into an enum constant using the given import converter metadata, reporting failures with the
-     * diagnostic keys of the calling direction. Both directions parse strings: import reads a cell, and export
-     * resolves a string export value before writing it back out.
+     * diagnostic keys of the calling direction. Both directions parse strings: export resolves a string export
+     * value before writing it back out, and import reads a cell.
      *
      * @param stringValue   the source string
      * @param converterMeta the resolved import converter metadata
@@ -289,51 +334,6 @@ public final class PxlEnumCodec {
         }
 
         return object;
-    }
-
-    /**
-     * Converts an enum value to its export string using the given converter metadata: a
-     * {@code @PxlExportConverter} method (static or instance) takes precedence, then a {@code toString}
-     * method, otherwise the constant's {@link Enum#name()}.
-     *
-     * @param enumValue     the enum value to convert
-     * @param converterMeta the resolved export converter metadata
-     * @return the string form, or {@code null} when either argument is {@code null}
-     * @throws PxlCellCodecException if the converter throws while producing the string
-     */
-    public static String exportEnumToString(final Object enumValue,
-                                            final PxlExportConverterMeta converterMeta)
-            throws PxlCellCodecException {
-
-        if (Objects.isNull(enumValue) || Objects.isNull(converterMeta)) {
-            return null;
-        }
-
-        final Class<?> enumClass = converterMeta.getValueClass();
-        final Method exportConverterMethod = converterMeta.getExportConverterMethod();
-        final Method toStringMethod = converterMeta.getToStringMethod();
-
-        String stringValue;
-
-        try {
-            if (Objects.nonNull(exportConverterMethod)) {
-                if (Modifier.isStatic(exportConverterMethod.getModifiers())) {
-                    stringValue = (String) exportConverterMethod.invoke(null, enumValue);
-                } else {
-                    stringValue = (String) exportConverterMethod.invoke(enumValue);
-                }
-                return stringValue;
-            } else if (Objects.nonNull(toStringMethod)) {
-                stringValue = (String) toStringMethod.invoke(enumValue);
-            } else {
-                stringValue = ((Enum<?>) enumValue).name();
-            }
-        } catch (Exception e) {
-            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_ENUM_FORMAT_ERROR, enumClass.getSimpleName()), cause);
-        }
-
-        return stringValue;
     }
 
     /**

@@ -4,7 +4,7 @@ import io.github.hclimkr.pxl.annotation.PxlColumn;
 import lombok.*;
 
 /**
- * DTO for verifying per-column import/export enable toggles.
+ * DTO for verifying per-column export/import enable toggles.
  * <ul>
  *   <li>always: both enabled (default)</li>
  *   <li>exportOff: exportEnabled=false -> the column itself is not created on export</li>

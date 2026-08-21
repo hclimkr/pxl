@@ -1,8 +1,8 @@
 package io.github.hclimkr.pxl.exception;
 
 /**
- * Thrown when a codec fails to convert between a cell value and the target field type - either parsing
- * a cell/string on import or building a cell on export.
+ * Thrown when a codec fails to convert between a cell value and the target field type - either building
+ * a cell on export or parsing a cell/string on import.
  */
 public final class PxlCellCodecException extends PxlException {
 

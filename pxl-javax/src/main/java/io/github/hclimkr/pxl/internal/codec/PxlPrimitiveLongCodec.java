@@ -17,8 +17,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for primitive {@code long} column values - parses cells and strings into {@code long} on import and writes {@code long}
- * into cells on export. Numeric input is range-checked against the {@code long} range (throwing on overflow) and truncated to
+ * Codec for primitive {@code long} column values - writes {@code long} into cells on export and parses cells and strings
+ * into {@code long} on import. Numeric input is range-checked against the {@code long} range (throwing on overflow) and truncated to
  * its integer part; note that a numeric cell is a {@code double}, so magnitudes beyond 2^53 lose precision. Boolean cells map
  * to 1/0. Because {@code long} cannot be {@code null}, blank input parses to {@code 0}.
  */
@@ -30,86 +30,6 @@ final class PxlPrimitiveLongCodec {
     private PxlPrimitiveLongCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses an Excel cell into a {@code long}. NUMERIC cells are range-checked against the {@code long} range and truncated
-     * to their integer part (magnitudes beyond 2^53 already lose precision as a {@code double}); STRING cells are delegated
-     * to the string overload; BOOLEAN cells map to 1 (true) or 0 (false); BLANK cells yield {@code 0}.
-     *
-     * @param cell       the source cell
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code long} (0 for a blank cell)
-     * @throws PxlCellCodecException if the numeric value is outside the {@code long} range or the cell type is unsupported
-     */
-    static long parsePrimitiveLongValue(final Cell cell,
-                                        final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        long longValue = 0L;
-
-        final CellType cellType = cell.getCellType();
-        switch (cellType) {
-            case NUMERIC:
-                final double numericValue = cell.getNumericCellValue();
-                longValue = PxlNumberSupport.requireWithinRange(numericValue, Long.MIN_VALUE, Long.MAX_VALUE, "long").longValue();
-                break;
-
-            case STRING:
-                final String stringCellValue = cell.getStringCellValue();
-                longValue = parsePrimitiveLongValue(stringCellValue, columnMeta);
-                break;
-
-            case BOOLEAN:
-                final boolean booleanCellValue = cell.getBooleanCellValue();
-                longValue = (long) BooleanUtils.toInteger(booleanCellValue);
-                break;
-
-            case BLANK:
-                // empty
-                break;
-
-            default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-        }
-
-        return longValue;
-    }
-
-    /**
-     * Parses a string into a {@code long}. Trims first when {@code importTrim} is enabled and returns {@code 0} for blank
-     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
-     * ({@code PxlNumberSupport.parseFullyAsNumber}) and the parsed number is range-checked against the {@code long} range and
-     * truncated; otherwise {@link Long#parseLong(String)} is used (preserving full precision).
-     *
-     * @param s          the source string
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code long} (0 for blank input)
-     * @throws PxlCellCodecException if the string is not a valid {@code long} or is outside the {@code long} range
-     */
-    static long parsePrimitiveLongValue(final String s,
-                                        final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return (long) 0;
-        }
-
-        long longValue;
-
-        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
-        if (Objects.nonNull(importDecimalFormatter)) {
-            longValue = PxlNumberSupport.requireWithinRange(PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "long"), Long.MIN_VALUE, Long.MAX_VALUE, "long").longValue();
-        } else {
-            try {
-                longValue = Long.parseLong(stringValue);
-            } catch (NumberFormatException numberFormatException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "long"), numberFormatException);
-            }
-        }
-
-        return longValue;
     }
 
     /**
@@ -195,6 +115,86 @@ final class PxlPrimitiveLongCodec {
         } else {
             return String.valueOf(longValue);
         }
+    }
+
+    /**
+     * Parses an Excel cell into a {@code long}. NUMERIC cells are range-checked against the {@code long} range and truncated
+     * to their integer part (magnitudes beyond 2^53 already lose precision as a {@code double}); STRING cells are delegated
+     * to the string overload; BOOLEAN cells map to 1 (true) or 0 (false); BLANK cells yield {@code 0}.
+     *
+     * @param cell       the source cell
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@code long} (0 for a blank cell)
+     * @throws PxlCellCodecException if the numeric value is outside the {@code long} range or the cell type is unsupported
+     */
+    static long parsePrimitiveLongValue(final Cell cell,
+                                        final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        long longValue = 0L;
+
+        final CellType cellType = cell.getCellType();
+        switch (cellType) {
+            case NUMERIC:
+                final double numericValue = cell.getNumericCellValue();
+                longValue = PxlNumberSupport.requireWithinRange(numericValue, Long.MIN_VALUE, Long.MAX_VALUE, "long").longValue();
+                break;
+
+            case STRING:
+                final String stringCellValue = cell.getStringCellValue();
+                longValue = parsePrimitiveLongValue(stringCellValue, columnMeta);
+                break;
+
+            case BOOLEAN:
+                final boolean booleanCellValue = cell.getBooleanCellValue();
+                longValue = (long) BooleanUtils.toInteger(booleanCellValue);
+                break;
+
+            case BLANK:
+                // empty
+                break;
+
+            default:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+        }
+
+        return longValue;
+    }
+
+    /**
+     * Parses a string into a {@code long}. Trims first when {@code importTrim} is enabled and returns {@code 0} for blank
+     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and the parsed number is range-checked against the {@code long} range and
+     * truncated; otherwise {@link Long#parseLong(String)} is used (preserving full precision).
+     *
+     * @param s          the source string
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@code long} (0 for blank input)
+     * @throws PxlCellCodecException if the string is not a valid {@code long} or is outside the {@code long} range
+     */
+    static long parsePrimitiveLongValue(final String s,
+                                        final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return (long) 0;
+        }
+
+        long longValue;
+
+        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
+        if (Objects.nonNull(importDecimalFormatter)) {
+            longValue = PxlNumberSupport.requireWithinRange(PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "long"), Long.MIN_VALUE, Long.MAX_VALUE, "long").longValue();
+        } else {
+            try {
+                longValue = Long.parseLong(stringValue);
+            } catch (NumberFormatException numberFormatException) {
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "long"), numberFormatException);
+            }
+        }
+
+        return longValue;
     }
 
 }

@@ -137,7 +137,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
      * @param validator          optional bean validator applied when data validation is enabled (may be {@code null})
      * @return the collection of populated row objects
      * @throws PxlNullPointerException if {@code csvName}, {@code csvStream}, {@code rowCollectionClass}, or {@code rowClass} is {@code null}
-     * @throws PxlDataException        if a limit is exceeded or a required sheet is missing
+     * @throws PxlDataException        if {@code rowCollectionClass} is not a Collection type, a row/column index is negative or inconsistent, or a limit is exceeded
      * @throws PxlArgumentException    if a configuration value is invalid
      * @throws PxlReflectionException  if instantiating a class or reading/writing a field fails
      * @throws PxlCellCodecException   if a cell value cannot be decoded

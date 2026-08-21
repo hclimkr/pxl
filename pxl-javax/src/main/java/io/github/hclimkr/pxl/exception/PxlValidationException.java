@@ -1,7 +1,7 @@
 package io.github.hclimkr.pxl.exception;
 
 /**
- * Thrown when bean-validation constraints on a bound row/object are violated during import or export.
+ * Thrown when bean-validation constraints on a bound row/object are violated during export or import.
  */
 public final class PxlValidationException extends PxlException {
 

@@ -17,8 +17,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@link Integer} column values - parses cells and strings into {@link Integer} on import and writes
- * {@link Integer} into cells on export. Numeric input is range-checked against the {@link Integer} range (throwing
+ * Codec for {@link Integer} column values - writes {@link Integer} into cells on export and parses cells and
+ * strings into {@link Integer} on import. Numeric input is range-checked against the {@link Integer} range (throwing
  * on overflow) and truncated to its integer part; boolean cells map to 1/0.
  */
 final class PxlIntegerCodec {
@@ -29,86 +29,6 @@ final class PxlIntegerCodec {
     private PxlIntegerCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses an Excel cell into an {@link Integer}. NUMERIC cells are range-checked against the {@link Integer} range
-     * and truncated to their integer part; STRING cells are delegated to the string overload; BOOLEAN cells map to
-     * 1 (true) or 0 (false); BLANK cells yield {@code null}.
-     *
-     * @param cell       the source cell
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@link Integer}, or {@code null} for a blank cell
-     * @throws PxlCellCodecException if the numeric value is outside the {@link Integer} range or the cell type is unsupported
-     */
-    static Integer parseIntegerValue(final Cell cell,
-                                     final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        Integer integerValue = null;
-
-        final CellType cellType = cell.getCellType();
-        switch (cellType) {
-            case NUMERIC:
-                final double numericValue = cell.getNumericCellValue();
-                integerValue = PxlNumberSupport.requireWithinRange(numericValue, Integer.MIN_VALUE, Integer.MAX_VALUE, "Integer").intValue();
-                break;
-
-            case STRING:
-                final String stringCellValue = cell.getStringCellValue();
-                integerValue = parseIntegerValue(stringCellValue, columnMeta);
-                break;
-
-            case BOOLEAN:
-                final boolean booleanCellValue = cell.getBooleanCellValue();
-                integerValue = BooleanUtils.toInteger(booleanCellValue);
-                break;
-
-            case BLANK:
-                // empty
-                break;
-
-            default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-        }
-
-        return integerValue;
-    }
-
-    /**
-     * Parses a string into an {@link Integer}. Trims first when {@code importTrim} is enabled and returns {@code null}
-     * for blank input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
-     * ({@code PxlNumberSupport.parseFullyAsNumber}) and the parsed number is range-checked against the {@link Integer} range and
-     * truncated; otherwise {@link Integer#parseInt(String)} is used.
-     *
-     * @param s          the source string
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@link Integer}, or {@code null} for blank input
-     * @throws PxlCellCodecException if the string is not a valid {@link Integer} or is outside the {@link Integer} range
-     */
-    static Integer parseIntegerValue(final String s,
-                                     final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return null;
-        }
-
-        Integer integerValue;
-
-        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
-        if (Objects.nonNull(importDecimalFormatter)) {
-            integerValue = PxlNumberSupport.requireWithinRange(PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "Integer"), Integer.MIN_VALUE, Integer.MAX_VALUE, "Integer").intValue();
-        } else {
-            try {
-                integerValue = Integer.parseInt(stringValue);
-            } catch (NumberFormatException numberFormatException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Integer"), numberFormatException);
-            }
-        }
-
-        return integerValue;
     }
 
     /**
@@ -194,6 +114,86 @@ final class PxlIntegerCodec {
         } else {
             return String.valueOf(intValue);
         }
+    }
+
+    /**
+     * Parses an Excel cell into an {@link Integer}. NUMERIC cells are range-checked against the {@link Integer} range
+     * and truncated to their integer part; STRING cells are delegated to the string overload; BOOLEAN cells map to
+     * 1 (true) or 0 (false); BLANK cells yield {@code null}.
+     *
+     * @param cell       the source cell
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@link Integer}, or {@code null} for a blank cell
+     * @throws PxlCellCodecException if the numeric value is outside the {@link Integer} range or the cell type is unsupported
+     */
+    static Integer parseIntegerValue(final Cell cell,
+                                     final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        Integer integerValue = null;
+
+        final CellType cellType = cell.getCellType();
+        switch (cellType) {
+            case NUMERIC:
+                final double numericValue = cell.getNumericCellValue();
+                integerValue = PxlNumberSupport.requireWithinRange(numericValue, Integer.MIN_VALUE, Integer.MAX_VALUE, "Integer").intValue();
+                break;
+
+            case STRING:
+                final String stringCellValue = cell.getStringCellValue();
+                integerValue = parseIntegerValue(stringCellValue, columnMeta);
+                break;
+
+            case BOOLEAN:
+                final boolean booleanCellValue = cell.getBooleanCellValue();
+                integerValue = BooleanUtils.toInteger(booleanCellValue);
+                break;
+
+            case BLANK:
+                // empty
+                break;
+
+            default:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+        }
+
+        return integerValue;
+    }
+
+    /**
+     * Parses a string into an {@link Integer}. Trims first when {@code importTrim} is enabled and returns {@code null}
+     * for blank input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and the parsed number is range-checked against the {@link Integer} range and
+     * truncated; otherwise {@link Integer#parseInt(String)} is used.
+     *
+     * @param s          the source string
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@link Integer}, or {@code null} for blank input
+     * @throws PxlCellCodecException if the string is not a valid {@link Integer} or is outside the {@link Integer} range
+     */
+    static Integer parseIntegerValue(final String s,
+                                     final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return null;
+        }
+
+        Integer integerValue;
+
+        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
+        if (Objects.nonNull(importDecimalFormatter)) {
+            integerValue = PxlNumberSupport.requireWithinRange(PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "Integer"), Integer.MIN_VALUE, Integer.MAX_VALUE, "Integer").intValue();
+        } else {
+            try {
+                integerValue = Integer.parseInt(stringValue);
+            } catch (NumberFormatException numberFormatException) {
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "Integer"), numberFormatException);
+            }
+        }
+
+        return integerValue;
     }
 
 }

@@ -17,8 +17,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for primitive {@code byte} column values - parses cells and strings into {@code byte} on import and writes {@code byte}
- * into cells on export. Numeric input is range-checked against the {@code byte} range (throwing on overflow) and truncated to
+ * Codec for primitive {@code byte} column values - writes {@code byte} into cells on export and parses cells and strings
+ * into {@code byte} on import. Numeric input is range-checked against the {@code byte} range (throwing on overflow) and truncated to
  * its integer part; boolean cells map to 1/0. Because {@code byte} cannot be {@code null}, blank input parses to {@code 0}.
  */
 final class PxlPrimitiveByteCodec {
@@ -29,86 +29,6 @@ final class PxlPrimitiveByteCodec {
     private PxlPrimitiveByteCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses an Excel cell into a {@code byte}. NUMERIC cells are range-checked against the {@code byte} range and truncated
-     * to their integer part; STRING cells are delegated to the string overload; BOOLEAN cells map to 1 (true) or 0 (false);
-     * BLANK cells yield {@code 0}.
-     *
-     * @param cell       the source cell
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code byte} (0 for a blank cell)
-     * @throws PxlCellCodecException if the numeric value is outside the {@code byte} range or the cell type is unsupported
-     */
-    static byte parsePrimitiveByteValue(final Cell cell,
-                                        final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        byte byteValue = 0;
-
-        final CellType cellType = cell.getCellType();
-        switch (cellType) {
-            case NUMERIC:
-                final double numericValue = cell.getNumericCellValue();
-                byteValue = PxlNumberSupport.requireWithinRange(numericValue, Byte.MIN_VALUE, Byte.MAX_VALUE, "byte").byteValue();
-                break;
-
-            case STRING:
-                final String stringCellValue = cell.getStringCellValue();
-                byteValue = parsePrimitiveByteValue(stringCellValue, columnMeta);
-                break;
-
-            case BOOLEAN:
-                final boolean booleanCellValue = cell.getBooleanCellValue();
-                byteValue = (byte) BooleanUtils.toInteger(booleanCellValue);
-                break;
-
-            case BLANK:
-                // empty
-                break;
-
-            default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-        }
-
-        return byteValue;
-    }
-
-    /**
-     * Parses a string into a {@code byte}. Trims first when {@code importTrim} is enabled and returns {@code 0} for blank
-     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
-     * ({@code PxlNumberSupport.parseFullyAsNumber}) and the parsed number is range-checked against the {@code byte} range and
-     * truncated; otherwise {@link Byte#parseByte(String)} is used.
-     *
-     * @param s          the source string
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code byte} (0 for blank input)
-     * @throws PxlCellCodecException if the string is not a valid {@code byte} or is outside the {@code byte} range
-     */
-    static byte parsePrimitiveByteValue(final String s,
-                                        final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return (byte) 0;
-        }
-
-        byte byteValue;
-
-        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
-        if (Objects.nonNull(importDecimalFormatter)) {
-            byteValue = PxlNumberSupport.requireWithinRange(PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "byte"), Byte.MIN_VALUE, Byte.MAX_VALUE, "byte").byteValue();
-        } else {
-            try {
-                byteValue = Byte.parseByte(stringValue);
-            } catch (NumberFormatException numberFormatException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "byte"), numberFormatException);
-            }
-        }
-
-        return byteValue;
     }
 
     /**
@@ -194,6 +114,86 @@ final class PxlPrimitiveByteCodec {
         } else {
             return String.valueOf(byteValue);
         }
+    }
+
+    /**
+     * Parses an Excel cell into a {@code byte}. NUMERIC cells are range-checked against the {@code byte} range and truncated
+     * to their integer part; STRING cells are delegated to the string overload; BOOLEAN cells map to 1 (true) or 0 (false);
+     * BLANK cells yield {@code 0}.
+     *
+     * @param cell       the source cell
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@code byte} (0 for a blank cell)
+     * @throws PxlCellCodecException if the numeric value is outside the {@code byte} range or the cell type is unsupported
+     */
+    static byte parsePrimitiveByteValue(final Cell cell,
+                                        final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        byte byteValue = 0;
+
+        final CellType cellType = cell.getCellType();
+        switch (cellType) {
+            case NUMERIC:
+                final double numericValue = cell.getNumericCellValue();
+                byteValue = PxlNumberSupport.requireWithinRange(numericValue, Byte.MIN_VALUE, Byte.MAX_VALUE, "byte").byteValue();
+                break;
+
+            case STRING:
+                final String stringCellValue = cell.getStringCellValue();
+                byteValue = parsePrimitiveByteValue(stringCellValue, columnMeta);
+                break;
+
+            case BOOLEAN:
+                final boolean booleanCellValue = cell.getBooleanCellValue();
+                byteValue = (byte) BooleanUtils.toInteger(booleanCellValue);
+                break;
+
+            case BLANK:
+                // empty
+                break;
+
+            default:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+        }
+
+        return byteValue;
+    }
+
+    /**
+     * Parses a string into a {@code byte}. Trims first when {@code importTrim} is enabled and returns {@code 0} for blank
+     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and the parsed number is range-checked against the {@code byte} range and
+     * truncated; otherwise {@link Byte#parseByte(String)} is used.
+     *
+     * @param s          the source string
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@code byte} (0 for blank input)
+     * @throws PxlCellCodecException if the string is not a valid {@code byte} or is outside the {@code byte} range
+     */
+    static byte parsePrimitiveByteValue(final String s,
+                                        final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return (byte) 0;
+        }
+
+        byte byteValue;
+
+        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
+        if (Objects.nonNull(importDecimalFormatter)) {
+            byteValue = PxlNumberSupport.requireWithinRange(PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "byte"), Byte.MIN_VALUE, Byte.MAX_VALUE, "byte").byteValue();
+        } else {
+            try {
+                byteValue = Byte.parseByte(stringValue);
+            } catch (NumberFormatException numberFormatException) {
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "byte"), numberFormatException);
+            }
+        }
+
+        return byteValue;
     }
 
 }

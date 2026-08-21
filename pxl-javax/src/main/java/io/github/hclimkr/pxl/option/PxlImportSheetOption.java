@@ -83,7 +83,7 @@ public final class PxlImportSheetOption {
 
     /**
      * Specifies the index of the starting row used as data on import.
-     * (The default is the second row. When set explicitly, use a 1-based value, and it must be greater than the value of importHeaderRowIndex and less than or equal to the value of importLastDataRowIndex.)
+     * (The default is the row right after the header row - the second row unless importHeaderRowIndex moves it. When set explicitly, use a 1-based value, and it must be greater than the value of importHeaderRowIndex and less than or equal to the value of importLastDataRowIndex.)
      */
     @Builder.Default
     private final Integer importFirstDataRowIndex = null;

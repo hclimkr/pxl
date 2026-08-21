@@ -16,96 +16,37 @@ public @interface PxlColumn {
     /**
      * Specifies the Excel column name.
      * <p>
-     * The value doubles as a content-i18n key: when the workbook sets {@code importI18nBaseName} /
-     * {@code exportI18nBaseName}, the name is resolved through that bundle first, and it is the translation that the
-     * header is matched against on import and written as on export. A name the bundle does not carry is used as it
-     * stands.
+     * The value doubles as a content-i18n key: when the workbook sets {@code exportI18nBaseName} /
+     * {@code importI18nBaseName}, the name is resolved through that bundle first, and it is the translation that is
+     * written as the header on export and matched against it on import. A name the bundle does not carry is used as
+     * it stands.
      *
      * @return the column name(s); when empty ({@code {}}), the field name is used
      */
     String[] name() default {};
 
     /**
-     * Specifies the cell formatting string used when importing/exporting the Excel column.
-     * If importPattern is empty, this value is used; if exportPattern is empty, this value is used.
+     * Specifies the cell formatting string used when exporting/importing the Excel column.
+     * Each direction falls back to this value when its own pattern - {@link #exportPattern()},
+     * {@link #importPattern()} - is empty.
      * <p>
      * A pattern has to match the value it parses in full. A value the pattern reads only the front of - {@code "1e3"}
      * or {@code "123abc"} under {@code "#,##0"}, {@code "2024-01-02 xxx"} under {@code "yyyy-MM-dd"} - is rejected
      * rather than bound as the part that could be read. Naming a pattern therefore never makes a column accept more
      * than it would without one.
      *
-     * @return the shared import/export cell-formatting pattern; empty ({@code ""}) by default
+     * @return the shared export/import cell-formatting pattern; empty ({@code ""}) by default
      */
     String pattern() default "";
 
     /**
-     * Specifies the separator between each Element when importing/exporting a Collection.
-     * If importCollectionSeparator is empty, this value is used; if exportCollectionSeparator is empty, this value is used.
+     * Specifies the separator between each Element when exporting/importing a Collection.
+     * Each direction falls back to this value when its own separator - {@link #exportCollectionSeparator()},
+     * {@link #importCollectionSeparator()} - is empty.
      *
      * @return the shared collection element separator; defaults to {@link PxlConstants#DEFAULT_COLLECTION_SEPARATOR} ({@code ";"})
      */
     String collectionSeparator() default PxlConstants.DEFAULT_COLLECTION_SEPARATOR;
-
-    /**
-     * Specifies whether to import.
-     *
-     * @return {@code true} to bind this column on import; {@code true} by default
-     */
-    boolean importEnabled() default true;
-
-    /**
-     * Specifies whether to trim the string on import.
-     *
-     * @return {@code true} to trim the imported string; defaults to {@link PxlConstants#DEFAULT_IMPORT_TRIM} ({@code true})
-     */
-    boolean importTrim() default PxlConstants.DEFAULT_IMPORT_TRIM;
-
-    /**
-     * Specifies whether to check the uniqueness of the column values on import.
-     *
-     * @return {@code true} to enforce uniqueness of the imported column values; defaults to {@link PxlConstants#DEFAULT_IMPORT_UNIQUE} ({@code false})
-     */
-    boolean importUnique() default PxlConstants.DEFAULT_IMPORT_UNIQUE;
-
-    /**
-     * Specifies the cell formatting string on import.
-     * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, OffsetDateTime, Duration, Period.
-     * A Duration/Period pattern is the {@code DurationFormatUtils} style used on export, and a value that does not match it falls back to ISO-8601.
-     * The pattern has to consume the cell value in full - see {@link #pattern()}.
-     *
-     * @return the import-specific cell-formatting pattern; empty ({@code ""}) falls back to {@link #pattern()}
-     */
-    String importPattern() default "";
-
-    /**
-     * Specifies the string representing the boolean value true on import.
-     * A String column renders a BOOLEAN cell as this string, and a Boolean column interprets this string (case-insensitive) as true.
-     *
-     * @return the string mapped to boolean {@code true} on import; defaults to {@link PxlConstants#DEFAULT_IMPORT_TRUE_STRING}
-     */
-    String importTrueString() default PxlConstants.DEFAULT_IMPORT_TRUE_STRING;
-
-    /**
-     * Specifies the string representing the boolean value false on import.
-     * A String column renders a BOOLEAN cell as this string, and a Boolean column interprets this string (case-insensitive) as false.
-     *
-     * @return the string mapped to boolean {@code false} on import; defaults to {@link PxlConstants#DEFAULT_IMPORT_FALSE_STRING}
-     */
-    String importFalseString() default PxlConstants.DEFAULT_IMPORT_FALSE_STRING;
-
-    /**
-     * Specifies the separator between each Element when importing as a Collection.
-     *
-     * @return the import-specific collection element separator; empty ({@code ""} by default) falls back to {@link #collectionSeparator()}
-     */
-    String importCollectionSeparator() default PxlConstants.DEFAULT_IMPORT_COLLECTION_SEPARATOR;
-
-    /**
-     * Specifies whether, on import, to override a superclass field that uses the same column name, if one exists.
-     *
-     * @return {@code true} to override a same-named superclass column on import; defaults to {@link PxlConstants#DEFAULT_IMPORT_OVERRIDE_SUPER_CLASS_COLUMN} ({@code false})
-     */
-    boolean importOverrideSuperClassColumn() default PxlConstants.DEFAULT_IMPORT_OVERRIDE_SUPER_CLASS_COLUMN;
 
     /**
      * Specifies whether to export.
@@ -258,6 +199,67 @@ public @interface PxlColumn {
      * @return the styler for this column's data cells on export; {@link PxlStyler} (unset) by default, deferring to the sheet/workbook/built-in styler
      */
     Class<? extends PxlStyler> exportColumnDataCellStyler() default PxlStyler.class;
+
+    /**
+     * Specifies whether to import.
+     *
+     * @return {@code true} to bind this column on import; {@code true} by default
+     */
+    boolean importEnabled() default true;
+
+    /**
+     * Specifies whether to trim the string on import.
+     *
+     * @return {@code true} to trim the imported string; defaults to {@link PxlConstants#DEFAULT_IMPORT_TRIM} ({@code true})
+     */
+    boolean importTrim() default PxlConstants.DEFAULT_IMPORT_TRIM;
+
+    /**
+     * Specifies whether to check the uniqueness of the column values on import.
+     *
+     * @return {@code true} to enforce uniqueness of the imported column values; defaults to {@link PxlConstants#DEFAULT_IMPORT_UNIQUE} ({@code false})
+     */
+    boolean importUnique() default PxlConstants.DEFAULT_IMPORT_UNIQUE;
+
+    /**
+     * Specifies the cell formatting string on import.
+     * Valid only for fields of type Numeric, Date, LocalTime, LocalDate, LocalDateTime, ZonedDateTime, OffsetTime, OffsetDateTime, Duration, Period.
+     * A Duration/Period pattern is the {@code DurationFormatUtils} style used on export, and a value that does not match it falls back to ISO-8601.
+     * The pattern has to consume the cell value in full - see {@link #pattern()}.
+     *
+     * @return the import-specific cell-formatting pattern; empty ({@code ""}) falls back to {@link #pattern()}
+     */
+    String importPattern() default "";
+
+    /**
+     * Specifies the string representing the boolean value true on import.
+     * A String column renders a BOOLEAN cell as this string, and a Boolean column interprets this string (case-insensitive) as true.
+     *
+     * @return the string mapped to boolean {@code true} on import; defaults to {@link PxlConstants#DEFAULT_IMPORT_TRUE_STRING}
+     */
+    String importTrueString() default PxlConstants.DEFAULT_IMPORT_TRUE_STRING;
+
+    /**
+     * Specifies the string representing the boolean value false on import.
+     * A String column renders a BOOLEAN cell as this string, and a Boolean column interprets this string (case-insensitive) as false.
+     *
+     * @return the string mapped to boolean {@code false} on import; defaults to {@link PxlConstants#DEFAULT_IMPORT_FALSE_STRING}
+     */
+    String importFalseString() default PxlConstants.DEFAULT_IMPORT_FALSE_STRING;
+
+    /**
+     * Specifies the separator between each Element when importing as a Collection.
+     *
+     * @return the import-specific collection element separator; empty ({@code ""} by default) falls back to {@link #collectionSeparator()}
+     */
+    String importCollectionSeparator() default PxlConstants.DEFAULT_IMPORT_COLLECTION_SEPARATOR;
+
+    /**
+     * Specifies whether, on import, to override a superclass field that uses the same column name, if one exists.
+     *
+     * @return {@code true} to override a same-named superclass column on import; defaults to {@link PxlConstants#DEFAULT_IMPORT_OVERRIDE_SUPER_CLASS_COLUMN} ({@code false})
+     */
+    boolean importOverrideSuperClassColumn() default PxlConstants.DEFAULT_IMPORT_OVERRIDE_SUPER_CLASS_COLUMN;
 
     /**
      * Rendering style for an Enum field's dropdown list on export.

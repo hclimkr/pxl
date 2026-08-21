@@ -6,7 +6,7 @@ import lombok.*;
 import java.util.List;
 
 /**
- * DTO for verifying custom Collection separator (collectionSeparator / import/exportCollectionSeparator) combinations.
+ * DTO for verifying custom Collection separator (collectionSeparator / export/importCollectionSeparator) combinations.
  */
 @Getter
 @Setter
@@ -15,12 +15,12 @@ import java.util.List;
 @Builder
 public class SeparatorRow {
 
-    // collectionSeparator applies to both import and export.
+    // collectionSeparator applies to both export and import.
     @PxlColumn(name = "Tags", collectionSeparator = "|")
     private List<String> tags;
 
-    // Specify import/exportCollectionSeparator separately (same value)
-    @PxlColumn(name = "Nums", importCollectionSeparator = "/", exportCollectionSeparator = "/")
+    // Specify export/importCollectionSeparator separately (same value)
+    @PxlColumn(name = "Nums", exportCollectionSeparator = "/", importCollectionSeparator = "/")
     private List<Integer> nums;
 
 }

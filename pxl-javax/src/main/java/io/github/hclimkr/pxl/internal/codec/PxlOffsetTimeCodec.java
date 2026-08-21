@@ -21,13 +21,13 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link OffsetTime} column values - parses cells/strings into {@link OffsetTime} on
- * import and writes {@link OffsetTime} into cells on export.
+ * Codec for {@link OffsetTime} column values - writes {@link OffsetTime} into cells on export and
+ * parses cells/strings into {@link OffsetTime} on import.
  *
- * <p>NUMERIC cells are read as Excel time fractions and given the current system offset; a BOOLEAN cell is
- * rejected as an unsupported cell type. Strings are parsed with the column's cached formatter, then ISO-8601
- * with an explicit offset ({@link DateTimeFormatter#ISO_OFFSET_TIME}). On export to a numeric cell only the
- * local (wall-clock) time is stored.
+ * <p>On export to a numeric cell only the local (wall-clock) time is stored. On import, NUMERIC cells are
+ * read as Excel time fractions and given the current system offset, a BOOLEAN cell is rejected as an
+ * unsupported cell type, and strings are parsed with the column's cached formatter, then ISO-8601 with an
+ * explicit offset ({@link DateTimeFormatter#ISO_OFFSET_TIME}).
  */
 final class PxlOffsetTimeCodec {
 
@@ -37,96 +37,6 @@ final class PxlOffsetTimeCodec {
     private PxlOffsetTimeCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses the given cell into an {@link OffsetTime} using the current system offset. NUMERIC
-     * cells are read as Excel time fractions; STRING cells are delegated to the string parser; BOOLEAN
-     * cells are rejected as an unsupported cell type; BLANK cells yield {@code null}.
-     *
-     * @param cell       the cell to read
-     * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@link OffsetTime}, or {@code null} when blank
-     * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is invalid
-     */
-    static OffsetTime parseOffsetTimeValue(final Cell cell,
-                                           final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final ZoneOffset zoneOffset = OffsetTime.now(ZoneId.systemDefault()).getOffset();
-        OffsetTime offsetTimeValue = null;
-
-        final CellType cellType = cell.getCellType();
-        switch (cellType) {
-            case NUMERIC:
-                try {
-                    offsetTimeValue = PxlDateCellSupport.readNumericCellAsLocalDateTime(cell, "OffsetTime").toLocalTime().atOffset(zoneOffset);
-                } catch (NumberFormatException numberFormatException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), "OffsetTime"), numberFormatException);
-                }
-                break;
-
-            case STRING:
-                final String stringCellValue = cell.getStringCellValue();
-                offsetTimeValue = parseOffsetTimeValue(stringCellValue, columnMeta);
-                break;
-
-            case BOOLEAN:
-                // final boolean booleanCellValue = cell.getBooleanCellValue();
-                // offsetTimeValue = DateUtil.getLocalDateTime(BooleanUtils.toInteger(booleanCellValue)).toLocalTime().atOffset(zoneOffset);
-                // break;
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-
-            case BLANK:
-                // empty
-                break;
-
-            default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-        }
-
-        return offsetTimeValue;
-    }
-
-    /**
-     * Parses a string token into an {@link OffsetTime}. The column's cached formatter is tried
-     * first, then ISO-8601 parsing with an explicit offset. The value is trimmed when {@code importTrim} is
-     * set; a blank value yields {@code null}.
-     *
-     * @param s          the raw string token
-     * @param columnMeta the resolved import metadata for this column
-     * @return the parsed {@link OffsetTime}, or {@code null} when blank
-     * @throws PxlCellCodecException if the value matches no known format
-     */
-    static OffsetTime parseOffsetTimeValue(final String s,
-                                           final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return null;
-        }
-
-        OffsetTime offsetTimeValue = null;
-
-        final DateTimeFormatter importDateTimeFormatter = columnMeta.getImportDateTimeFormatterCache();
-        if (Objects.nonNull(importDateTimeFormatter)) {
-            try {
-                offsetTimeValue = OffsetTime.parse(stringValue, importDateTimeFormatter);
-                return offsetTimeValue;
-            } catch (DateTimeParseException dateTimeParseException) {
-                // go to next parser
-            }
-        }
-
-        try {
-            offsetTimeValue = OffsetTime.parse(stringValue, DateTimeFormatter.ISO_OFFSET_TIME);
-            return offsetTimeValue;
-        } catch (DateTimeParseException e) {
-            // go to next parser
-        }
-
-        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "OffsetTime"));
     }
 
     /**
@@ -225,6 +135,96 @@ final class PxlOffsetTimeCodec {
         } catch (DateTimeException dateTimeException) {
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(offsetTimeValue), "OffsetTime"), dateTimeException);
         }
+    }
+
+    /**
+     * Parses the given cell into an {@link OffsetTime} using the current system offset. NUMERIC
+     * cells are read as Excel time fractions; STRING cells are delegated to the string parser; BOOLEAN
+     * cells are rejected as an unsupported cell type; BLANK cells yield {@code null}.
+     *
+     * @param cell       the cell to read
+     * @param columnMeta the resolved import metadata for this column
+     * @return the parsed {@link OffsetTime}, or {@code null} when blank
+     * @throws PxlCellCodecException if the cell type is unsupported or the numeric value is invalid
+     */
+    static OffsetTime parseOffsetTimeValue(final Cell cell,
+                                           final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final ZoneOffset zoneOffset = OffsetTime.now(ZoneId.systemDefault()).getOffset();
+        OffsetTime offsetTimeValue = null;
+
+        final CellType cellType = cell.getCellType();
+        switch (cellType) {
+            case NUMERIC:
+                try {
+                    offsetTimeValue = PxlDateCellSupport.readNumericCellAsLocalDateTime(cell, "OffsetTime").toLocalTime().atOffset(zoneOffset);
+                } catch (NumberFormatException numberFormatException) {
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(cell), "OffsetTime"), numberFormatException);
+                }
+                break;
+
+            case STRING:
+                final String stringCellValue = cell.getStringCellValue();
+                offsetTimeValue = parseOffsetTimeValue(stringCellValue, columnMeta);
+                break;
+
+            case BOOLEAN:
+                // final boolean booleanCellValue = cell.getBooleanCellValue();
+                // offsetTimeValue = DateUtil.getLocalDateTime(BooleanUtils.toInteger(booleanCellValue)).toLocalTime().atOffset(zoneOffset);
+                // break;
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+
+            case BLANK:
+                // empty
+                break;
+
+            default:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+        }
+
+        return offsetTimeValue;
+    }
+
+    /**
+     * Parses a string token into an {@link OffsetTime}. The column's cached formatter is tried
+     * first, then ISO-8601 parsing with an explicit offset. The value is trimmed when {@code importTrim} is
+     * set; a blank value yields {@code null}.
+     *
+     * @param s          the raw string token
+     * @param columnMeta the resolved import metadata for this column
+     * @return the parsed {@link OffsetTime}, or {@code null} when blank
+     * @throws PxlCellCodecException if the value matches no known format
+     */
+    static OffsetTime parseOffsetTimeValue(final String s,
+                                           final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return null;
+        }
+
+        OffsetTime offsetTimeValue = null;
+
+        final DateTimeFormatter importDateTimeFormatter = columnMeta.getImportDateTimeFormatterCache();
+        if (Objects.nonNull(importDateTimeFormatter)) {
+            try {
+                offsetTimeValue = OffsetTime.parse(stringValue, importDateTimeFormatter);
+                return offsetTimeValue;
+            } catch (DateTimeParseException dateTimeParseException) {
+                // go to next parser
+            }
+        }
+
+        try {
+            offsetTimeValue = OffsetTime.parse(stringValue, DateTimeFormatter.ISO_OFFSET_TIME);
+            return offsetTimeValue;
+        } catch (DateTimeParseException e) {
+            // go to next parser
+        }
+
+        throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "OffsetTime"));
     }
 
 }

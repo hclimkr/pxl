@@ -84,14 +84,14 @@ public final class PxlI18nDiagnosticKeys {
      */
     public static final String CODEC_IMPORT_CELL_TYPE_UNSUPPORTED = "codec.import.cellType.unsupported";
     /**
-     * Value read from a cell cannot be parsed into the target type; {@code {0}}=value, {@code {1}}=typeName.
-     */
-    public static final String CODEC_IMPORT_PARSE_INVALID = "codec.import.parse.invalid";
-    /**
      * String export value cannot be parsed into the target type before being written; {@code {0}}=value,
      * {@code {1}}=typeName.
      */
     public static final String CODEC_EXPORT_PARSE_INVALID = "codec.export.parse.invalid";
+    /**
+     * Value read from a cell cannot be parsed into the target type; {@code {0}}=value, {@code {1}}=typeName.
+     */
+    public static final String CODEC_IMPORT_PARSE_INVALID = "codec.import.parse.invalid";
     /**
      * Unsupported conversion between two types; {@code {0}}=sourceType, {@code {1}}=targetType.
      */
@@ -113,41 +113,41 @@ public final class PxlI18nDiagnosticKeys {
      */
     public static final String CODEC_IMPORT_STREAMING_FORMULA_UNSUPPORTED = "codec.import.streaming.formulaUnsupported";
     /**
-     * Enum constant not found for a value read from a cell; {@code {0}}=value, {@code {1}}=enumType.
-     */
-    public static final String CODEC_IMPORT_ENUM_PARSE_FAILED = "codec.import.enum.parseFailed";
-    /**
      * Enum constant not found for a string export value; {@code {0}}=value, {@code {1}}=enumType.
      */
     public static final String CODEC_EXPORT_ENUM_PARSE_FAILED = "codec.export.enum.parseFailed";
     /**
-     * Error while parsing an enum value read from a cell; {@code {0}}=value, {@code {1}}=enumType.
+     * Enum constant not found for a value read from a cell; {@code {0}}=value, {@code {1}}=enumType.
      */
-    public static final String CODEC_IMPORT_ENUM_PARSE_ERROR = "codec.import.enum.parseError";
+    public static final String CODEC_IMPORT_ENUM_PARSE_FAILED = "codec.import.enum.parseFailed";
     /**
      * Error while parsing a string export value into an enum; {@code {0}}=value, {@code {1}}=enumType.
      */
     public static final String CODEC_EXPORT_ENUM_PARSE_ERROR = "codec.export.enum.parseError";
     /**
+     * Error while parsing an enum value read from a cell; {@code {0}}=value, {@code {1}}=enumType.
+     */
+    public static final String CODEC_IMPORT_ENUM_PARSE_ERROR = "codec.import.enum.parseError";
+    /**
      * Error while formatting an enum value; {@code {0}}=enumType.
      */
     public static final String CODEC_EXPORT_ENUM_FORMAT_ERROR = "codec.export.enum.formatError";
-    /**
-     * Custom object parse failed for a value read from a cell; {@code {0}}=value, {@code {1}}=type.
-     */
-    public static final String CODEC_IMPORT_OBJECT_PARSE_FAILED = "codec.import.object.parseFailed";
     /**
      * Custom object parse failed for a string export value; {@code {0}}=value, {@code {1}}=type.
      */
     public static final String CODEC_EXPORT_OBJECT_PARSE_FAILED = "codec.export.object.parseFailed";
     /**
-     * Error while parsing a custom object read from a cell; {@code {0}}=value, {@code {1}}=type.
+     * Custom object parse failed for a value read from a cell; {@code {0}}=value, {@code {1}}=type.
      */
-    public static final String CODEC_IMPORT_OBJECT_PARSE_ERROR = "codec.import.object.parseError";
+    public static final String CODEC_IMPORT_OBJECT_PARSE_FAILED = "codec.import.object.parseFailed";
     /**
      * Error while parsing a string export value into a custom object; {@code {0}}=value, {@code {1}}=type.
      */
     public static final String CODEC_EXPORT_OBJECT_PARSE_ERROR = "codec.export.object.parseError";
+    /**
+     * Error while parsing a custom object read from a cell; {@code {0}}=value, {@code {1}}=type.
+     */
+    public static final String CODEC_IMPORT_OBJECT_PARSE_ERROR = "codec.import.object.parseError";
     /**
      * Error while formatting a custom object; {@code {0}}=type.
      */
@@ -156,8 +156,40 @@ public final class PxlI18nDiagnosticKeys {
      * Numeric value exceeds the type's representable precision; {@code {0}}=value, {@code {1}}=type.
      */
     public static final String CODEC_EXPORT_VALUE_TOO_LARGE = "codec.export.value.tooLarge";
+    /**
+     * No data supplied to export.
+     */
+    public static final String CORE_EXPORT_NO_DATA = "core.export.noData";
+    /**
+     * Sheet-name count does not match the data-object count on export.
+     */
+    public static final String CORE_EXPORT_SHEET_NAME_OBJECT_COUNT_MISMATCH = "core.export.sheetNameObjectCountMismatch";
+    /**
+     * Sheet-name count does not match the row-class count on export.
+     */
+    public static final String CORE_EXPORT_SHEET_NAME_ROW_CLASS_COUNT_MISMATCH = "core.export.sheetNameRowClassCountMismatch";
+    /**
+     * Duplicate sheet name supplied on export; {@code {0}}=names.
+     */
+    public static final String CORE_EXPORT_DUPLICATE_SHEET_NAME = "core.export.duplicateSheetName";
+    /**
+     * Sheet data is null on export; {@code {0}}=sheetName.
+     */
+    public static final String CORE_EXPORT_SHEET_DATA_NULL = "core.export.sheetDataNull";
+    /**
+     * Sheet row class is null on export; {@code {0}}=sheetName.
+     */
+    public static final String CORE_EXPORT_SHEET_ROW_CLASS_NULL = "core.export.sheetRowClassNull";
+    /**
+     * Export row count exceeds the configured maximum; {@code {0}}=sheetName, {@code {1}}=max.
+     */
+    public static final String CORE_EXPORT_SHEET_ROW_COUNT_EXCEEDED = "core.export.sheetRowCountExceeded";
+    /**
+     * A row object to export is {@code null}; {@code {0}}=sheetName, {@code {1}}=one-based position in the row collection.
+     */
+    public static final String CORE_EXPORT_ROW_NULL = "core.export.rowNull";
 
-    // Binders / importers / exporter (internal/core).
+    // Binders / exporter / importers (internal/core).
 
     /**
      * CSV file count does not match the expected name count.
@@ -223,38 +255,6 @@ public final class PxlI18nDiagnosticKeys {
      * Merged regions are not supported while streaming.
      */
     public static final String CORE_IMPORT_STREAMING_MERGED_UNSUPPORTED = "core.import.streaming.mergedUnsupported";
-    /**
-     * No data supplied to export.
-     */
-    public static final String CORE_EXPORT_NO_DATA = "core.export.noData";
-    /**
-     * Sheet-name count does not match the data-object count on export.
-     */
-    public static final String CORE_EXPORT_SHEET_NAME_OBJECT_COUNT_MISMATCH = "core.export.sheetNameObjectCountMismatch";
-    /**
-     * Sheet-name count does not match the row-class count on export.
-     */
-    public static final String CORE_EXPORT_SHEET_NAME_ROW_CLASS_COUNT_MISMATCH = "core.export.sheetNameRowClassCountMismatch";
-    /**
-     * Duplicate sheet name supplied on export; {@code {0}}=names.
-     */
-    public static final String CORE_EXPORT_DUPLICATE_SHEET_NAME = "core.export.duplicateSheetName";
-    /**
-     * Sheet data is null on export; {@code {0}}=sheetName.
-     */
-    public static final String CORE_EXPORT_SHEET_DATA_NULL = "core.export.sheetDataNull";
-    /**
-     * Sheet row class is null on export; {@code {0}}=sheetName.
-     */
-    public static final String CORE_EXPORT_SHEET_ROW_CLASS_NULL = "core.export.sheetRowClassNull";
-    /**
-     * Export row count exceeds the configured maximum; {@code {0}}=sheetName, {@code {1}}=max.
-     */
-    public static final String CORE_EXPORT_SHEET_ROW_COUNT_EXCEEDED = "core.export.sheetRowCountExceeded";
-    /**
-     * A row object to export is {@code null}; {@code {0}}=sheetName, {@code {1}}=one-based position in the row collection.
-     */
-    public static final String CORE_EXPORT_ROW_NULL = "core.export.rowNull";
 
     // Resolved metadata (internal/meta).
 

@@ -430,6 +430,10 @@ public final class PxlWorkbookSupport {
 
     /**
      * Tests whether the file is an OLE2 container (as opposed to an OOXML file), by attempting to open it as a {@link POIFSFileSystem}.
+     * <p>
+     * The name asks about encryption because an encrypted OOXML workbook is stored inside an OLE2 container, so for a
+     * source expected to be XLSX the two questions have the same answer. A plain XLS is an OLE2 container too, so the
+     * test does not tell an encrypted XLSX from an unencrypted XLS.
      *
      * @param file the file to inspect
      * @return {@code true} if the file is an OLE2 container, {@code false} if it is an OOXML file
@@ -448,6 +452,9 @@ public final class PxlWorkbookSupport {
 
     /**
      * Tests whether the stream holds an OLE2 container (as opposed to an OOXML file), by attempting to open it as a {@link POIFSFileSystem}.
+     * <p>
+     * The name asks about encryption for the same reason as {@link #isEncrypted(File)}, and comes with the same
+     * caveat: an unencrypted XLS answers {@code true} as well.
      *
      * @param is the stream to inspect
      * @return {@code true} if the stream is an OLE2 container, {@code false} if it is an OOXML file

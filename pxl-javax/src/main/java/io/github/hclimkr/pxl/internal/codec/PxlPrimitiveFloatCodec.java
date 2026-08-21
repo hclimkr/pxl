@@ -18,9 +18,9 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Codec for primitive {@code float} column values - parses cells and strings into {@code float} on import and writes
- * {@code float} into cells on export. A numeric cell (a {@code double}) is narrowed to {@code float}; boolean cells map to
- * 1.0/0.0. Because {@code float} cannot be {@code null}, blank input parses to {@code 0.0f}. Both import and export reject
+ * Codec for primitive {@code float} column values - writes {@code float} into cells on export and parses cells and
+ * strings into {@code float} on import. A numeric cell (a {@code double}) is narrowed to {@code float}; boolean cells map to
+ * 1.0/0.0. Because {@code float} cannot be {@code null}, blank input parses to {@code 0.0f}. Both export and import reject
  * NaN and Infinity (import additionally rejects finite values that overflow the {@code float} range and narrow to Infinity),
  * keeping the two directions symmetric. To avoid float-to-double widening noise, export writes the value via
  * {@link PxlNumberSupport#floatToPlainDouble(float)} rendered as plain text by {@link NumberToTextConverter}.
@@ -33,89 +33,6 @@ final class PxlPrimitiveFloatCodec {
     private PxlPrimitiveFloatCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses an Excel cell into a {@code float}. NUMERIC cells are narrowed from {@code double} to {@code float}; STRING
-     * cells are delegated to the string overload; BOOLEAN cells map to 1.0f (true) or 0.0f (false); BLANK cells yield {@code 0.0f}.
-     *
-     * @param cell       the source cell
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code float} (0.0f for a blank cell)
-     * @throws PxlCellCodecException if the cell type is unsupported
-     */
-    static float parsePrimitiveFloatValue(final Cell cell,
-                                          final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        float floatValue = 0.f;
-
-        final CellType cellType = cell.getCellType();
-        switch (cellType) {
-            case NUMERIC:
-                final double numericValue = cell.getNumericCellValue();
-                floatValue = (float) numericValue;
-                break;
-
-            case STRING:
-                final String stringCellValue = cell.getStringCellValue();
-                floatValue = parsePrimitiveFloatValue(stringCellValue, columnMeta);
-                break;
-
-            case BOOLEAN:
-                final boolean booleanCellValue = cell.getBooleanCellValue();
-                floatValue = (float) BooleanUtils.toInteger(booleanCellValue);
-                break;
-
-            case BLANK:
-                // empty
-                break;
-
-            default:
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
-        }
-
-        PxlNumberSupport.requireFiniteForImport(floatValue, "float");
-
-        return floatValue;
-    }
-
-    /**
-     * Parses a string into a {@code float}. Trims first when {@code importTrim} is enabled and returns {@code 0.0f} for blank
-     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
-     * ({@code PxlNumberSupport.parseFullyAsNumber}) and its parsed value is narrowed to {@code float}; otherwise
-     * {@link Float#parseFloat(String)} is used.
-     *
-     * @param s          the source string
-     * @param columnMeta resolved import metadata for the column
-     * @return the parsed {@code float} (0.0f for blank input)
-     * @throws PxlCellCodecException if the string is not a valid {@code float}
-     */
-    static float parsePrimitiveFloatValue(final String s,
-                                          final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return (float) 0.f;
-        }
-
-        float floatValue;
-
-        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
-        if (Objects.nonNull(importDecimalFormatter)) {
-            floatValue = PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "float").floatValue();
-        } else {
-            try {
-                floatValue = Float.parseFloat(stringValue);
-            } catch (NumberFormatException numberFormatException) {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "float"), numberFormatException);
-            }
-        }
-
-        PxlNumberSupport.requireFiniteForImport(floatValue, "float");
-
-        return floatValue;
     }
 
     /**
@@ -206,6 +123,89 @@ final class PxlPrimitiveFloatCodec {
         } else {
             return NumberToTextConverter.toText(PxlNumberSupport.floatToPlainDouble(floatValue));
         }
+    }
+
+    /**
+     * Parses an Excel cell into a {@code float}. NUMERIC cells are narrowed from {@code double} to {@code float}; STRING
+     * cells are delegated to the string overload; BOOLEAN cells map to 1.0f (true) or 0.0f (false); BLANK cells yield {@code 0.0f}.
+     *
+     * @param cell       the source cell
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@code float} (0.0f for a blank cell)
+     * @throws PxlCellCodecException if the cell type is unsupported
+     */
+    static float parsePrimitiveFloatValue(final Cell cell,
+                                          final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        float floatValue = 0.f;
+
+        final CellType cellType = cell.getCellType();
+        switch (cellType) {
+            case NUMERIC:
+                final double numericValue = cell.getNumericCellValue();
+                floatValue = (float) numericValue;
+                break;
+
+            case STRING:
+                final String stringCellValue = cell.getStringCellValue();
+                floatValue = parsePrimitiveFloatValue(stringCellValue, columnMeta);
+                break;
+
+            case BOOLEAN:
+                final boolean booleanCellValue = cell.getBooleanCellValue();
+                floatValue = (float) BooleanUtils.toInteger(booleanCellValue);
+                break;
+
+            case BLANK:
+                // empty
+                break;
+
+            default:
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_CELL_TYPE_UNSUPPORTED, String.valueOf(cellType.toString())));
+        }
+
+        PxlNumberSupport.requireFiniteForImport(floatValue, "float");
+
+        return floatValue;
+    }
+
+    /**
+     * Parses a string into a {@code float}. Trims first when {@code importTrim} is enabled and returns {@code 0.0f} for blank
+     * input. When an import {@link DecimalFormat} is configured the whole string must match the pattern
+     * ({@code PxlNumberSupport.parseFullyAsNumber}) and its parsed value is narrowed to {@code float}; otherwise
+     * {@link Float#parseFloat(String)} is used.
+     *
+     * @param s          the source string
+     * @param columnMeta resolved import metadata for the column
+     * @return the parsed {@code float} (0.0f for blank input)
+     * @throws PxlCellCodecException if the string is not a valid {@code float}
+     */
+    static float parsePrimitiveFloatValue(final String s,
+                                          final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return (float) 0.f;
+        }
+
+        float floatValue;
+
+        final DecimalFormat importDecimalFormatter = columnMeta.getImportDecimalFormatterCache();
+        if (Objects.nonNull(importDecimalFormatter)) {
+            floatValue = PxlNumberSupport.parseFullyAsNumber(importDecimalFormatter, stringValue, "float").floatValue();
+        } else {
+            try {
+                floatValue = Float.parseFloat(stringValue);
+            } catch (NumberFormatException numberFormatException) {
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "float"), numberFormatException);
+            }
+        }
+
+        PxlNumberSupport.requireFiniteForImport(floatValue, "float");
+
+        return floatValue;
     }
 
 }

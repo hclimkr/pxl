@@ -14,13 +14,13 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link Boolean} column values - parses cells/strings into {@link Boolean} on import and
- * writes {@link Boolean} into cells on export.
+ * Codec for {@link Boolean} column values - writes {@link Boolean} into cells on export and parses
+ * cells/strings into {@link Boolean} on import.
  *
- * <p>NUMERIC cells are {@code true} when non-zero; STRING cells honour the column's import true/false
- * strings (matched case-insensitively) before falling back to {@link BooleanUtils#toBooleanObject};
- * BLANK/blank values map to {@code null}. Export renders the value with the column's export
- * true/false/null strings.
+ * <p>Export renders the value with the column's export true/false/null strings. On import, NUMERIC cells
+ * are {@code true} when non-zero; STRING cells honour the column's import true/false strings (matched
+ * case-insensitively) before falling back to {@link BooleanUtils#toBooleanObject}; BLANK/blank values map
+ * to {@code null}.
  */
 final class PxlBooleanCodec {
 
@@ -30,6 +30,70 @@ final class PxlBooleanCodec {
     private PxlBooleanCodec() {
 
         throw new AssertionError("no instances of this class");
+    }
+
+    /**
+     * Writes the given value as a {@link Boolean} cell and returns the exported string. A {@link String}
+     * source is parsed via {@link BooleanUtils#toBooleanObject}; a {@link Boolean} source is used directly.
+     * A {@code null} result blanks the cell; otherwise the column's export true/false/null strings are
+     * written.
+     *
+     * @param cell       the target cell, or {@code null} to only compute the string
+     * @param object     the source value (a {@link String} or {@link Boolean})
+     * @param columnMeta the resolved export metadata for this column
+     * @return the exported string, or {@code null} when the value is blank
+     * @throws PxlCellCodecException if the source is not a {@link String}/{@link Boolean}, or an invalid
+     *                               boolean string
+     */
+    static String buildBooleanCell(final Cell cell,
+                                   final Object object,
+                                   final PxlExportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        Boolean booleanValue;
+
+        if (object instanceof String) {
+            final String stringValue = (String) object;
+
+            if (StringUtils.isBlank(stringValue)) {
+                booleanValue = null;
+            } else {
+                booleanValue = BooleanUtils.toBooleanObject(stringValue);
+                if (Objects.isNull(booleanValue)) {
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Boolean"));
+                }
+            }
+        } else if (object instanceof Boolean) {
+            booleanValue = (Boolean) object;
+        } else {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Boolean"));
+        }
+
+        if (Objects.isNull(booleanValue)) {
+            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
+            return null;
+        } else {
+            final String cellString = makeBooleanExportString(booleanValue, columnMeta);
+            Optional.ofNullable(cell).ifPresent(c -> c.setCellValue(cellString));
+            return cellString;
+        }
+    }
+
+    /**
+     * Renders the export string for a {@link Boolean} using the configured true/false/null string representations.
+     *
+     * @param booleanValue the value to render
+     * @param columnMeta   resolved export metadata for the column
+     * @return the configured true or false string, or the configured null string when the value is {@code null}
+     */
+    private static String makeBooleanExportString(final Boolean booleanValue,
+                                                  final PxlExportColumnMeta columnMeta) {
+
+        final String exportNullString = columnMeta.getExportNullString();
+        final String exportTrueString = columnMeta.getExportTrueString();
+        final String exportFalseString = columnMeta.getExportFalseString();
+
+        return BooleanUtils.toString(booleanValue, exportTrueString, exportFalseString, exportNullString);
     }
 
     /**
@@ -111,70 +175,6 @@ final class PxlBooleanCodec {
         }
 
         return booleanValue;
-    }
-
-    /**
-     * Writes the given value as a {@link Boolean} cell and returns the exported string. A {@link String}
-     * source is parsed via {@link BooleanUtils#toBooleanObject}; a {@link Boolean} source is used directly.
-     * A {@code null} result blanks the cell; otherwise the column's export true/false/null strings are
-     * written.
-     *
-     * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@link String} or {@link Boolean})
-     * @param columnMeta the resolved export metadata for this column
-     * @return the exported string, or {@code null} when the value is blank
-     * @throws PxlCellCodecException if the source is not a {@link String}/{@link Boolean}, or an invalid
-     *                               boolean string
-     */
-    static String buildBooleanCell(final Cell cell,
-                                   final Object object,
-                                   final PxlExportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        Boolean booleanValue;
-
-        if (object instanceof String) {
-            final String stringValue = (String) object;
-
-            if (StringUtils.isBlank(stringValue)) {
-                booleanValue = null;
-            } else {
-                booleanValue = BooleanUtils.toBooleanObject(stringValue);
-                if (Objects.isNull(booleanValue)) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "Boolean"));
-                }
-            }
-        } else if (object instanceof Boolean) {
-            booleanValue = (Boolean) object;
-        } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Boolean"));
-        }
-
-        if (Objects.isNull(booleanValue)) {
-            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
-            return null;
-        } else {
-            final String cellString = makeBooleanExportString(booleanValue, columnMeta);
-            Optional.ofNullable(cell).ifPresent(c -> c.setCellValue(cellString));
-            return cellString;
-        }
-    }
-
-    /**
-     * Renders the export string for a {@link Boolean} using the configured true/false/null string representations.
-     *
-     * @param booleanValue the value to render
-     * @param columnMeta   resolved export metadata for the column
-     * @return the configured true or false string, or the configured null string when the value is {@code null}
-     */
-    private static String makeBooleanExportString(final Boolean booleanValue,
-                                                  final PxlExportColumnMeta columnMeta) {
-
-        final String exportNullString = columnMeta.getExportNullString();
-        final String exportTrueString = columnMeta.getExportTrueString();
-        final String exportFalseString = columnMeta.getExportFalseString();
-
-        return BooleanUtils.toString(booleanValue, exportTrueString, exportFalseString, exportNullString);
     }
 
 }

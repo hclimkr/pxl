@@ -21,11 +21,11 @@ import java.time.*;
 import java.util.*;
 
 /**
- * Codec for {@link Collection} column values - splits a single cell into elements on import and joins
- * elements into one cell on export, delegating each element to the codec for the field's parameterized
+ * Codec for {@link Collection} column values - joins elements into one cell on export and splits a
+ * single cell into elements on import, delegating each element to the codec for the field's parameterized
  * type.
  *
- * <p>The column's import/export collection separator is treated as a whole-string literal (multi-character
+ * <p>The column's export/import collection separator is treated as a whole-string literal (multi-character
  * separators are supported) and empty tokens are preserved to keep positional (index) fidelity;
  * {@code null} elements are written as empty strings on export.
  */
@@ -37,6 +37,119 @@ final class PxlCollectionCodec {
     private PxlCollectionCodec() {
 
         throw new AssertionError("no instances of this class");
+    }
+
+    /**
+     * Writes a collection value into a single cell by exporting each element with the codec for the field's
+     * parameterized element type and joining the results with the column's export collection separator.
+     * {@code null} elements become empty strings (preserving index fidelity). A {@link String} source is
+     * first split on the separator. When {@code exportStringAsPicture} is set for a {@link Collection}
+     * source, elements are rendered as embedded pictures instead of text.
+     *
+     * @param cell       the target cell, or {@code null} to only compute the string
+     * @param object     the source value (a {@link String} or {@link Collection})
+     * @param columnMeta the resolved export metadata for this column
+     * @return the joined string
+     * @throws PxlReflectionException if the element type cannot be resolved or the collection cannot be instantiated
+     * @throws PxlCellCodecException  if the source type or element type is unsupported, or an element fails to export
+     * @throws PxlArgumentException   if a delegated element codec is given an invalid converter, styler, or unsupported target
+     */
+    static String buildCollectionCell(final Cell cell,
+                                      final Object object,
+                                      final PxlExportColumnMeta columnMeta)
+            throws PxlReflectionException, PxlCellCodecException, PxlArgumentException {
+
+        final Class<?> elementClass = PxlReflectionSupport.getParameterizedArgument0(columnMeta.getColumnField());
+
+        Collection<?> collectionObject;
+        if (object instanceof String) {
+            final String collectionStringValue = (String) object;
+            final String exportCollectionSeparator = columnMeta.getExportCollectionSeparator();
+            final Object[] elementStrings = StringUtils.splitByWholeSeparatorPreserveAllTokens(collectionStringValue, exportCollectionSeparator);
+            collectionObject = Arrays.asList(elementStrings);
+        } else if (object instanceof Collection) {
+            collectionObject = (Collection<?>) object;
+        } else {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Collection"));
+        }
+
+        final List<String> strings = new ArrayList<>(PxlCollectionUtils.size(collectionObject));
+
+        for (final Object element : collectionObject) {
+            if (Objects.isNull(element)) {
+                // To preserve positional (index) fidelity, null elements are written as empty strings.
+                strings.add(StringUtils.EMPTY);
+                continue;
+            }
+
+            if (elementClass == String.class) {
+                strings.add(PxlStringCodec.buildStringCell(null, element, columnMeta));
+            } else if (elementClass == Byte.class) {
+                strings.add(PxlByteCodec.buildByteCell(null, element, columnMeta));
+            } else if (elementClass == Short.class) {
+                strings.add(PxlShortCodec.buildShortCell(null, element, columnMeta));
+            } else if (elementClass == Integer.class) {
+                strings.add(PxlIntegerCodec.buildIntegerCell(null, element, columnMeta));
+            } else if (elementClass == Long.class) {
+                strings.add(PxlLongCodec.buildLongCell(null, element, columnMeta));
+            } else if (elementClass == Double.class) {
+                strings.add(PxlDoubleCodec.buildDoubleCell(null, element, columnMeta));
+            } else if (elementClass == Float.class) {
+                strings.add(PxlFloatCodec.buildFloatCell(null, element, columnMeta));
+            } else if (elementClass == Character.class) {
+                strings.add(PxlCharacterCodec.buildCharacterCell(null, element, columnMeta));
+            } else if (elementClass == Boolean.class) {
+                strings.add(PxlBooleanCodec.buildBooleanCell(null, element, columnMeta));
+            } else if (elementClass == BigInteger.class) {
+                strings.add(PxlBigIntegerCodec.buildBigIntegerCell(null, element, columnMeta));
+            } else if (elementClass == BigDecimal.class) {
+                strings.add(PxlBigDecimalCodec.buildBigDecimalCell(null, element, columnMeta));
+            } else if (elementClass == Date.class) {
+                strings.add(PxlJavaDateCodec.buildJavaDateCell(null, element, columnMeta));
+            } else if (elementClass == LocalDate.class) {
+                strings.add(PxlLocalDateCodec.buildLocalDateCell(null, element, columnMeta));
+            } else if (elementClass == LocalTime.class) {
+                strings.add(PxlLocalTimeCodec.buildLocalTimeCell(null, element, columnMeta));
+            } else if (elementClass == LocalDateTime.class) {
+                strings.add(PxlLocalDateTimeCodec.buildLocalDateTimeCell(null, element, columnMeta));
+            } else if (elementClass == ZonedDateTime.class) {
+                strings.add(PxlZonedDateTimeCodec.buildZonedDateTimeCell(null, element, columnMeta));
+            } else if (elementClass == OffsetTime.class) {
+                strings.add(PxlOffsetTimeCodec.buildOffsetTimeCell(null, element, columnMeta));
+            } else if (elementClass == OffsetDateTime.class) {
+                strings.add(PxlOffsetDateTimeCodec.buildOffsetDateTimeCell(null, element, columnMeta));
+            } else if (elementClass == Duration.class) {
+                strings.add(PxlDurationCodec.buildDurationCell(null, element, columnMeta));
+            } else if (elementClass == Period.class) {
+                strings.add(PxlPeriodCodec.buildPeriodCell(null, element, columnMeta));
+            } else if (elementClass == UUID.class) {
+                strings.add(PxlUuidCodec.buildUuidCell(null, element, columnMeta));
+            } else if (elementClass.isEnum()) {
+                strings.add(PxlEnumCodec.buildEnumCell(null, element, columnMeta));
+            } else if (columnMeta.isExportCustomConvertable()) {
+                strings.add(PxlObjectCodec.buildObjectCell(null, element, columnMeta));
+            } else {
+                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_ELEMENT_TYPE_UNSUPPORTED, String.valueOf(element.getClass().getSimpleName())));
+            }
+        }
+
+        final String exportCollectionSeparator = columnMeta.getExportCollectionSeparator();
+        final String cellString = StringUtils.join(strings, exportCollectionSeparator);
+
+        if (Objects.nonNull(cell)) {
+            if (object instanceof Collection && columnMeta.isExportStringAsPicture()) {
+                PxlCellUtils.addPicturesToCell(cell,
+                        strings,
+                        PxlConstants.EXPORT_PICTURE_SCREEN_WIDTH_IN_PIXELS,
+                        PxlConstants.EXPORT_PICTURE_SCREEN_HEIGHT_IN_PIXELS,
+                        PxlConstants.EXPORT_PICTURE_SCREEN_PADDING_IN_PIXELS,
+                        PxlConstants.EXPORT_HORIZONTAL_NUMBER_OF_PICTURE);
+            } else {
+                cell.setCellValue(cellString);
+            }
+        }
+
+        return cellString;
     }
 
     /**
@@ -187,119 +300,6 @@ final class PxlCollectionCodec {
         }
 
         return valueObjects;
-    }
-
-    /**
-     * Writes a collection value into a single cell by exporting each element with the codec for the field's
-     * parameterized element type and joining the results with the column's export collection separator.
-     * {@code null} elements become empty strings (preserving index fidelity). A {@link String} source is
-     * first split on the separator. When {@code exportStringAsPicture} is set for a {@link Collection}
-     * source, elements are rendered as embedded pictures instead of text.
-     *
-     * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@link String} or {@link Collection})
-     * @param columnMeta the resolved export metadata for this column
-     * @return the joined string
-     * @throws PxlReflectionException if the element type cannot be resolved or the collection cannot be instantiated
-     * @throws PxlCellCodecException  if the source type or element type is unsupported, or an element fails to export
-     * @throws PxlArgumentException   if a delegated element codec is given an invalid converter, styler, or unsupported target
-     */
-    static String buildCollectionCell(final Cell cell,
-                                      final Object object,
-                                      final PxlExportColumnMeta columnMeta)
-            throws PxlReflectionException, PxlCellCodecException, PxlArgumentException {
-
-        final Class<?> elementClass = PxlReflectionSupport.getParameterizedArgument0(columnMeta.getColumnField());
-
-        Collection<?> collectionObject;
-        if (object instanceof String) {
-            final String collectionStringValue = (String) object;
-            final String exportCollectionSeparator = columnMeta.getExportCollectionSeparator();
-            final Object[] elementStrings = StringUtils.splitByWholeSeparatorPreserveAllTokens(collectionStringValue, exportCollectionSeparator);
-            collectionObject = Arrays.asList(elementStrings);
-        } else if (object instanceof Collection) {
-            collectionObject = (Collection<?>) object;
-        } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "Collection"));
-        }
-
-        final List<String> strings = new ArrayList<>(PxlCollectionUtils.size(collectionObject));
-
-        for (final Object element : collectionObject) {
-            if (Objects.isNull(element)) {
-                // To preserve positional (index) fidelity, null elements are written as empty strings.
-                strings.add(StringUtils.EMPTY);
-                continue;
-            }
-
-            if (elementClass == String.class) {
-                strings.add(PxlStringCodec.buildStringCell(null, element, columnMeta));
-            } else if (elementClass == Byte.class) {
-                strings.add(PxlByteCodec.buildByteCell(null, element, columnMeta));
-            } else if (elementClass == Short.class) {
-                strings.add(PxlShortCodec.buildShortCell(null, element, columnMeta));
-            } else if (elementClass == Integer.class) {
-                strings.add(PxlIntegerCodec.buildIntegerCell(null, element, columnMeta));
-            } else if (elementClass == Long.class) {
-                strings.add(PxlLongCodec.buildLongCell(null, element, columnMeta));
-            } else if (elementClass == Double.class) {
-                strings.add(PxlDoubleCodec.buildDoubleCell(null, element, columnMeta));
-            } else if (elementClass == Float.class) {
-                strings.add(PxlFloatCodec.buildFloatCell(null, element, columnMeta));
-            } else if (elementClass == Character.class) {
-                strings.add(PxlCharacterCodec.buildCharacterCell(null, element, columnMeta));
-            } else if (elementClass == Boolean.class) {
-                strings.add(PxlBooleanCodec.buildBooleanCell(null, element, columnMeta));
-            } else if (elementClass == BigInteger.class) {
-                strings.add(PxlBigIntegerCodec.buildBigIntegerCell(null, element, columnMeta));
-            } else if (elementClass == BigDecimal.class) {
-                strings.add(PxlBigDecimalCodec.buildBigDecimalCell(null, element, columnMeta));
-            } else if (elementClass == Date.class) {
-                strings.add(PxlJavaDateCodec.buildJavaDateCell(null, element, columnMeta));
-            } else if (elementClass == LocalDate.class) {
-                strings.add(PxlLocalDateCodec.buildLocalDateCell(null, element, columnMeta));
-            } else if (elementClass == LocalTime.class) {
-                strings.add(PxlLocalTimeCodec.buildLocalTimeCell(null, element, columnMeta));
-            } else if (elementClass == LocalDateTime.class) {
-                strings.add(PxlLocalDateTimeCodec.buildLocalDateTimeCell(null, element, columnMeta));
-            } else if (elementClass == ZonedDateTime.class) {
-                strings.add(PxlZonedDateTimeCodec.buildZonedDateTimeCell(null, element, columnMeta));
-            } else if (elementClass == OffsetTime.class) {
-                strings.add(PxlOffsetTimeCodec.buildOffsetTimeCell(null, element, columnMeta));
-            } else if (elementClass == OffsetDateTime.class) {
-                strings.add(PxlOffsetDateTimeCodec.buildOffsetDateTimeCell(null, element, columnMeta));
-            } else if (elementClass == Duration.class) {
-                strings.add(PxlDurationCodec.buildDurationCell(null, element, columnMeta));
-            } else if (elementClass == Period.class) {
-                strings.add(PxlPeriodCodec.buildPeriodCell(null, element, columnMeta));
-            } else if (elementClass == UUID.class) {
-                strings.add(PxlUuidCodec.buildUuidCell(null, element, columnMeta));
-            } else if (elementClass.isEnum()) {
-                strings.add(PxlEnumCodec.buildEnumCell(null, element, columnMeta));
-            } else if (columnMeta.isExportCustomConvertable()) {
-                strings.add(PxlObjectCodec.buildObjectCell(null, element, columnMeta));
-            } else {
-                throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_ELEMENT_TYPE_UNSUPPORTED, String.valueOf(element.getClass().getSimpleName())));
-            }
-        }
-
-        final String exportCollectionSeparator = columnMeta.getExportCollectionSeparator();
-        final String cellString = StringUtils.join(strings, exportCollectionSeparator);
-
-        if (Objects.nonNull(cell)) {
-            if (object instanceof Collection && columnMeta.isExportStringAsPicture()) {
-                PxlCellUtils.addPicturesToCell(cell,
-                        strings,
-                        PxlConstants.EXPORT_PICTURE_SCREEN_WIDTH_IN_PIXELS,
-                        PxlConstants.EXPORT_PICTURE_SCREEN_HEIGHT_IN_PIXELS,
-                        PxlConstants.EXPORT_PICTURE_SCREEN_PADDING_IN_PIXELS,
-                        PxlConstants.EXPORT_HORIZONTAL_NUMBER_OF_PICTURE);
-            } else {
-                cell.setCellValue(cellString);
-            }
-        }
-
-        return cellString;
     }
 
 }

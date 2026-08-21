@@ -13,7 +13,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
  * Physical spreadsheet file format - what the bytes are - each carrying its filename extension, MIME content
- * type, and the maximum sheet/row/column counts applied on import and export.
+ * type, and the maximum sheet/row/column counts applied on export and import.
  * <p>
  * This is the format axis, not the writer axis. Which POI implementation writes an Excel file is
  * {@link PxlExcelEngine}, and two engines write the same format: both {@code XSSF} and {@code SXSSF} produce

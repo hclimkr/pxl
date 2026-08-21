@@ -18,8 +18,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for custom object column values - parses strings into objects on import and writes objects into
- * cells on export, using the column's {@code @PxlImportConverter}/{@code @PxlExportConverter} method, a
+ * Codec for custom object column values - writes objects into cells on export and parses strings into
+ * objects on import, using the column's {@code @PxlExportConverter}/{@code @PxlImportConverter} method, a
  * {@link String} constructor, or a {@code toString} method. Blank values map to {@code null}.
  */
 final class PxlObjectCodec {
@@ -30,46 +30,6 @@ final class PxlObjectCodec {
     private PxlObjectCodec() {
 
         throw new AssertionError("no instances of this class");
-    }
-
-    /**
-     * Parses the given cell into a custom object by first reading it as a {@link String} via
-     * {@link PxlStringCodec} and delegating to {@link #parseObjectValue(String, PxlImportColumnMeta)}.
-     *
-     * @param cell       the cell to read
-     * @param columnMeta the resolved import metadata for this column
-     * @return the parsed object, or {@code null} when blank
-     * @throws PxlCellCodecException if the cell type is unsupported or the value cannot be converted
-     */
-    static Object parseObjectValue(final Cell cell,
-                                   final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = PxlStringCodec.parseStringValue(cell, columnMeta);
-
-        return parseObjectValue(stringValue, columnMeta);
-    }
-
-    /**
-     * Parses a string token into a custom object using the column's import converter metadata (converter
-     * method or {@link String} constructor). The value is trimmed when {@code importTrim} is set; a blank
-     * value yields {@code null}.
-     *
-     * @param s          the raw string token
-     * @param columnMeta the resolved import metadata for this column
-     * @return the parsed object, or {@code null} when blank
-     * @throws PxlCellCodecException if no converter is available or conversion fails
-     */
-    static Object parseObjectValue(final String s,
-                                   final PxlImportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
-        if (StringUtils.isBlank(stringValue)) {
-            return null;
-        }
-
-        return importStringToObject(stringValue, columnMeta.getImportCustomConverterMeta());
     }
 
     /**
@@ -148,6 +108,87 @@ final class PxlObjectCodec {
     }
 
     /**
+     * Parses the given cell into a custom object by first reading it as a {@link String} via
+     * {@link PxlStringCodec} and delegating to {@link #parseObjectValue(String, PxlImportColumnMeta)}.
+     *
+     * @param cell       the cell to read
+     * @param columnMeta the resolved import metadata for this column
+     * @return the parsed object, or {@code null} when blank
+     * @throws PxlCellCodecException if the cell type is unsupported or the value cannot be converted
+     */
+    static Object parseObjectValue(final Cell cell,
+                                   final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = PxlStringCodec.parseStringValue(cell, columnMeta);
+
+        return parseObjectValue(stringValue, columnMeta);
+    }
+
+    /**
+     * Parses a string token into a custom object using the column's import converter metadata (converter
+     * method or {@link String} constructor). The value is trimmed when {@code importTrim} is set; a blank
+     * value yields {@code null}.
+     *
+     * @param s          the raw string token
+     * @param columnMeta the resolved import metadata for this column
+     * @return the parsed object, or {@code null} when blank
+     * @throws PxlCellCodecException if no converter is available or conversion fails
+     */
+    static Object parseObjectValue(final String s,
+                                   final PxlImportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
+        if (StringUtils.isBlank(stringValue)) {
+            return null;
+        }
+
+        return importStringToObject(stringValue, columnMeta.getImportCustomConverterMeta());
+    }
+
+    /**
+     * Converts an object value to its export string using the given converter metadata: a {@code @PxlExportConverter} method
+     * (static or instance) takes precedence, otherwise a {@code toString} method; returns {@code null} when neither is configured.
+     *
+     * @param objectValue   the object value to convert
+     * @param converterMeta the resolved export converter metadata
+     * @return the string form, or {@code null} when either argument is {@code null} or no converter is configured
+     * @throws PxlCellCodecException if the converter throws while producing the string
+     */
+    private static String exportObjectToString(final Object objectValue,
+                                               final PxlExportConverterMeta converterMeta)
+            throws PxlCellCodecException {
+
+        if (Objects.isNull(objectValue) || Objects.isNull(converterMeta)) {
+            return null;
+        }
+
+        final Class<?> objectClass = converterMeta.getValueClass();
+        final Method exportConverterMethod = converterMeta.getExportConverterMethod();
+        final Method toStringMethod = converterMeta.getToStringMethod();
+
+        String stringValue = null;
+
+        try {
+            if (Objects.nonNull(exportConverterMethod)) {
+                if (Modifier.isStatic(exportConverterMethod.getModifiers())) {
+                    stringValue = (String) exportConverterMethod.invoke(null, objectValue);
+                } else {
+                    stringValue = (String) exportConverterMethod.invoke(objectValue);
+                }
+            } else if (Objects.nonNull(toStringMethod)) {
+                stringValue = (String) toStringMethod.invoke(objectValue);
+            }
+        } catch (Exception e) {
+            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_OBJECT_FORMAT_ERROR, objectClass.getSimpleName()), cause);
+        }
+
+        return stringValue;
+    }
+
+    /**
      * Parses a string into an object of the given class, building import converter metadata from the class.
      * This overload is reached from the export path only (a string export value is parsed before being written
      * back out), so failures are reported with the export-side diagnostic keys.
@@ -183,8 +224,8 @@ final class PxlObjectCodec {
 
     /**
      * Parses a string into an object using the given import converter metadata, reporting failures with the
-     * diagnostic keys of the calling direction. Both directions parse strings: import reads a cell, and export
-     * resolves a string export value before writing it back out.
+     * diagnostic keys of the calling direction. Both directions parse strings: export resolves a string export
+     * value before writing it back out, and import reads a cell.
      *
      * @param stringValue   the source string
      * @param converterMeta the resolved import converter metadata
@@ -227,47 +268,6 @@ final class PxlObjectCodec {
         }
 
         return object;
-    }
-
-    /**
-     * Converts an object value to its export string using the given converter metadata: a {@code @PxlExportConverter} method
-     * (static or instance) takes precedence, otherwise a {@code toString} method; returns {@code null} when neither is configured.
-     *
-     * @param objectValue   the object value to convert
-     * @param converterMeta the resolved export converter metadata
-     * @return the string form, or {@code null} when either argument is {@code null} or no converter is configured
-     * @throws PxlCellCodecException if the converter throws while producing the string
-     */
-    private static String exportObjectToString(final Object objectValue,
-                                               final PxlExportConverterMeta converterMeta)
-            throws PxlCellCodecException {
-
-        if (Objects.isNull(objectValue) || Objects.isNull(converterMeta)) {
-            return null;
-        }
-
-        final Class<?> objectClass = converterMeta.getValueClass();
-        final Method exportConverterMethod = converterMeta.getExportConverterMethod();
-        final Method toStringMethod = converterMeta.getToStringMethod();
-
-        String stringValue = null;
-
-        try {
-            if (Objects.nonNull(exportConverterMethod)) {
-                if (Modifier.isStatic(exportConverterMethod.getModifiers())) {
-                    stringValue = (String) exportConverterMethod.invoke(null, objectValue);
-                } else {
-                    stringValue = (String) exportConverterMethod.invoke(objectValue);
-                }
-            } else if (Objects.nonNull(toStringMethod)) {
-                stringValue = (String) toStringMethod.invoke(objectValue);
-            }
-        } catch (Exception e) {
-            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_OBJECT_FORMAT_ERROR, objectClass.getSimpleName()), cause);
-        }
-
-        return stringValue;
     }
 
 }

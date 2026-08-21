@@ -44,7 +44,7 @@ DTO에 애노테이션을 붙이는 선언적 방식으로 아래 기능을 별�
 - **타입 충실성 & 엄격성**   
   완전한 `java.time`(`Zoned`/`Offset`/`Duration`/`Period` 포함), `BigInteger`/`BigDecimal` 정밀도(2^53) 인지,
   `NaN`/`Infinity` 거부, non-lenient 날짜 파싱(무효 날짜 rollover 차단), `Collection` 위치 보존,
-  `UUID`의 canonical 형식 강제, import/export 대칭 동작.
+  `UUID`의 canonical 형식 강제, export/import 대칭 동작.
   흔한 타입만이 아니라 이런 엣지까지 코덱 단위로 방어·문서화한다.
 - **표준 유효성 검사 통합 + 커스텀 제약**  
   import 시 `javax.validation`/`jakarta.validation`으로 행 단위 유효성 검사하고,
@@ -313,32 +313,7 @@ response.setHeader("Content-Disposition",
 | 기타     | `Enum`, `UUID`, 사용자 정의 클래스, 위 타입들의 `Collection`                                              |
 | 실험적    | `Duration` `Period`                                                                          |
 
-미지원 변수 타입 필드는 컬럼 메타를 해석하는 시점에 `PxlArgumentException`으로 실패한다(사용자 정의 클래스라면 `@PxlImportConverter`·`@PxlExportConverter` 또는 `String` 생성자를 갖춰야 지원 타입이 된다). 지원 타입이지만 셀 값을 그 타입으로 변환할 수 없을 때가 `PxlCellCodecException`이다.
-
-### 타입별 동작 요약 — Import
-
-| 타입                                            | Import 동작 / 특이사항·제한                                                                                                                                                                     |
-|------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `byte`·`short`·`int`·`long` + 래퍼 클래스        | 숫자 셀/문자열 셀: `pattern` 지정 시 `DecimalFormat`로 파싱.<br/>타입 범위 초과 시 `PxlCellCodecException` 발생.<br/>소수부는 절단(예 `12.9`→`12`).<br/>`long`/`Long`은 숫자 셀이 double이라 2^53 초과 정밀도 손실 가능(문자열 셀이면 정확)  |
-| `float`·`double` + 래퍼 클래스                   | 숫자 셀/문자열 셀: IEEE-754 정밀도 파싱.<br/>`NaN`·`Infinity`, 그리고 `float` 표현 범위를 넘는 값은 `PxlCellCodecException` 발생.<br/>단, `float` 언더플로(예 `1e-300`→`0.0f`)는 IEEE-754 정밀도 손실로 허용                     |
-| `char`·`Character`                             | 문자열 셀: 첫 글자.<br/>숫자 셀: 정수/실수를 그대로 문자열화(`12`→`"12"`, `-3`→`"-3"`)한 뒤 첫 글자만 취한다. (`12`→`'1'`, `-3`→`'-'`).<br/>불리언 셀: `'1'`/`'0'`.<br/>빈 셀·빈 값: `Character`=`null`, `char`=`'\0'`              |
-| `boolean`·`Boolean`                            | 문자열 셀: 먼저 `importTrueString`/`importFalseString`과 대소문자 무시 비교, 다음으로 내장 토큰 `true/false`·`t/f`·`y/n`·`yes/no`·`on/off`·`1/0`(대소문자 무시). 모두 불일치 → 예외(무음 `false` 아님).<br/>숫자 셀: 0이 아니면 `true` |
-| `String`                                       | 문자열 셀: 값을 문자열로.<br/>숫자/불리언 셀: 문자열로 변환                                                                                                                                                   |
-| `BigInteger`·`BigDecimal`                      | 문자열 셀: `new BigInteger/BigDecimal`로 정확 복원.<br/>숫자 셀: double(2^53) 정밀도 제한                                                                                                                |
-| `Date`·`LocalDate`·`LocalTime`·`LocalDateTime` | 문자열 셀: `pattern`/`importPattern` 또는 고정 ISO-8601 기본 패턴으로 파싱.<br/>숫자 셀: 엑셀 날짜/시각 인식.<br/>불리언 셀: 지원하지 않아 예외 발생.                                                                            |
-| `ZonedDateTime`·`OffsetDateTime`·`OffsetTime`  | 문자열 셀: `pattern` 또는 zone/offset 포함 ISO-8601로 파싱하며 zone/offset을 보존.<br/>offset/zone이 없는 문자열은 `pattern` 없이는 예외 발생.<br/>숫자 셀: 엑셀 날짜/시각을 시스템 기본존/오프셋 기준으로 읽는다.<br/>불리언 셀: 예외 발생.            |
-| `Enum`                                         | `toString()` 오버라이드값 또는 상수명과 매칭(대소문자·공백 무시).<br/>`@PxlImportConverter`로 커스텀 변환                                                                                                           |
-| 사용자 정의 클래스                                | `String` 단일인자 생성자 또는 `@PxlImportConverter` 필요                                                                                                                                           |
-| `Collection`                                   | 구분자로 분리, 빈/null 요소의 위치 보존(예 `"a;;b"`→`["a", null, "b"]`).<br/>요소는 구체 클래스여야 하며 중첩 제네릭(`List<List<..>>`)·와일드카드(`List<? extends X>`)·raw type은 `PxlReflectionException` 발생.                |
-| `Duration`·`Period` (실험적)                    | 문자열 셀: `pattern` 또는 ISO-8601.<br/>숫자 셀: 단위 고정(`Duration`=초, `Period`=일), 소수부 절단, 범위 초과 시 예외 발생.                                                                                         |
-| `UUID`                                         | 문자열 셀: canonical 8-4-4-4-12 16진 형식만 허용하며 대소문자는 가리지 않는다(`123E4567-…`는 `123e4567-…`와 같은 값으로 바인딩).<br/>숫자 셀: 먼저 문자열로 렌더링하므로 "지원하지 않는 셀 타입"이 아니라 "유효하지 않은 값"으로 보고된다.<br/>불리언 셀: 예외 발생.<br/>`pattern`/`importPattern`은 UUID에 의미가 없어 무시된다. |
-
-**Import 공통**
-
-- 빈 셀 / 빈 값(Excel BLANK·없는 셀, CSV 빈 값)은 필드에 값을 설정하지 않는다 — 참조형은 `null`, primitive는 DTO 기본값(`0`/`false` 등)으로 설정.
-- `pattern`/`importPattern`은 셀 값 **전체**와 맞아야 한다. 패턴이 앞부분만 읽는 값 — `"#,##0"`에 `"123abc"`·`"1e3"`, `"yyyy-MM-dd"`에 `"2024-01-02 xxx"` — 은 읽어낸 앞부분을 바인딩하지 않고 `PxlCellCodecException`을 낸다. 따라서 패턴을 지정한다고 해서 지정하지 않았을 때보다 더 관대해지는 일은 없다. (검사하는 것은 소비 여부뿐이다 — `"1,2,3"`처럼 그룹 구분자의 **위치**가 어긋난 값은 여전히 통과한다. `DecimalFormat`이 파싱 시 그룹 크기를 검증하지 않기 때문이다.)
-- `importTrim`은 기본 `true`. `false`면 `String`만 공백을 보존하고, 다른 타입은 공백이 섞이면 파싱 실패/잘못된 값이 될 수 있다. `pattern`이 있으면 뒤쪽 공백(`"123 "`)도 소비되지 않은 입력이므로 거부된다.
-- Streaming Reader(`importUsingStreamReader`, XLSX 전용)는 수식 셀을 평가하지 못하며 헤더 행 위치를 정확히 지정해야 한다.
+미지원 변수 타입 필드는 컬럼 메타를 해석하는 시점에 `PxlArgumentException`으로 실패한다(사용자 정의 클래스라면 `@PxlExportConverter`·`@PxlImportConverter` 또는 `String` 생성자를 갖춰야 지원 타입이 된다). 지원 타입이지만 셀 값을 그 타입으로 변환할 수 없을 때가 `PxlCellCodecException`이다.
 
 ### 타입별 동작 요약 — Export
 
@@ -370,6 +345,31 @@ response.setHeader("Content-Disposition",
 - Export는 기본 XLSX로 생성되며, `exportExcelEngine`로 `HSSF` 엔진(XLS)·`SXSSF` 엔진(스트리밍 XLSX)도 선택할 수 있다. CSV export는 미지원이며, 엔진은 엑셀 writer이므로 CSV를 지정할 자리 자체가 없다.
 - 시트/컬럼 순서는 필드 선언 순서를 보장하지 않으므로, 순서가 중요하면 `exportOrder`를 지정한다.
 
+### 타입별 동작 요약 — Import
+
+| 타입                                            | Import 동작 / 특이사항·제한                                                                                                                                                                     |
+|------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `byte`·`short`·`int`·`long` + 래퍼 클래스        | 숫자 셀/문자열 셀: `pattern` 지정 시 `DecimalFormat`로 파싱.<br/>타입 범위 초과 시 `PxlCellCodecException` 발생.<br/>소수부는 절단(예 `12.9`→`12`).<br/>`long`/`Long`은 숫자 셀이 double이라 2^53 초과 정밀도 손실 가능(문자열 셀이면 정확)  |
+| `float`·`double` + 래퍼 클래스                   | 숫자 셀/문자열 셀: IEEE-754 정밀도 파싱.<br/>`NaN`·`Infinity`, 그리고 `float` 표현 범위를 넘는 값은 `PxlCellCodecException` 발생.<br/>단, `float` 언더플로(예 `1e-300`→`0.0f`)는 IEEE-754 정밀도 손실로 허용                     |
+| `char`·`Character`                             | 문자열 셀: 첫 글자.<br/>숫자 셀: 정수/실수를 그대로 문자열화(`12`→`"12"`, `-3`→`"-3"`)한 뒤 첫 글자만 취한다. (`12`→`'1'`, `-3`→`'-'`).<br/>불리언 셀: `'1'`/`'0'`.<br/>빈 셀·빈 값: `Character`=`null`, `char`=`'\0'`              |
+| `boolean`·`Boolean`                            | 문자열 셀: 먼저 `importTrueString`/`importFalseString`과 대소문자 무시 비교, 다음으로 내장 토큰 `true/false`·`t/f`·`y/n`·`yes/no`·`on/off`·`1/0`(대소문자 무시). 모두 불일치 → 예외(무음 `false` 아님).<br/>숫자 셀: 0이 아니면 `true` |
+| `String`                                       | 문자열 셀: 값을 문자열로.<br/>숫자/불리언 셀: 문자열로 변환                                                                                                                                                   |
+| `BigInteger`·`BigDecimal`                      | 문자열 셀: `new BigInteger/BigDecimal`로 정확 복원.<br/>숫자 셀: double(2^53) 정밀도 제한                                                                                                                |
+| `Date`·`LocalDate`·`LocalTime`·`LocalDateTime` | 문자열 셀: `pattern`/`importPattern` 또는 고정 ISO-8601 기본 패턴으로 파싱.<br/>숫자 셀: 엑셀 날짜/시각 인식.<br/>불리언 셀: 지원하지 않아 예외 발생.                                                                            |
+| `ZonedDateTime`·`OffsetDateTime`·`OffsetTime`  | 문자열 셀: `pattern` 또는 zone/offset 포함 ISO-8601로 파싱하며 zone/offset을 보존.<br/>offset/zone이 없는 문자열은 `pattern` 없이는 예외 발생.<br/>숫자 셀: 엑셀 날짜/시각을 시스템 기본존/오프셋 기준으로 읽는다.<br/>불리언 셀: 예외 발생.            |
+| `Enum`                                         | `toString()` 오버라이드값 또는 상수명과 매칭(대소문자·공백 무시).<br/>`@PxlImportConverter`로 커스텀 변환                                                                                                           |
+| 사용자 정의 클래스                                | `String` 단일인자 생성자 또는 `@PxlImportConverter` 필요                                                                                                                                           |
+| `Collection`                                   | 구분자로 분리, 빈/null 요소의 위치 보존(예 `"a;;b"`→`["a", null, "b"]`).<br/>요소는 구체 클래스여야 하며 중첩 제네릭(`List<List<..>>`)·와일드카드(`List<? extends X>`)·raw type은 `PxlReflectionException` 발생.                |
+| `Duration`·`Period` (실험적)                    | 문자열 셀: `pattern` 또는 ISO-8601.<br/>숫자 셀: 단위 고정(`Duration`=초, `Period`=일), 소수부 절단, 범위 초과 시 예외 발생.                                                                                         |
+| `UUID`                                         | 문자열 셀: canonical 8-4-4-4-12 16진 형식만 허용하며 대소문자는 가리지 않는다(`123E4567-…`는 `123e4567-…`와 같은 값으로 바인딩).<br/>숫자 셀: 먼저 문자열로 렌더링하므로 "지원하지 않는 셀 타입"이 아니라 "유효하지 않은 값"으로 보고된다.<br/>불리언 셀: 예외 발생.<br/>`pattern`/`importPattern`은 UUID에 의미가 없어 무시된다. |
+
+**Import 공통**
+
+- 빈 셀 / 빈 값(Excel BLANK·없는 셀, CSV 빈 값)은 필드에 값을 설정하지 않는다 — 참조형은 `null`, primitive는 DTO 기본값(`0`/`false` 등)으로 설정.
+- `pattern`/`importPattern`은 셀 값 **전체**와 맞아야 한다. 패턴이 앞부분만 읽는 값 — `"#,##0"`에 `"123abc"`·`"1e3"`, `"yyyy-MM-dd"`에 `"2024-01-02 xxx"` — 은 읽어낸 앞부분을 바인딩하지 않고 `PxlCellCodecException`을 낸다. 따라서 패턴을 지정한다고 해서 지정하지 않았을 때보다 더 관대해지는 일은 없다. (검사하는 것은 소비 여부뿐이다 — `"1,2,3"`처럼 그룹 구분자의 **위치**가 어긋난 값은 여전히 통과한다. `DecimalFormat`이 파싱 시 그룹 크기를 검증하지 않기 때문이다.)
+- `importTrim`은 기본 `true`. `false`면 `String`만 공백을 보존하고, 다른 타입은 공백이 섞이면 파싱 실패/잘못된 값이 될 수 있다. `pattern`이 있으면 뒤쪽 공백(`"123 "`)도 소비되지 않은 입력이므로 거부된다.
+- Streaming Reader(`importUsingStreamReader`, XLSX 전용)는 수식 셀을 평가하지 못하며 헤더 행 위치를 정확히 지정해야 한다.
+
 ---
 
 ## 애노테이션
@@ -381,14 +381,6 @@ response.setHeader("Content-Disposition",
 
 | 속성                                                                | 기본값        | 설명                                                                                                                                                                                                                                |
 |-------------------------------------------------------------------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `importPassword`                                                  | `""`       | Import 시 문서보호를 해제할 비밀번호                                                                                                                                                                                                |
-| `importDataValidation`                                            | `true`     | Import 결과에 대해 Bean Validation(`@NotNull`·`@Size` 등 — ↓ *유효성 검사*)을 수행할지 여부.<br/>엑셀의 "데이터 유효성" 기능과는 무관하다 — 그쪽은 `@PxlColumn(exportOptionItems)`이 만드는 드롭다운이다(↓ *컬럼: 드롭다운 Export*) |
-| `importUsingStreamReader`                                         | `false`    | Import 시 Streaming Reader 사용 여부 (XLSX 전용)                                                                                                                                                                                    |
-| `importStreamReaderRowCacheSize`                                  | `100`      | Streaming Reader의 row cache size                                                                                                                                                                                                   |
-| `importStreamReaderBufferSize`                                    | `4096`     | Streaming Reader의 buffer size                                                                                                                                                                                                      |
-| `importCsvCharset`                                                | `""`→`"UTF-8"` | CSV 전용. Import할 CSV의 문자 인코딩(워크북의 모든 시트 공통). 개별 시트는 `@PxlSheet(importCsvCharset)`으로 따로 설정할 수 있다.<br/>선두 BOM 자동 처리(UTF-8/UTF-16LE/BE의 BOM 제거, `UTF-16`(auto)의 BOM은 엔디안 판별에 사용)             |
-| `importCsvDelimiter`                                              | `'\0'`→`','` | CSV 전용. Import할 CSV의 구분자(워크북의 모든 시트 공통, `char`). 개별 시트는 `@PxlSheet(importCsvDelimiter)`으로 따로 설정할 수 있다                                                                                                              |
-| `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Import 시 다국어 ResourceBundle의 base name / language / country                                                                                                                                                                    |
 | `exportExcelEngine`                                               | `XSSF`     | 워크북을 쓰는 POI 엔진(`PxlExcelEngine`): `XSSF`=XLSX(기본), `HSSF`=XLS, `SXSSF`=스트리밍 XLSX.<br/>형식이 아니라 writer를 고르는 속성이라 `XSSF`와 `SXSSF`는 똑같이 `.xlsx`를 만든다. CSV는 엔진이 아니므로 여기에 지정할 수 없다. |
 | `exportPassword`                                                  | `""`       | Export 시 설정할 문서보호 비밀번호.<br/>`toFile(...)`·`toStream(...)`에만 적용되고 `toWorkbook()`에는 적용되지 않는다.<br/>CSV export는 평문을 쓰는 대신 **거부**한다(`PxlArgumentException`). |
 | `exportDataValidation`                                            | `true`     | 쓰려는 객체에 대해 Bean Validation을 수행할지 여부.<br/>엑셀의 "데이터 유효성" 기능과는 무관하다 — 위 `importDataValidation` 참조 |
@@ -400,6 +392,14 @@ response.setHeader("Content-Disposition",
 | `exportWorkbookOptionalHeaderCellStyler`                          | (미지정)      | 선택 헤더 셀 스타일 (미지정/적용불가 시 `PxlHeaderOptionalStyler`)                                                                                                                                                                  |
 | `exportWorkbookDataCellStyler`                                    | (미지정)      | 데이터 셀 스타일 (미지정/적용불가 시 `PxlDataVerticalCenterTextStyler`)                                                                                                                                                             |
 | `exportI18nBaseName` / `exportI18nLanguage` / `exportI18nCountry` | `""`/`"en"`/`""` | Export 시 다국어 ResourceBundle의 base name / language / country                                                                                                                                                                    |
+| `importPassword`                                                  | `""`       | Import 시 문서보호를 해제할 비밀번호                                                                                                                                                                                                |
+| `importDataValidation`                                            | `true`     | Import 결과에 대해 Bean Validation(`@NotNull`·`@Size` 등 — ↓ *유효성 검사*)을 수행할지 여부.<br/>엑셀의 "데이터 유효성" 기능과는 무관하다 — 그쪽은 `@PxlColumn(exportOptionItems)`이 만드는 드롭다운이다(↓ *컬럼: 드롭다운 Export*) |
+| `importUsingStreamReader`                                         | `false`    | Import 시 Streaming Reader 사용 여부 (XLSX 전용)                                                                                                                                                                                    |
+| `importStreamReaderRowCacheSize`                                  | `100`      | Streaming Reader의 row cache size                                                                                                                                                                                                   |
+| `importStreamReaderBufferSize`                                    | `4096`     | Streaming Reader의 buffer size                                                                                                                                                                                                      |
+| `importCsvCharset`                                                | `""`→`"UTF-8"` | CSV 전용. Import할 CSV의 문자 인코딩(워크북의 모든 시트 공통). 개별 시트는 `@PxlSheet(importCsvCharset)`으로 따로 설정할 수 있다.<br/>선두 BOM 자동 처리(UTF-8/UTF-16LE/BE의 BOM 제거, `UTF-16`(auto)의 BOM은 엔디안 판별에 사용)             |
+| `importCsvDelimiter`                                              | `'\0'`→`','` | CSV 전용. Import할 CSV의 구분자(워크북의 모든 시트 공통, `char`). 개별 시트는 `@PxlSheet(importCsvDelimiter)`으로 따로 설정할 수 있다                                                                                                              |
+| `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Import 시 다국어 ResourceBundle의 base name / language / country                                                                                                                                                                    |
 
 ### `@PxlWorkbookName` (필드 대상)
 
@@ -417,14 +417,6 @@ export(및 샘플 export)에서는 사용되지 않는다.
 | 속성                                                                                                          | 기본값     | 설명                                                                                                             |
 |-------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------|
 | `name`                                                                                                      | 필드명     | 시트 이름(배열). 실제 시트명과 일치해야 바인딩됨(공백·대소문자 무시).<br/>배열로 지정 시 그중 하나만 존재해야 함 |
-| `importEnabled`                                                                                             | `true`  | Import 사용 여부                                                                                                 |
-| `importOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지 여부(대소문자 무시)                                                 |
-| `importExcludeHiddenRows` / `importExcludeHiddenColumns`                                                    | `false` | 숨겨진 행/열 제외 여부                                                                                           |
-| `importEachCellOfMergedRegion`                                                                              | `false` | 병합 셀을 개별 셀에 동일 값으로 처리할지                                                                         |
-| `importHeaderRowIndex` / `importFirstDataRowIndex` / `importLastDataRowIndex`                               | `0`     | Import 시 Header/시작/끝 데이터 행 (1-based, 아래 *인덱스 규칙* 참고)                                            |
-| `importFirstDataColumnIndex` / `importLastDataColumnIndex`                                                  | `0`     | Import 시 시작/끝 데이터 열 (1-based)                                                                            |
-| `importCsvCharset`                                                                                          | (상속)    | CSV 전용. 이 시트의 CSV를 읽을 문자 인코딩. 빈 값(`""`)이면 워크북 값을 상속                                     |
-| `importCsvDelimiter`                                                                                        | (상속)    | CSV 전용. 이 시트의 CSV를 읽을 구분자(`char`). NUL(`'\0'`)이면 워크북 값을 상속                                  |
 | `exportEnabled` / `exportSampleEnabled`                                                                     | `true`  | Export / 샘플 Export 사용 여부                                                                                   |
 | `exportOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지(대소문자 무시)                                                      |
 | `exportRowHeightInPoints`                                                                                   | `-1.0`  | 시트 내 행 높이(point). 미설정 시 기본 높이                                                                      |
@@ -439,6 +431,14 @@ export(및 샘플 export)에서는 사용되지 않는다.
 | `exportCsvDelimiter`                                                                                        | (상속)    | CSV 전용. 이 시트의 CSV를 쓸 구분자(`char`). NUL(`'\0'`)이면 워크북 값을 상속                                     |
 | `exportCsvBom`                                                                                              | (상속)    | CSV 전용. 이 시트의 CSV 앞에 BOM을 붙일지(`PxlOptionalBoolean`). `UNSPECIFIED`면 워크북 값을 상속하고, `FALSE`는 워크북이 켠 BOM을 끈다 — 평범한 `boolean`으로는 표현할 수 없는 경우다 |
 | `exportSheetRequiredHeaderCellStyler` / `exportSheetOptionalHeaderCellStyler` / `exportSheetDataCellStyler` | (미지정)   | 시트 단위 셀 스타일 (미지정 시 Workbook 단위로 위임)                                                             |
+| `importEnabled`                                                                                             | `true`  | Import 사용 여부                                                                                                 |
+| `importOverrideSuperClassSheet`                                                                             | `false` | 슈퍼클래스의 동일 시트명 필드를 override할지 여부(대소문자 무시)                                                 |
+| `importExcludeHiddenRows` / `importExcludeHiddenColumns`                                                    | `false` | 숨겨진 행/열 제외 여부                                                                                           |
+| `importEachCellOfMergedRegion`                                                                              | `false` | 병합 셀을 개별 셀에 동일 값으로 처리할지                                                                         |
+| `importHeaderRowIndex` / `importFirstDataRowIndex` / `importLastDataRowIndex`                               | `0`     | Import 시 Header/시작/끝 데이터 행 (1-based, 아래 *인덱스 규칙* 참고)                                            |
+| `importFirstDataColumnIndex` / `importLastDataColumnIndex`                                                  | `0`     | Import 시 시작/끝 데이터 열 (1-based)                                                                            |
+| `importCsvCharset`                                                                                          | (상속)    | CSV 전용. 이 시트의 CSV를 읽을 문자 인코딩. 빈 값(`""`)이면 워크북 값을 상속                                     |
+| `importCsvDelimiter`                                                                                        | (상속)    | CSV 전용. 이 시트의 CSV를 읽을 구분자(`char`). NUL(`'\0'`)이면 워크북 값을 상속                                  |
 
 ### `@PxlRowIndex` (필드 대상)
 
@@ -453,15 +453,8 @@ import 전용: export(및 샘플 export)에서는 사용되지 않는다.
 | 속성                                                                                                             | 기본값        | 설명                                                                                                             |
 |----------------------------------------------------------------------------------------------------------------|------------|----------------------------------------------------------------------------------------------------------------|
 | `name`                                                                                                         | 필드명        | 열 이름(배열). 실제 열명과 일치해야 바인딩됨(공백은 무시, 대소문자는 구분).<br/>배열로 지정 시 그중 하나만 존재해야 함                                                         |
-| `pattern`                                                                                                      | `""`       | `importPattern` / `exportPattern`이 비었을 때 쓰는 공통 폴백 패턴.<br/>파싱에 쓰일 때는 값 전체와 맞아야 한다(↑ *Import 공통*) |
-| `collectionSeparator`                                                                                          | `";"`      | `importCollectionSeparator` / `exportCollectionSeparator`가 비었을 때 쓰는 공통 폴백                                      |
-| `importEnabled`                                                                                                | `true`     | Import 사용 여부                                                                                                   |
-| `importTrim`                                                                                                   | `true`     | Import 시 문자열 trim 여부.<br/>단, `false`이면 숫자·날짜·`Boolean` 등은 공백 탓에 파싱 실패/오값이 될 수 있다                               |
-| `importUnique`                                                                                                 | `false`    | Import 시 열 값들의 유일성 검사 여부                                                                                       |
-| `importPattern`                                                                                                | `""`       | Import 형식(수치=`DecimalFormat`, 날짜·시각=`DateTimeFormat`, `Duration`/`Period`=`DurationFormatUtils`).<br/>셀 값 전체와 맞아야 하며, 남는 문자가 있으면 그 값은 무효다.<br/>날짜·시각은 실패 시 기본 패턴 폴백(부분 일치도 실패로 쳐서 폴백 포맷터로 넘어간다), `Duration`/`Period`도 같은 방식으로 ISO-8601로 폴백한다 |
-| `importTrueString` / `importFalseString`                                                                       | `"true"`/`"false"` | `String` 열: 불리언 셀을 이 문자열로 렌더링.<br/>`Boolean` 열: 이 문자열(대소문자 무시)을 참/거짓으로 해석(내장 토큰보다 우선)                              |
-| `importCollectionSeparator`                                                                                    | `""`       | Cell 값을 Collection 요소로 분리할 구분자.<br/>리터럴 전체 문자열(`"::"`·`", "` 등 다중문자 가능).              |
-| `importOverrideSuperClassColumn`                                                                               | `false`    | 슈퍼클래스의 동일 컬럼명 필드를 override할지                                                                                   |
+| `pattern`                                                                                                      | `""`       | `exportPattern` / `importPattern`이 비었을 때 쓰는 공통 폴백 패턴.<br/>파싱에 쓰일 때는 값 전체와 맞아야 한다(↑ *Import 공통*) |
+| `collectionSeparator`                                                                                          | `";"`      | `exportCollectionSeparator` / `importCollectionSeparator`가 비었을 때 쓰는 공통 폴백                                      |
 | `exportEnabled` / `exportSampleEnabled`                                                                        | `true`     | Export / 샘플 Export 사용 여부                                                                                       |
 | `exportSample`                                                                                                 | `""`       | 샘플 Export 시 셀에 넣을 값.<br/>컬럼 타입으로 파싱되므로 그 타입이 받아들이는 값이어야 함(아니면 `PxlCellCodecException`).<br/>지정하지 않으면 샘플 셀에 `exportNullString`이 들어감 |
 | `exportTrim`                                                                                                   | `false`    | Export 시 문자열 trim 여부 (`char`/`Character` 컬럼에는 미적용)                                                             |
@@ -478,30 +471,37 @@ import 전용: export(및 샘플 export)에서는 사용되지 않는다.
 | `exportStringAsPicture`                                                                                        | `false`    | 이미지 URL 문자열을 셀에 이미지로 삽입 |
 | `exportStringAsFormula`                                                                                        | `false`    | 수식 문자열(선두 `=`)을 계산하여 셀에 적용.<br/>`exportStringAsPicture`와 함께 지정하면 이쪽이 우선 |
 | `exportColumnRequiredHeaderCellStyler` / `exportColumnOptionalHeaderCellStyler` / `exportColumnDataCellStyler` | (미지정)      | 컬럼 단위 셀 스타일 (미지정 시 Sheet 단위로 위임)                                                                               |
+| `importEnabled`                                                                                                | `true`     | Import 사용 여부                                                                                                   |
+| `importTrim`                                                                                                   | `true`     | Import 시 문자열 trim 여부.<br/>단, `false`이면 숫자·날짜·`Boolean` 등은 공백 탓에 파싱 실패/오값이 될 수 있다                               |
+| `importUnique`                                                                                                 | `false`    | Import 시 열 값들의 유일성 검사 여부                                                                                       |
+| `importPattern`                                                                                                | `""`       | Import 형식(수치=`DecimalFormat`, 날짜·시각=`DateTimeFormat`, `Duration`/`Period`=`DurationFormatUtils`).<br/>셀 값 전체와 맞아야 하며, 남는 문자가 있으면 그 값은 무효다.<br/>날짜·시각은 실패 시 기본 패턴 폴백(부분 일치도 실패로 쳐서 폴백 포맷터로 넘어간다), `Duration`/`Period`도 같은 방식으로 ISO-8601로 폴백한다 |
+| `importTrueString` / `importFalseString`                                                                       | `"true"`/`"false"` | `String` 열: 불리언 셀을 이 문자열로 렌더링.<br/>`Boolean` 열: 이 문자열(대소문자 무시)을 참/거짓으로 해석(내장 토큰보다 우선)                              |
+| `importCollectionSeparator`                                                                                    | `""`       | Cell 값을 Collection 요소로 분리할 구분자.<br/>리터럴 전체 문자열(`"::"`·`", "` 등 다중문자 가능).              |
+| `importOverrideSuperClassColumn`                                                                               | `false`    | 슈퍼클래스의 동일 컬럼명 필드를 override할지                                                                                   |
 
-### `@PxlImportConverter` / `@PxlExportConverter` (메서드 대상)
+### `@PxlExportConverter` / `@PxlImportConverter` (메서드 대상)
 
-Enum 또는 사용자 정의 클래스의 커스텀 String ↔ 객체 변환을 지정한다.
+Enum 또는 사용자 정의 클래스의 커스텀 객체 ↔ String 변환을 지정한다.
 
 ```java
-// 문자열 → 값 (static, 반환 타입은 대상 타입)
-@PxlImportConverter
-public static EnumOrObjectType pxlImportConverter(final String str) {
-    return ...;
-}
-
 // 값 → 문자열
 @PxlExportConverter
 public String pxlExportConverter() {
     return ...;
 }
+
+// 문자열 → 값 (static, 반환 타입은 대상 타입)
+@PxlImportConverter
+public static EnumOrObjectType pxlImportConverter(final String str) {
+    return ...;
+}
 ```
 
 > **제약:**   
-> `@PxlImportConverter` 메서드는 반드시 `static` 이어야 하고, 반환 타입은 대상 타입(enum/사용자 정의 클래스)과 일치해야 한다(문자열로부터 새 값을
-> 생성하는 팩토리이므로 인스턴스 메서드는 지원하지 않는다).  
 > `@PxlExportConverter`는 인스턴스 메서드(`String pxlExportConverter()`) 또는 대상 값을 인자로 받는
-> `static` 메서드(`static String pxlExportConverter(Type value)`) 둘 다 가능하며, 반환 타입은 `String`이어야 한다.
+> `static` 메서드(`static String pxlExportConverter(Type value)`) 둘 다 가능하며, 반환 타입은 `String`이어야 한다.  
+> `@PxlImportConverter` 메서드는 반드시 `static` 이어야 하고, 반환 타입은 대상 타입(enum/사용자 정의 클래스)과 일치해야 한다(문자열로부터 새 값을
+> 생성하는 팩토리이므로 인스턴스 메서드는 지원하지 않는다).
 
 ---
 
@@ -509,7 +509,7 @@ public String pxlExportConverter() {
 
 ### 옵션 사용법
 
-옵션 객체(`PxlImportWorkbookOption`·`PxlExportWorkbookOption`)는 `@PxlWorkbook`·`@PxlSheet`·`@PxlColumn` 애노테이션으로 선언한 값을 런타임에 오버라이드할 값들의 묶음으로, 워크북 단위로 만든다.  
+옵션 객체(`PxlExportWorkbookOption`·`PxlImportWorkbookOption`)는 `@PxlWorkbook`·`@PxlSheet`·`@PxlColumn` 애노테이션으로 선언한 값을 런타임에 오버라이드할 값들의 묶음으로, 워크북 단위로 만든다.  
 이 객체를 마지막(실행) 단계 전 `.override(...)` 구성 단계에 넘기면 담긴 값이 애노테이션 값을 덮어쓴다 — 지정하지 않은 필드는 애노테이션 값(없으면 기본값)을 그대로 따른다.  
 `.override(...)` 단계 자체도 생략할 수 있으며, 생략하면 애노테이션 값을 그대로 쓴다.
 
@@ -549,12 +549,12 @@ List<Employee> rows = pxl.importExcel()
 
 옵션은 워크북 한 단계가 아니라 워크북 → 시트 → 컬럼의 3단계 트리로 구성해 한 번의 `.override(...)`로 넘길 수 있다.
 
-- 워크북 옵션의 `importSheetOptions`/`exportSheetOptions`에 시트 옵션(`Pxl{Import,Export}SheetOption`)을 담는다.
-- 시트 옵션의 `importColumnOptions`/`exportColumnOptions`에 컬럼 옵션(`Pxl{Import,Export}ColumnOption`)을 담는다.
+- 워크북 옵션의 `exportSheetOptions`/`importSheetOptions`에 시트 옵션(`Pxl{Export,Import}SheetOption`)을 담는다.
+- 시트 옵션의 `exportColumnOptions`/`importColumnOptions`에 컬럼 옵션(`Pxl{Export,Import}ColumnOption`)을 담는다.
 - 자식 옵션은 빌더의 리스트 세터(`.importColumnOptions(List)` 등)나 `add*Option(...)` 메서드로 붙인다.
 - 매칭 키: 시트 옵션은 `fieldName`(워크북 클래스의 `@PxlSheet` 필드명), 컬럼 옵션은 `fieldName`(행 클래스의 `@PxlColumn` 필드명)으로 대상에 연결된다.  
   시트 옵션의 `fieldName`을 생략하면 와일드카드(`*`)로 모든 시트에 적용되며, 단일 시트 폼(`sheet(...)`)에서는 이 방식을 쓴다.
-- 런타임 이름 변경: 시트 옵션은 `importSheetNames`/`exportSheetNames`로 `@PxlSheet(name)`을, 컬럼 옵션은 `importColumnNames`/`exportColumnNames`로 `@PxlColumn(name)`을 오버라이드한다(애노테이션과 마찬가지로 리스트라 별칭도 그대로 쓸 수 있다).  
+- 런타임 이름 변경: 시트 옵션은 `exportSheetNames`/`importSheetNames`로 `@PxlSheet(name)`을, 컬럼 옵션은 `exportColumnNames`/`importColumnNames`로 `@PxlColumn(name)`을 오버라이드한다(애노테이션과 마찬가지로 리스트라 별칭도 그대로 쓸 수 있다).  
   애노테이션의 `name`을 대체하는 값이므로 이들 역시 번들 키다 — i18n을 켜면 오버라이드한 이름도 매칭·출력 전에 번역된다(↓ [i18n](#i18n)).
 - 지정하지 않은 레벨·필드는 애노테이션 값(없으면 기본값)을 그대로 따른다.
 
@@ -683,17 +683,17 @@ Pxl.resetMessageLocale();               // JVM 기본 locale로 복귀
 
 ## i18n
 
-`@PxlWorkbook`의 `import/exportI18nBaseName`, `import/exportI18nLanguage`, `import/exportI18nCountry`로 `ResourceBundle`을
+`@PxlWorkbook`의 `export/importI18nBaseName`, `export/importI18nLanguage`, `export/importI18nCountry`로 `ResourceBundle`을
 지정하면 시트명·컬럼명을 번역해 매칭/출력한다(UTF-8 properties 지원).  
 `@PxlColumn`/`@PxlSheet`의 `name` 값이 번들의 키가 된다. 평범한 `ResourceBundle` 키이고 번들은 대개 애플리케이션의 다른
 메시지와 공유하므로, 단순한 한 단어 대신 네임스페이스를 둔 키(`staff.column.role`)로 짓는다.
 
 i18n은 기본적으로 비활성(opt-in) 이다.  
-`import/exportI18nBaseName`을 명시적으로 지정(또는 옵션에 `ResourceBundle` 주입)했을 때만 동작하며, base name이 비어 있으면 번들을 로드하지 않아 이름이 그대로 사용된다.  
+`export/importI18nBaseName`을 명시적으로 지정(또는 옵션에 `ResourceBundle` 주입)했을 때만 동작하며, base name이 비어 있으면 번들을 로드하지 않아 이름이 그대로 사용된다.  
 base name을 지정했으나 해당 `ResourceBundle`을 찾지 못하면 `PxlI18nException`으로 실패한다.
 
-base name을 지정하는 대신, 이미 갖고 있는 번들을 워크북 옵션의 `importResourceBundle`/`exportResourceBundle`로 직접 넘길 수도 있다.  
-주입한 번들이 애노테이션보다 우선하며, 이 경우 `import/exportI18nBaseName`·`Language`·`Country` 3종은 아예 로드되지 않으므로 `PxlI18nException`이 날 여지도 없다.  
+base name을 지정하는 대신, 이미 갖고 있는 번들을 워크북 옵션의 `exportResourceBundle`/`importResourceBundle`로 직접 넘길 수도 있다.  
+주입한 번들이 애노테이션보다 우선하며, 이 경우 `export/importI18nBaseName`·`Language`·`Country` 3종은 아예 로드되지 않으므로 `PxlI18nException`이 날 여지도 없다.  
 애노테이션으로는 지목할 수 없는 곳에서 번들이 오는 경우 — 컨테이너가 관리하는 `MessageSource`, 요청마다 달라지는 locale 등 — 에 쓴다.
 
 ```java
@@ -772,13 +772,13 @@ private List<String> roles;
 
 ## 시트 내의 행/열 인덱스 규칙
 
-`@PxlSheet`의 `importHeaderRowIndex`, `exportFirstDataColumnIndex` 등 인덱스 속성은 모두 1-based이며,
+`@PxlSheet`의 `exportFirstDataColumnIndex`, `importHeaderRowIndex` 등 인덱스 속성은 모두 1-based이며,
 기본값 `0`은 auto(첫/마지막 자동)를 뜻한다.
 
 | 속성                     | 기본값     | 제약                                          |
 |------------------------|---------|---------------------------------------------|
 | `HeaderRowIndex`       | 첫 행     | `FirstDataRowIndex`보다 작아야 함                 |
-| `FirstDataRowIndex`    | 둘째 행    | `HeaderRowIndex`보다 크고 `LastDataRowIndex` 이하 |
+| `FirstDataRowIndex`    | 헤더 다음 행 | `HeaderRowIndex`보다 크고 `LastDataRowIndex` 이하 |
 | `LastDataRowIndex`     | 마지막 행   | `FirstDataRowIndex` 이상                      |
 | `FirstDataColumnIndex` | 첫 열     | `LastDataColumnIndex` 이하                    |
 | `LastDataColumnIndex`  | 마지막 열   | `FirstDataColumnIndex` 이상                   |
@@ -834,8 +834,8 @@ private LocalTime startTime;
 private BigDecimal amount;
 ```
 
-> import/export에서 형식을 다르게 하려면 `importPattern` / `exportPattern`을 따로 준다.  
-> 날짜·시각은 import 시 형식이 엄격 강제되지 않고(고정 ISO 기본 패턴으로 파싱), export 시에는 강제된다.  
+> export/import에서 형식을 다르게 하려면 `exportPattern` / `importPattern`을 따로 준다.  
+> 날짜·시각은 export 시에는 형식이 강제되고, import 시에는 엄격 강제되지 않는다(고정 ISO 기본 패턴으로 파싱).  
 > 기본 write 패턴은 ISO-8601이라 패턴 없는 값의 출력은 어느 머신에서나 동일하다.  
 > LocalDateTime의 기본 read 패턴은 `T`(`yyyy-MM-dd'T'HH:mm:ss`)와 공백(`yyyy-MM-dd HH:mm:ss`)을 모두 받는다. 
 
@@ -844,7 +844,7 @@ private BigDecimal amount;
 ```java
 @PxlColumn(name = "Flag",
         exportTrueString = "Y", exportFalseString = "N",
-        importTrueString = "Y", importFalseString = "N")   // 왕복하려면 import/export 같은 값
+        importTrueString = "Y", importFalseString = "N")   // 왕복하려면 export/import 같은 값
 private Boolean flag;
 ```
 
@@ -867,7 +867,7 @@ private Grade grade;   // toString() 오버라이드값 또는 상수명과 매�
 
 ### 컬럼: 커스텀 객체
 
-`@PxlImportConverter`(static, 반환 타입=대상 타입) / `@PxlExportConverter`(인스턴스 또는 static, 반환 `String`)를 붙인다.
+`@PxlExportConverter`(인스턴스 또는 static, 반환 `String`) / `@PxlImportConverter`(static, 반환 타입=대상 타입)를 붙인다.
 
 ```java
 @Getter                     // (선택) 사용자 편의용 — PXL은 아래 컨버터로만 변환하기 때문에 Getter가 필요하지는 않다.
@@ -897,7 +897,7 @@ public class Money {
 private Money price;
 ```
 
-> 컨버터가 없으면 import는 `String` 단일인자 생성자, export는 재정의된 `toString()` 으로 변환한다.
+> 컨버터가 없으면 export는 재정의된 `toString()`, import는 `String` 단일인자 생성자로 변환한다.
 
 ### 컬럼: 마스킹 Export
 
@@ -1264,11 +1264,11 @@ List<Employee> rows = pxl.importExcel()
 - ✅ **이름 안 맞는 컬럼**  
   필수(`@NotNull`/`@NotEmpty`/`@NotBlank`)면 예외 발생, 필수가 아니면 조용히 제외된다.
 - ✅ **인덱스는 1-based**  
-  `importHeaderRowIndex`, `exportFirstDataColumnIndex` 등 모두 1-based이다.  
+  `exportFirstDataColumnIndex`, `importHeaderRowIndex` 등 모두 1-based이다.  
   `@PxlRowIndex`가 받는 값도 마찬가지로 1-based로, 가져온 행의 스프레드시트 행 번호이다.
 - ✅ **CSV 기본 인코딩은 `UTF-8`**  
-  다른 인코딩(`US-ASCII`·`MS949`·`EUC-KR` 등)은 `importCsvCharset(...)`으로, 쓸 때는 `exportCsvCharset(...)`으로 명시한다.
-  워크북 폼에서는 시트마다 파일이 다르므로, 하나만 다른 시트는 워크북 전체를 한 설정으로 몰지 말고 `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)` — 쓰는 쪽은 `(exportCsvCharset)` / `(exportCsvDelimiter)` / `(exportCsvBom)` — 로 그 시트만 지정한다.
+  다른 인코딩(`US-ASCII`·`MS949`·`EUC-KR` 등)은 쓸 때 `exportCsvCharset(...)`으로, 읽을 때 `importCsvCharset(...)`으로 명시한다.
+  워크북 폼에서는 시트마다 파일이 다르므로, 하나만 다른 시트는 워크북 전체를 한 설정으로 몰지 말고 `@PxlSheet(exportCsvCharset)` / `(exportCsvDelimiter)` / `(exportCsvBom)` — 읽는 쪽은 `(importCsvCharset)` / `(importCsvDelimiter)` — 로 그 시트만 지정한다.
 - ✅ **CSV export는 필요한 값만 인용한다**  
   `"010"`·`"1E+10"` 같은 값은 인용 없이 기록되므로 Excel로 열면 숫자 `10`·`1e10`으로 재해석된다. PXL로 다시 읽으면 원래 문자열 그대로다 — 손실은 파일이 아니라 스프레드시트 앱에서 생긴다.
   아직 인용 정책 설정은 없으므로, 표시가 중요하면 `pattern`으로 써 둔다.

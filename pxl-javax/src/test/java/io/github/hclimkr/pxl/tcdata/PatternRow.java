@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
- * DTO for verifying custom-pattern (pattern / importPattern / exportPattern) combinations.
+ * DTO for verifying custom-pattern (pattern / exportPattern / importPattern) combinations.
  */
 @Getter
 @Setter
@@ -18,7 +18,7 @@ import java.time.LocalTime;
 @Builder
 public class PatternRow {
 
-    // pattern applies to both import and export.
+    // pattern applies to both export and import.
     @PxlColumn(name = "Date", pattern = "yyyy/MM/dd")
     private LocalDate date;
 
@@ -29,8 +29,8 @@ public class PatternRow {
     @PxlColumn(name = "Amount", pattern = "#,##0.00")
     private BigDecimal amount;
 
-    // Specify importPattern/exportPattern separately (same pattern)
-    @PxlColumn(name = "Timestamp", importPattern = "yyyy.MM.dd HH:mm", exportPattern = "yyyy.MM.dd HH:mm")
+    // Specify exportPattern/importPattern separately (same pattern)
+    @PxlColumn(name = "Timestamp", exportPattern = "yyyy.MM.dd HH:mm", importPattern = "yyyy.MM.dd HH:mm")
     private LocalDateTime timestamp;
 
 }

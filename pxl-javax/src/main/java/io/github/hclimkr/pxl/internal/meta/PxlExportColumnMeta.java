@@ -132,8 +132,8 @@ public final class PxlExportColumnMeta {
      * @param exportOptionItems                    the explicit dropdown option items
      * @param exportEnumDropDownListStyle          the dropdown style for enum columns
      * @param exportNullString                     the string written for {@code null} values
-     * @param exportTrueString                     the string written for boolean {@code true} (kept only for Boolean columns)
-     * @param exportFalseString                    the string written for boolean {@code false} (kept only for Boolean columns)
+     * @param exportTrueString                     the string written for boolean {@code true} (read by the Boolean codec)
+     * @param exportFalseString                    the string written for boolean {@code false} (read by the Boolean codec)
      * @param exportStringAsPicture                whether string values are exported as pictures
      * @param exportStringAsFormula                whether string values are exported as formulas
      * @param exportColumnRequiredHeaderCellStyler the header cell styler for required columns

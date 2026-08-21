@@ -19,15 +19,15 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Codec for {@link String} column values - reads a cell (or CSV token) into a {@link String} on import
- * and writes a {@link String} into a cell on export.
+ * Codec for {@link String} column values - writes a {@link String} into a cell on export and reads a
+ * cell (or CSV token) into a {@link String} on import.
  *
- * <p>On import, NUMERIC cells are rendered via the workbook's cached {@link DataFormatter} (built with
- * {@code Locale.ROOT} so decimal/grouping symbols are locale-independent; streaming cells included - the
- * streaming reader reads styles by default, so the cell carries its number format), BOOLEAN cells via the
- * column's import true/false strings, and BLANK cells map to {@code null}. On export, a leading
- * {@code '='} is written as a formula (or a quote-prefixed literal), pictures are embedded when requested,
- * and trim/masking options are applied.
+ * <p>On export, a leading {@code '='} is written as a formula (or a quote-prefixed literal), pictures are
+ * embedded when requested, and trim/masking options are applied. On import, NUMERIC cells are rendered via
+ * the workbook's cached {@link DataFormatter} (built with {@code Locale.ROOT} so decimal/grouping symbols
+ * are locale-independent; streaming cells included - the streaming reader reads styles by default, so the
+ * cell carries its number format), BOOLEAN cells via the column's import true/false strings, and BLANK
+ * cells map to {@code null}.
  */
 final class PxlStringCodec {
 
@@ -37,6 +37,75 @@ final class PxlStringCodec {
     private PxlStringCodec() {
 
         throw new AssertionError("no instances of this class");
+    }
+
+    /**
+     * Writes the given value's {@link String} form into the cell (when non-{@code null}) and returns it.
+     *
+     * <p>The column's options pick the form, in this order: with {@code exportStringAsFormula} enabled a value
+     * starting with {@code '='} is set as a cell formula (falling back to a quote-prefixed literal when POI rejects
+     * it), then {@code exportStringAsPicture} renders the string as an embedded picture, and otherwise the string is
+     * written as a plain value. Formula therefore wins when both options are set. A value starting with {@code '='}
+     * that lands in the plain-text form is written quote-prefixed, so Excel shows it verbatim instead of reading it
+     * as a formula - a safeguard on how text is written, not a fourth way of choosing the form.
+     *
+     * @param cell       the target cell, or {@code null} to only compute the string
+     * @param object     the source value (a {@link String})
+     * @param columnMeta the resolved export metadata for this column
+     * @return the exported string
+     * @throws PxlArgumentException if the picture form is asked for with an unusable pictures-per-row count
+     */
+    static String buildStringCell(final Cell cell,
+                                  final Object object,
+                                  final PxlExportColumnMeta columnMeta)
+            throws PxlArgumentException {
+
+        final String cellString = makeExportString(object, columnMeta);
+        if (Objects.nonNull(cell)) {
+            if (columnMeta.isExportStringAsFormula() && StringUtils.startsWith(cellString, "=")) {  // FORMULA
+                try {
+                    cell.setCellFormula(StringUtils.substring(cellString, 1));
+                } catch (Exception ignored) {
+                    columnMeta.setQuotePrefixedCellValue(cell, cellString);
+                }
+            } else if (columnMeta.isExportStringAsPicture()) {
+                PxlCellUtils.addPicturesToCell(cell,
+                        Arrays.asList(cellString),
+                        PxlConstants.EXPORT_PICTURE_SCREEN_WIDTH_IN_PIXELS,
+                        PxlConstants.EXPORT_PICTURE_SCREEN_HEIGHT_IN_PIXELS,
+                        PxlConstants.EXPORT_PICTURE_SCREEN_PADDING_IN_PIXELS,
+                        PxlConstants.EXPORT_HORIZONTAL_NUMBER_OF_PICTURE);
+            } else if (StringUtils.startsWith(cellString, "=")) {
+                // Quote(Apostrophe) Prefix
+                // A leading single quote character ' is a special character in Excel, which tells it to treat it's contents verbatim.
+                columnMeta.setQuotePrefixedCellValue(cell, cellString);
+            } else {
+                cell.setCellValue(cellString);
+            }
+        }
+
+        return cellString;
+    }
+
+    /**
+     * Applies the column's export trim and masking options to a raw string value. Shared by the other
+     * codecs to post-process their string representation.
+     *
+     * @param object     the source value (a {@link String})
+     * @param columnMeta the resolved export metadata for this column
+     * @return the trimmed and/or masked string, or {@code null} when the input is {@code null}
+     */
+    static String makeExportString(final Object object,
+                                   final PxlExportColumnMeta columnMeta) {
+
+        final String stringValue = columnMeta.isExportTrim() ? StringUtils.trim((String) object) : (String) object;
+        final Pattern exportMaskingPattern = columnMeta.getExportMaskingPattern();
+
+        if (Objects.nonNull(exportMaskingPattern) && Objects.nonNull(stringValue)) {
+            return exportMaskingPattern.matcher(stringValue).replaceAll(PxlConstants.DEFAULT_EXPORT_MASKING_CHAR);
+        } else {
+            return stringValue;
+        }
     }
 
     /**
@@ -111,75 +180,6 @@ final class PxlStringCodec {
         final String stringValue = columnMeta.isImportTrim() ? StringUtils.trim(s) : s;
 
         return StringUtils.isEmpty(stringValue) ? null : stringValue;
-    }
-
-    /**
-     * Writes the given value's {@link String} form into the cell (when non-{@code null}) and returns it.
-     *
-     * <p>The column's options pick the form, in this order: with {@code exportStringAsFormula} enabled a value
-     * starting with {@code '='} is set as a cell formula (falling back to a quote-prefixed literal when POI rejects
-     * it), then {@code exportStringAsPicture} renders the string as an embedded picture, and otherwise the string is
-     * written as a plain value. Formula therefore wins when both options are set. A value starting with {@code '='}
-     * that lands in the plain-text form is written quote-prefixed, so Excel shows it verbatim instead of reading it
-     * as a formula - a safeguard on how text is written, not a fourth way of choosing the form.
-     *
-     * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@link String})
-     * @param columnMeta the resolved export metadata for this column
-     * @return the exported string
-     * @throws PxlArgumentException if the picture form is asked for with an unusable pictures-per-row count
-     */
-    static String buildStringCell(final Cell cell,
-                                  final Object object,
-                                  final PxlExportColumnMeta columnMeta)
-            throws PxlArgumentException {
-
-        final String cellString = makeExportString(object, columnMeta);
-        if (Objects.nonNull(cell)) {
-            if (columnMeta.isExportStringAsFormula() && StringUtils.startsWith(cellString, "=")) {  // FORMULA
-                try {
-                    cell.setCellFormula(StringUtils.substring(cellString, 1));
-                } catch (Exception ignored) {
-                    columnMeta.setQuotePrefixedCellValue(cell, cellString);
-                }
-            } else if (columnMeta.isExportStringAsPicture()) {
-                PxlCellUtils.addPicturesToCell(cell,
-                        Arrays.asList(cellString),
-                        PxlConstants.EXPORT_PICTURE_SCREEN_WIDTH_IN_PIXELS,
-                        PxlConstants.EXPORT_PICTURE_SCREEN_HEIGHT_IN_PIXELS,
-                        PxlConstants.EXPORT_PICTURE_SCREEN_PADDING_IN_PIXELS,
-                        PxlConstants.EXPORT_HORIZONTAL_NUMBER_OF_PICTURE);
-            } else if (StringUtils.startsWith(cellString, "=")) {
-                // Quote(Apostrophe) Prefix
-                // A leading single quote character ' is a special character in Excel, which tells it to treat it's contents verbatim.
-                columnMeta.setQuotePrefixedCellValue(cell, cellString);
-            } else {
-                cell.setCellValue(cellString);
-            }
-        }
-
-        return cellString;
-    }
-
-    /**
-     * Applies the column's export trim and masking options to a raw string value. Shared by the other
-     * codecs to post-process their string representation.
-     *
-     * @param object     the source value (a {@link String})
-     * @param columnMeta the resolved export metadata for this column
-     * @return the trimmed and/or masked string, or {@code null} when the input is {@code null}
-     */
-    static String makeExportString(final Object object,
-                                   final PxlExportColumnMeta columnMeta) {
-
-        final String stringValue = columnMeta.isExportTrim() ? StringUtils.trim((String) object) : (String) object;
-        final Pattern exportMaskingPattern = columnMeta.getExportMaskingPattern();
-
-        if (Objects.nonNull(exportMaskingPattern) && Objects.nonNull(stringValue)) {
-            return exportMaskingPattern.matcher(stringValue).replaceAll(PxlConstants.DEFAULT_EXPORT_MASKING_CHAR);
-        } else {
-            return stringValue;
-        }
     }
 
 }

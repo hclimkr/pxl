@@ -19,13 +19,13 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link LocalDateTime} column values - parses cells/strings into {@link LocalDateTime}
- * on import and writes {@link LocalDateTime} into cells on export.
+ * Codec for {@link LocalDateTime} column values - writes {@link LocalDateTime} into cells on export
+ * and parses cells/strings into {@link LocalDateTime} on import.
  *
- * <p>Import reads date-formatted NUMERIC cells via POI (other numerics as Excel
- * serials) and strings via the column's cached {@link DateTimeFormatter} (falling back to the built-in
- * read formatters, then ISO-8601). A BOOLEAN cell is rejected as an unsupported cell type. Export writes
- * either a formatted string or a numeric Excel-date cell.
+ * <p>Export writes either a formatted string or a numeric Excel-date cell. Import reads date-formatted
+ * NUMERIC cells via POI (other numerics as Excel serials) and strings via the column's cached
+ * {@link DateTimeFormatter} (falling back to the built-in read formatters, then ISO-8601); a BOOLEAN cell
+ * is rejected as an unsupported cell type.
  */
 final class PxlLocalDateTimeCodec {
 
@@ -35,6 +35,98 @@ final class PxlLocalDateTimeCodec {
     private PxlLocalDateTimeCodec() {
 
         throw new AssertionError("no instances of this class");
+    }
+
+    /**
+     * Writes the given value as a {@link LocalDateTime} cell and returns the exported string. A
+     * {@link String} source is parsed with the export formatter; a {@link LocalDateTime} source
+     * is used directly. A {@code null} result blanks the cell; otherwise the cell is written as a formatted
+     * string when exported to string, or as a numeric Excel-date cell when no pattern/masking applies.
+     *
+     * @param cell       the target cell, or {@code null} to only compute the string
+     * @param object     the source value (a {@link String} or {@link LocalDateTime})
+     * @param columnMeta the resolved export metadata for this column
+     * @return the exported string, or {@code null} when blank
+     * @throws PxlCellCodecException if the source is unsupported or the string is not a valid date-time
+     */
+    static String buildLocalDateTimeCell(final Cell cell,
+                                         final Object object,
+                                         final PxlExportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        DateTimeFormatter exportDateTimeFormatter = columnMeta.getExportDateTimeFormatterCache();
+        if (Objects.isNull(exportDateTimeFormatter)) {
+            exportDateTimeFormatter = PxlCodecConstants.localDateTimeWriteFormatter;
+        }
+
+        LocalDateTime localDateTimeValue;
+
+        if (object instanceof String) {
+            final String stringValue = (String) object;
+
+            if (StringUtils.isBlank(stringValue)) {
+                localDateTimeValue = null;
+            } else {
+                try {
+                    localDateTimeValue = LocalDateTime.parse(stringValue, exportDateTimeFormatter);
+                } catch (DateTimeParseException dateTimeParseException) {
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "LocalDateTime"), dateTimeParseException);
+                }
+            }
+        } else if (object instanceof LocalDateTime) {
+            localDateTimeValue = (LocalDateTime) object;
+        } else {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "LocalDateTime"));
+        }
+
+        if (Objects.isNull(localDateTimeValue)) {
+            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
+            return null;
+        } else {
+            final String cellString = makeLocalDateTimeExportString(localDateTimeValue, columnMeta);
+            if (Objects.nonNull(cell)) {
+                if (columnMeta.isExportedToString()) {
+                    cell.setCellValue(cellString);
+                } else {
+                    // When there is no pattern/masking, write it as a Numeric (Excel date serial) cell rather than a string.
+                    PxlDateCellSupport.writeNumericCell(cell, localDateTimeValue, columnMeta, PxlCodecConstants.localDateTimeExcelFormat);
+                }
+            }
+
+            return cellString;
+        }
+    }
+
+    /**
+     * Renders the export string for a {@link LocalDateTime}: formats it with the configured export {@link DateTimeFormatter}
+     * (or the built-in default write formatter when none is set), then applies string-level export processing via
+     * {@link PxlStringCodec#makeExportString}.
+     *
+     * @param localDateTimeValue the value to render
+     * @param columnMeta         resolved export metadata for the column
+     * @return the export string representation, or {@code null} when the value is {@code null}
+     * @throws PxlCellCodecException if the value cannot be formatted with the export formatter
+     */
+    private static String makeLocalDateTimeExportString(final LocalDateTime localDateTimeValue,
+                                                        final PxlExportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        if (Objects.isNull(localDateTimeValue)) {
+            return null;
+        }
+
+        DateTimeFormatter exportDateTimeFormatter = columnMeta.getExportDateTimeFormatterCache();
+        if (Objects.isNull(exportDateTimeFormatter)) {
+            exportDateTimeFormatter = PxlCodecConstants.localDateTimeWriteFormatter;
+        }
+
+        try {
+            final String stringValue = localDateTimeValue.format(exportDateTimeFormatter);
+
+            return PxlStringCodec.makeExportString(stringValue, columnMeta);
+        } catch (DateTimeException dateTimeException) {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(localDateTimeValue), "LocalDateTime"), dateTimeException);
+        }
     }
 
     /**
@@ -134,98 +226,6 @@ final class PxlLocalDateTimeCodec {
         }
 
         throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "LocalDateTime"));
-    }
-
-    /**
-     * Writes the given value as a {@link LocalDateTime} cell and returns the exported string. A
-     * {@link String} source is parsed with the export formatter; a {@link LocalDateTime} source
-     * is used directly. A {@code null} result blanks the cell; otherwise the cell is written as a formatted
-     * string when exported to string, or as a numeric Excel-date cell when no pattern/masking applies.
-     *
-     * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@link String} or {@link LocalDateTime})
-     * @param columnMeta the resolved export metadata for this column
-     * @return the exported string, or {@code null} when blank
-     * @throws PxlCellCodecException if the source is unsupported or the string is not a valid date-time
-     */
-    static String buildLocalDateTimeCell(final Cell cell,
-                                         final Object object,
-                                         final PxlExportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        DateTimeFormatter exportDateTimeFormatter = columnMeta.getExportDateTimeFormatterCache();
-        if (Objects.isNull(exportDateTimeFormatter)) {
-            exportDateTimeFormatter = PxlCodecConstants.localDateTimeWriteFormatter;
-        }
-
-        LocalDateTime localDateTimeValue;
-
-        if (object instanceof String) {
-            final String stringValue = (String) object;
-
-            if (StringUtils.isBlank(stringValue)) {
-                localDateTimeValue = null;
-            } else {
-                try {
-                    localDateTimeValue = LocalDateTime.parse(stringValue, exportDateTimeFormatter);
-                } catch (DateTimeParseException dateTimeParseException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "LocalDateTime"), dateTimeParseException);
-                }
-            }
-        } else if (object instanceof LocalDateTime) {
-            localDateTimeValue = (LocalDateTime) object;
-        } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "LocalDateTime"));
-        }
-
-        if (Objects.isNull(localDateTimeValue)) {
-            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
-            return null;
-        } else {
-            final String cellString = makeLocalDateTimeExportString(localDateTimeValue, columnMeta);
-            if (Objects.nonNull(cell)) {
-                if (columnMeta.isExportedToString()) {
-                    cell.setCellValue(cellString);
-                } else {
-                    // When there is no pattern/masking, write it as a Numeric (Excel date serial) cell rather than a string.
-                    PxlDateCellSupport.writeNumericCell(cell, localDateTimeValue, columnMeta, PxlCodecConstants.localDateTimeExcelFormat);
-                }
-            }
-
-            return cellString;
-        }
-    }
-
-    /**
-     * Renders the export string for a {@link LocalDateTime}: formats it with the configured export {@link DateTimeFormatter}
-     * (or the built-in default write formatter when none is set), then applies string-level export processing via
-     * {@link PxlStringCodec#makeExportString}.
-     *
-     * @param localDateTimeValue the value to render
-     * @param columnMeta         resolved export metadata for the column
-     * @return the export string representation, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if the value cannot be formatted with the export formatter
-     */
-    private static String makeLocalDateTimeExportString(final LocalDateTime localDateTimeValue,
-                                                        final PxlExportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        if (Objects.isNull(localDateTimeValue)) {
-            return null;
-        }
-
-        DateTimeFormatter exportDateTimeFormatter = columnMeta.getExportDateTimeFormatterCache();
-        if (Objects.isNull(exportDateTimeFormatter)) {
-            exportDateTimeFormatter = PxlCodecConstants.localDateTimeWriteFormatter;
-        }
-
-        try {
-            final String stringValue = localDateTimeValue.format(exportDateTimeFormatter);
-
-            return PxlStringCodec.makeExportString(stringValue, columnMeta);
-        } catch (DateTimeException dateTimeException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(localDateTimeValue), "LocalDateTime"), dateTimeException);
-        }
     }
 
 }

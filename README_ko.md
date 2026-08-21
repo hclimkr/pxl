@@ -54,7 +54,7 @@ List<Employee> employees = pxl.importExcel()
 
 ## 주요 기능
 
-- **엑셀 → 객체와 객체 → 엑셀을 선언 하나로** — 같은 `@PxlColumn` 매핑을 importer와 exporter가 함께
+- **객체 → 엑셀과 엑셀 → 객체를 선언 하나로** — 같은 `@PxlColumn` 매핑을 exporter와 importer가 함께
   읽으므로 라운드트립이 어긋나지 않는다.
 - **XLSX · XLS · 스트리밍 XLSX** — POI 엔진(`XSSF` / `HSSF` / `SXSSF`)을 애노테이션 속성 하나로 고르며,
   파일 형식 · 확장자 · 시트/행/열 한도가 거기서 따라온다.
@@ -64,13 +64,13 @@ List<Employee> employees = pxl.importExcel()
   나머지는 건드리지 않는다. 헤더는 이름으로 매칭하므로 파일의 열 순서는 자유이고 정의에 없는 열은 무시된다.
 - **약 30종 필드 타입 기본 지원** — 원시 타입과 래퍼, `String`, `BigDecimal`, `BigInteger`, `enum`,
   `LocalDate` / `LocalDateTime` / `LocalTime` / `Date`, `Duration` / `Period`, `UUID`, `Collection`, 그리고
-  그 밖의 타입은 `@PxlImportConverter` / `@PxlExportConverter`로 처리한다.
+  그 밖의 타입은 `@PxlExportConverter` / `@PxlImportConverter`로 처리한다.
 - **행 단위 Bean Validation** — DTO에 선언한 표준 `javax.validation` / `jakarta.validation` 제약이 바인딩
   중에 검증되며, PXL 자체 제약 `@PxlByteSize`도 함께 쓸 수 있다.
 - **엑셀 표현 요소** — 셀 스타일러, 컬럼 폭, 행 높이, 창 고정, 자동 필터, 드롭다운 검증, 행 그룹핑,
   이미지 삽입, 암호가 걸린 워크북.
-- **대용량 파일 대응** — import는 `excel-streaming-reader` 위에서, export는 SXSSF로 돌릴 수 있고,
-  CSV export는 4 MiB를 넘어서면 힙 대신 임시 파일로 이어 쓴다.
+- **대용량 파일 대응** — export는 SXSSF로 돌릴 수 있고 CSV export는 4 MiB를 넘어서면 힙 대신 임시
+  파일로 이어 쓰며, import는 `excel-streaming-reader` 위에서 돌릴 수 있다.
 - **클래스만으로 샘플 양식 생성** — 헤더 행 + 예시 값이 채워진 데이터 행 1개짜리 `.xlsx` · `.csv` 양식을
   만들어 배포하고 채워 받을 수 있다.
 - **독립된 두 채널의 다국어 지원** — 콘텐츠 쪽으로 시트명 · 컬럼명을 번역하고, PXL 자체 진단 · 예외 메시지의
@@ -661,20 +661,20 @@ DTO 필드에 `@PxlColumn`을 붙이고
 그대로 쥔다 — [출력 대상](#출력-대상) 참고. 응답에 실을 content type과 확장자는 `PxlFileFormat`에서 얻는다.
 
 **메모리에 다 올릴 수 없는 대용량 파일도 되나?**
-import는 `@PxlWorkbook(importUsingStreamReader = true)`로 `excel-streaming-reader` 위에서 돌릴 수 있고(XLSX
-전용이며 수식 셀은 평가하지 못한다), export는 `SXSSF` 엔진을 쓸 수 있다. CSV export는 4 MiB를 넘으면
-임시 파일로 넘어간다.
+export는 `SXSSF` 엔진을 쓸 수 있고, CSV export는 4 MiB를 넘으면 임시 파일로 넘어간다. import는
+`@PxlWorkbook(importUsingStreamReader = true)`로 `excel-streaming-reader` 위에서 돌릴 수 있다(XLSX
+전용이며 수식 셀은 평가하지 못한다).
 
 **`.xlsx` 말고 `.xls`도 읽나?**
-읽는다. import는 파일 자체에서 형식을 탐지하고, export는
-`@PxlWorkbook(exportExcelEngine = PxlExcelEngine.HSSF)`로 `.xls`를 고른다.
+읽는다. export는 `@PxlWorkbook(exportExcelEngine = PxlExcelEngine.HSSF)`로 `.xls`를 고르고,
+import는 파일 자체에서 형식을 탐지한다.
 
 **CSV도 지원하나?**
 `exportCsv()` / `importCsv()`로 지원하며 애노테이션은 엑셀과 동일하다. 문자셋 · 구분자 · BOM을 지정할 수
 있고, 여러 CSV 파일을 파일 하나당 시트 하나로 묶어 한 워크북처럼 읽을 수 있다.
 
 **PXL이 모르는 타입의 컬럼은 어떻게 하나?**
-클래스에 `@PxlImportConverter` / `@PxlExportConverter` 메서드 쌍을 두면 해당 컬럼이 그 변환기를 거친다.
+클래스에 `@PxlExportConverter` / `@PxlImportConverter` 메서드 쌍을 두면 해당 컬럼이 그 변환기를 거친다.
 
 **`pxl-javax`와 `pxl-jakarta` 중 무엇을 쓰나?**
 Java 8 이상에서 `javax.validation`을 쓰면 `pxl-javax`, Java 17 이상에서 `jakarta.validation`을 쓰면

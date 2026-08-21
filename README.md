@@ -55,8 +55,8 @@ For details such as supported variable types, the full set of options, and const
 
 ## Features
 
-- **Excel to POJO and POJO to Excel from one declaration** — the same `@PxlColumn` mapping is read by
-  the importer and the exporter, so a round trip cannot drift apart.
+- **POJO to Excel and Excel to POJO from one declaration** — the same `@PxlColumn` mapping is read by
+  the exporter and the importer, so a round trip cannot drift apart.
 - **XLSX, XLS and streaming XLSX** — pick the POI engine (`XSSF` / `HSSF` / `SXSSF`) with a single
   annotation attribute; the file format, extension and sheet/row/column limits follow from it.
 - **CSV in the same model** — the same annotations, the same converters and the same column order
@@ -66,13 +66,13 @@ For details such as supported variable types, the full set of options, and const
   column order in the file is free and unknown columns are ignored.
 - **Around 30 field types out of the box** — primitives and their wrappers, `String`, `BigDecimal`,
   `BigInteger`, `enum`, `LocalDate` / `LocalDateTime` / `LocalTime` / `Date`, `Duration` / `Period`,
-  `UUID`, `Collection`, and anything else through `@PxlImportConverter` / `@PxlExportConverter`.
+  `UUID`, `Collection`, and anything else through `@PxlExportConverter` / `@PxlImportConverter`.
 - **Bean Validation per row** — standard `javax.validation` / `jakarta.validation` constraints
   declared on the DTO are enforced while binding, alongside PXL's own `@PxlByteSize`.
 - **Excel-side presentation** — cell stylers, column widths, row heights, freeze panes, auto filters,
   dropdown validation, row grouping, embedded pictures and password-protected workbooks.
-- **Built for large files** — import can run on `excel-streaming-reader`, export can run on SXSSF,
-  and CSV export spills past 4 MiB to a temporary file instead of growing the heap.
+- **Built for large files** — export can run on SXSSF and a CSV export spills past 4 MiB to a
+  temporary file instead of growing the heap, while import can run on `excel-streaming-reader`.
 - **Sample templates from a class alone** — generate a header row plus one filled example row as an
   `.xlsx` or `.csv` form to hand out and collect back.
 - **Localization on two independent channels** — translate sheet and column names for the content,
@@ -671,13 +671,13 @@ keeps control of the response — see [Output Targets](#output-targets). The mat
 file extension are available from `PxlFileFormat`.
 
 **Can it handle files too large to fit in memory?**
+Export can use the `SXSSF` engine, and a CSV export moves to a temporary file once it passes 4 MiB.
 Import can run on `excel-streaming-reader` with `@PxlWorkbook(importUsingStreamReader = true)` (XLSX
-only, and formula cells cannot be evaluated), export can use the `SXSSF` engine, and CSV export moves
-to a temporary file once it passes 4 MiB.
+only, and formula cells cannot be evaluated).
 
 **Does it read `.xls` as well as `.xlsx`?**
-Yes. Import detects the format from the file itself, and export chooses it with
-`@PxlWorkbook(exportExcelEngine = PxlExcelEngine.HSSF)` for `.xls`.
+Yes. Export chooses it with `@PxlWorkbook(exportExcelEngine = PxlExcelEngine.HSSF)` for `.xls`, and
+import detects the format from the file itself.
 
 **Does it handle CSV too?**
 Yes, through `exportCsv()` / `importCsv()`, with the same annotations as Excel. Character set,
@@ -685,7 +685,7 @@ delimiter and byte order mark are configurable, and multiple CSV files can be re
 with one sheet per file.
 
 **What if a column's type is not one PXL knows?**
-Write a `@PxlImportConverter` / `@PxlExportConverter` method pair on the class and PXL will route that
+Write a `@PxlExportConverter` / `@PxlImportConverter` method pair on the class and PXL will route that
 column through it.
 
 **Which artifact do I need, `pxl-javax` or `pxl-jakarta`?**

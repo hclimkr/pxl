@@ -44,7 +44,7 @@ With a declarative approach of putting annotations on your DTO, you get the foll
 - **Type fidelity & strictness**   
   Full `java.time` (including `Zoned`/`Offset`/`Duration`/`Period`), `BigInteger`/`BigDecimal` precision (2^53) awareness,
   `NaN`/`Infinity` rejection, non-lenient date parsing (blocks rollover of invalid dates), `Collection` position preservation,
-  `UUID` restricted to its canonical form, symmetric import/export behavior.
+  `UUID` restricted to its canonical form, symmetric export/import behavior.
   Not just common types — these edge cases are defended and documented per codec.
 - **Standard validation integration + custom constraints**  
   Performs per-row validation on import with `javax.validation`/`jakarta.validation`,
@@ -320,32 +320,7 @@ thrown and `null` is never returned.
 | Other            | `Enum`, `UUID`, user-defined classes, `Collection` of the above types                       |
 | Experimental     | `Duration` `Period`                                                                          |
 
-Fields of an unsupported variable type fail with `PxlArgumentException` while the column metadata is resolved (a user-defined class becomes a supported type once it has `@PxlImportConverter`/`@PxlExportConverter` or a `String` constructor). `PxlCellCodecException` is for a supported type whose cell value cannot be converted into it.
-
-### Per-Type Behavior Summary — Import
-
-| Type                                            | Import behavior / notes and limits                                                                                                                                                              |
-|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `byte`·`short`·`int`·`long` + wrapper classes   | Numeric cell/string cell: parsed with `DecimalFormat` when a `pattern` is specified.<br/>Raises `PxlCellCodecException` when the type range is exceeded.<br/>Fractional part is truncated (e.g., `12.9`→`12`).<br/>For `long`/`Long`, a numeric cell is a double, so precision beyond 2^53 may be lost (accurate if a string cell) |
-| `float`·`double` + wrapper classes              | Numeric cell/string cell: parsed at IEEE-754 precision.<br/>`NaN`·`Infinity`, and values beyond the `float` representable range, raise `PxlCellCodecException`.<br/>However, `float` underflow (e.g., `1e-300`→`0.0f`) is allowed as IEEE-754 precision loss |
-| `char`·`Character`                              | String cell: the first character.<br/>Numeric cell: stringifies the integer/real as-is (`12`→`"12"`, `-3`→`"-3"`) and then takes only the first character. (`12`→`'1'`, `-3`→`'-'`).<br/>Boolean cell: `'1'`/`'0'`.<br/>Blank cell / empty value: `Character`=`null`, `char`=`'\0'` |
-| `boolean`·`Boolean`                             | String cell: first compared case-insensitively against `importTrueString`/`importFalseString`, then against the built-in tokens `true/false`·`t/f`·`y/n`·`yes/no`·`on/off`·`1/0` (case-insensitive). If none match → exception (not a silent `false`).<br/>Numeric cell: `true` if not 0 |
-| `String`                                        | String cell: the value as a string.<br/>Numeric/boolean cell: converted to a string                                                                                                            |
-| `BigInteger`·`BigDecimal`                       | String cell: exactly restored with `new BigInteger/BigDecimal`.<br/>Numeric cell: limited to double (2^53) precision                                                                            |
-| `Date`·`LocalDate`·`LocalTime`·`LocalDateTime`  | String cell: parsed with `pattern`/`importPattern` or the fixed ISO-8601 default pattern.<br/>Numeric cell: recognizes Excel date/time.<br/>Boolean cell: not supported, raises an exception.  |
-| `ZonedDateTime`·`OffsetDateTime`·`OffsetTime`   | String cell: parsed with `pattern` or ISO-8601 including zone/offset, preserving the zone/offset.<br/>A string without an offset/zone raises an exception unless a `pattern` is given.<br/>Numeric cell: reads the Excel date/time based on the system default zone/offset.<br/>Boolean cell: raises an exception. |
-| `Enum`                                          | Matched against the `toString()` override value or the constant name (ignoring case/whitespace).<br/>Custom conversion via `@PxlImportConverter`                                                |
-| User-defined classes                            | Requires a single-argument `String` constructor or `@PxlImportConverter`                                                                                                                       |
-| `Collection`                                    | Split by separator, preserving the positions of empty/null elements (e.g., `"a;;b"`→`["a", null, "b"]`).<br/>Elements must be concrete classes; nested generics (`List<List<..>>`), wildcards (`List<? extends X>`), and raw types raise `PxlReflectionException`. |
-| `Duration`·`Period` (experimental)              | String cell: `pattern` or ISO-8601.<br/>Numeric cell: fixed unit (`Duration`=seconds, `Period`=days), fractional part truncated, raises an exception when the range is exceeded.                |
-| `UUID`                                          | String cell: the canonical 8-4-4-4-12 hexadecimal form only, in either case (`123E4567-…` binds the same value as `123e4567-…`).<br/>Numeric cell: rendered to text first, so it is reported as an invalid value rather than an unsupported cell type.<br/>Boolean cell: raises an exception.<br/>`pattern`/`importPattern` has no meaning for a UUID and is ignored. |
-
-**Common to Import**
-
-- Blank cells / empty values (Excel BLANK·missing cell, CSV empty value) do not set a value on the field — reference types become `null`, primitives get the DTO default (`0`/`false`, etc.).
-- A `pattern`/`importPattern` must match the cell value **in full**. A value the pattern reads only the front of — `"123abc"` or `"1e3"` under `"#,##0"`, `"2024-01-02 xxx"` under `"yyyy-MM-dd"` — raises `PxlCellCodecException` rather than binding the part that could be read. Naming a pattern therefore never makes a column accept more than it would without one. (Only consumption is checked: a grouping separator in an unexpected position, such as `"1,2,3"`, is still accepted, because `DecimalFormat` does not verify group sizes while parsing.)
-- `importTrim` is `true` by default. When `false`, only `String` preserves whitespace; other types may fail to parse or get a wrong value if whitespace is mixed in. With a `pattern`, trailing whitespace (`"123 "`) is itself unconsumed input and is therefore rejected.
-- The Streaming Reader (`importUsingStreamReader`, XLSX-only) cannot evaluate formula cells and requires the header row position to be specified precisely.
+Fields of an unsupported variable type fail with `PxlArgumentException` while the column metadata is resolved (a user-defined class becomes a supported type once it has `@PxlExportConverter`/`@PxlImportConverter` or a `String` constructor). `PxlCellCodecException` is for a supported type whose cell value cannot be converted into it.
 
 ### Per-Type Behavior Summary — Export
 
@@ -379,6 +354,31 @@ Fields of an unsupported variable type fail with `PxlArgumentException` while th
 - Export generates XLSX by default; `exportExcelEngine` can also select the `HSSF` engine (XLS) or the `SXSSF` engine (streaming XLSX). CSV export is not supported — an engine is an Excel writer, so CSV cannot be named there.
 - Sheet/column order is not guaranteed to follow the field declaration order, so if order matters, specify `exportOrder`.
 
+### Per-Type Behavior Summary — Import
+
+| Type                                            | Import behavior / notes and limits                                                                                                                                                              |
+|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `byte`·`short`·`int`·`long` + wrapper classes   | Numeric cell/string cell: parsed with `DecimalFormat` when a `pattern` is specified.<br/>Raises `PxlCellCodecException` when the type range is exceeded.<br/>Fractional part is truncated (e.g., `12.9`→`12`).<br/>For `long`/`Long`, a numeric cell is a double, so precision beyond 2^53 may be lost (accurate if a string cell) |
+| `float`·`double` + wrapper classes              | Numeric cell/string cell: parsed at IEEE-754 precision.<br/>`NaN`·`Infinity`, and values beyond the `float` representable range, raise `PxlCellCodecException`.<br/>However, `float` underflow (e.g., `1e-300`→`0.0f`) is allowed as IEEE-754 precision loss |
+| `char`·`Character`                              | String cell: the first character.<br/>Numeric cell: stringifies the integer/real as-is (`12`→`"12"`, `-3`→`"-3"`) and then takes only the first character. (`12`→`'1'`, `-3`→`'-'`).<br/>Boolean cell: `'1'`/`'0'`.<br/>Blank cell / empty value: `Character`=`null`, `char`=`'\0'` |
+| `boolean`·`Boolean`                             | String cell: first compared case-insensitively against `importTrueString`/`importFalseString`, then against the built-in tokens `true/false`·`t/f`·`y/n`·`yes/no`·`on/off`·`1/0` (case-insensitive). If none match → exception (not a silent `false`).<br/>Numeric cell: `true` if not 0 |
+| `String`                                        | String cell: the value as a string.<br/>Numeric/boolean cell: converted to a string                                                                                                            |
+| `BigInteger`·`BigDecimal`                       | String cell: exactly restored with `new BigInteger/BigDecimal`.<br/>Numeric cell: limited to double (2^53) precision                                                                            |
+| `Date`·`LocalDate`·`LocalTime`·`LocalDateTime`  | String cell: parsed with `pattern`/`importPattern` or the fixed ISO-8601 default pattern.<br/>Numeric cell: recognizes Excel date/time.<br/>Boolean cell: not supported, raises an exception.  |
+| `ZonedDateTime`·`OffsetDateTime`·`OffsetTime`   | String cell: parsed with `pattern` or ISO-8601 including zone/offset, preserving the zone/offset.<br/>A string without an offset/zone raises an exception unless a `pattern` is given.<br/>Numeric cell: reads the Excel date/time based on the system default zone/offset.<br/>Boolean cell: raises an exception. |
+| `Enum`                                          | Matched against the `toString()` override value or the constant name (ignoring case/whitespace).<br/>Custom conversion via `@PxlImportConverter`                                                |
+| User-defined classes                            | Requires a single-argument `String` constructor or `@PxlImportConverter`                                                                                                                       |
+| `Collection`                                    | Split by separator, preserving the positions of empty/null elements (e.g., `"a;;b"`→`["a", null, "b"]`).<br/>Elements must be concrete classes; nested generics (`List<List<..>>`), wildcards (`List<? extends X>`), and raw types raise `PxlReflectionException`. |
+| `Duration`·`Period` (experimental)              | String cell: `pattern` or ISO-8601.<br/>Numeric cell: fixed unit (`Duration`=seconds, `Period`=days), fractional part truncated, raises an exception when the range is exceeded.                |
+| `UUID`                                          | String cell: the canonical 8-4-4-4-12 hexadecimal form only, in either case (`123E4567-…` binds the same value as `123e4567-…`).<br/>Numeric cell: rendered to text first, so it is reported as an invalid value rather than an unsupported cell type.<br/>Boolean cell: raises an exception.<br/>`pattern`/`importPattern` has no meaning for a UUID and is ignored. |
+
+**Common to Import**
+
+- Blank cells / empty values (Excel BLANK·missing cell, CSV empty value) do not set a value on the field — reference types become `null`, primitives get the DTO default (`0`/`false`, etc.).
+- A `pattern`/`importPattern` must match the cell value **in full**. A value the pattern reads only the front of — `"123abc"` or `"1e3"` under `"#,##0"`, `"2024-01-02 xxx"` under `"yyyy-MM-dd"` — raises `PxlCellCodecException` rather than binding the part that could be read. Naming a pattern therefore never makes a column accept more than it would without one. (Only consumption is checked: a grouping separator in an unexpected position, such as `"1,2,3"`, is still accepted, because `DecimalFormat` does not verify group sizes while parsing.)
+- `importTrim` is `true` by default. When `false`, only `String` preserves whitespace; other types may fail to parse or get a wrong value if whitespace is mixed in. With a `pattern`, trailing whitespace (`"123 "`) is itself unconsumed input and is therefore rejected.
+- The Streaming Reader (`importUsingStreamReader`, XLSX-only) cannot evaluate formula cells and requires the header row position to be specified precisely.
+
 ---
 
 ## Annotations
@@ -390,14 +390,6 @@ When you pass an option object to the `.override()` step to provide runtime valu
 
 | Attribute                                                          | Default    | Description                                                                                                                                                                       |
 |-------------------------------------------------------------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `importPassword`                                                  | `""`       | Password to remove document protection on import                                                                                                                                  |
-| `importDataValidation`                                            | `true`     | Whether to run Bean Validation (`@NotNull`·`@Size`, ... — ↓ *Validation*) over the imported result.<br/>Nothing to do with Excel's "data validation" feature; that is the dropdown written by `@PxlColumn(exportOptionItems)` (↓ *Column: Dropdown Export*) |
-| `importUsingStreamReader`                                         | `false`    | Whether to use the Streaming Reader on import (XLSX only)                                                                                                                         |
-| `importStreamReaderRowCacheSize`                                  | `100`      | Row cache size of the Streaming Reader                                                                                                                                            |
-| `importStreamReaderBufferSize`                                    | `4096`     | Buffer size of the Streaming Reader                                                                                                                                               |
-| `importCsvCharset`                                                | `""`→`"UTF-8"` | CSV only. Character encoding of the CSV to import, for every sheet of the workbook. A single sheet may depart from it with `@PxlSheet(importCsvCharset)`.<br/>Handles a leading BOM automatically (strips the UTF-8/UTF-16LE/BE BOM; for `UTF-16` (auto), the BOM is used to determine endianness) |
-| `importCsvDelimiter`                                              | `'\0'`→`','` | CSV only. Delimiter of the CSV to import, for every sheet of the workbook (`char`). A single sheet may depart from it with `@PxlSheet(importCsvDelimiter)`                                   |
-| `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on import                                                                                                       |
 | `exportExcelEngine`                                               | `XSSF`     | POI engine that writes the workbook (`PxlExcelEngine`): `XSSF`=XLSX (default), `HSSF`=XLS, `SXSSF`=streaming XLSX.<br/>It selects the writer, not the format — `XSSF` and `SXSSF` both produce `.xlsx`. CSV is not an engine and cannot be named here. |
 | `exportPassword`                                                  | `""`       | Document protection password to set on export.<br/>Applies to `toFile(...)`/`toStream(...)` only, not to `toWorkbook()`.<br/>A CSV export **rejects** it (`PxlArgumentException`) rather than writing plaintext. |
 | `exportDataValidation`                                            | `true`     | Whether to run Bean Validation over the objects being written.<br/>Nothing to do with Excel's "data validation" feature — see `importDataValidation` above |
@@ -409,6 +401,14 @@ When you pass an option object to the `.override()` step to provide runtime valu
 | `exportWorkbookOptionalHeaderCellStyler`                          | (unspecified) | Optional header cell style (uses `PxlHeaderOptionalStyler` when unspecified/not applicable)                                                                                       |
 | `exportWorkbookDataCellStyler`                                    | (unspecified) | Data cell style (uses `PxlDataVerticalCenterTextStyler` when unspecified/not applicable)                                                                                          |
 | `exportI18nBaseName` / `exportI18nLanguage` / `exportI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on export                                                                                                       |
+| `importPassword`                                                  | `""`       | Password to remove document protection on import                                                                                                                                  |
+| `importDataValidation`                                            | `true`     | Whether to run Bean Validation (`@NotNull`·`@Size`, ... — ↓ *Validation*) over the imported result.<br/>Nothing to do with Excel's "data validation" feature; that is the dropdown written by `@PxlColumn(exportOptionItems)` (↓ *Column: Dropdown Export*) |
+| `importUsingStreamReader`                                         | `false`    | Whether to use the Streaming Reader on import (XLSX only)                                                                                                                         |
+| `importStreamReaderRowCacheSize`                                  | `100`      | Row cache size of the Streaming Reader                                                                                                                                            |
+| `importStreamReaderBufferSize`                                    | `4096`     | Buffer size of the Streaming Reader                                                                                                                                               |
+| `importCsvCharset`                                                | `""`→`"UTF-8"` | CSV only. Character encoding of the CSV to import, for every sheet of the workbook. A single sheet may depart from it with `@PxlSheet(importCsvCharset)`.<br/>Handles a leading BOM automatically (strips the UTF-8/UTF-16LE/BE BOM; for `UTF-16` (auto), the BOM is used to determine endianness) |
+| `importCsvDelimiter`                                              | `'\0'`→`','` | CSV only. Delimiter of the CSV to import, for every sheet of the workbook (`char`). A single sheet may depart from it with `@PxlSheet(importCsvDelimiter)`                                   |
+| `importI18nBaseName` / `importI18nLanguage` / `importI18nCountry` | `""`/`"en"`/`""` | Base name / language / country of the multilingual ResourceBundle on import                                                                                                       |
 
 ### `@PxlWorkbookName` (targets a field)
 
@@ -426,14 +426,6 @@ The default value `0` of an index attribute means "auto" (first row/column autom
 | Attribute                                                                                                    | Default | Description                                              |
 |-------------------------------------------------------------------------------------------------------------|---------|---------------------------------------------------------|
 | `name`                                                                                                      | field name | Sheet name (array). Must match the actual sheet name to bind (whitespace and case ignored).<br/>When specified as an array, only one of them must exist |
-| `importEnabled`                                                                                             | `true`  | Whether import is enabled                               |
-| `importOverrideSuperClassSheet`                                                                             | `false` | Whether to override the superclass field of the same sheet name (case ignored) |
-| `importExcludeHiddenRows` / `importExcludeHiddenColumns`                                                    | `false` | Whether to exclude hidden rows/columns                  |
-| `importEachCellOfMergedRegion`                                                                              | `false` | Whether to treat a merged cell as the same value in each individual cell |
-| `importHeaderRowIndex` / `importFirstDataRowIndex` / `importLastDataRowIndex`                               | `0`     | Header/first/last data row on import (1-based, see *Index Rules* below) |
-| `importFirstDataColumnIndex` / `importLastDataColumnIndex`                                                  | `0`     | First/last data column on import (1-based)              |
-| `importCsvCharset`                                                                                          | (inherit) | CSV only. Character encoding used to read this sheet's CSV. Blank (`""`) inherits the workbook value |
-| `importCsvDelimiter`                                                                                        | (inherit) | CSV only. Delimiter used to read this sheet's CSV (`char`). NUL (`'\0'`) inherits the workbook value |
 | `exportEnabled` / `exportSampleEnabled`                                                                     | `true`  | Whether export / sample export is enabled               |
 | `exportOverrideSuperClassSheet`                                                                             | `false` | Whether to override the superclass field of the same sheet name (case ignored) |
 | `exportRowHeightInPoints`                                                                                   | `-1.0`  | Row height within the sheet (points). Default height if unset |
@@ -448,6 +440,14 @@ The default value `0` of an index attribute means "auto" (first row/column autom
 | `exportCsvDelimiter`                                                                                        | (inherit) | CSV only. Delimiter used to write this sheet's CSV (`char`). NUL (`'\0'`) inherits the workbook value |
 | `exportCsvBom`                                                                                              | (inherit) | CSV only. Whether a byte order mark precedes this sheet's CSV (`PxlOptionalBoolean`). `UNSPECIFIED` inherits the workbook value, and `FALSE` turns off a mark the workbook asked for — which a plain `boolean` could not express |
 | `exportSheetRequiredHeaderCellStyler` / `exportSheetOptionalHeaderCellStyler` / `exportSheetDataCellStyler` | (unspecified) | Sheet-level cell style (delegates to the Workbook level when unspecified) |
+| `importEnabled`                                                                                             | `true`  | Whether import is enabled                               |
+| `importOverrideSuperClassSheet`                                                                             | `false` | Whether to override the superclass field of the same sheet name (case ignored) |
+| `importExcludeHiddenRows` / `importExcludeHiddenColumns`                                                    | `false` | Whether to exclude hidden rows/columns                  |
+| `importEachCellOfMergedRegion`                                                                              | `false` | Whether to treat a merged cell as the same value in each individual cell |
+| `importHeaderRowIndex` / `importFirstDataRowIndex` / `importLastDataRowIndex`                               | `0`     | Header/first/last data row on import (1-based, see *Index Rules* below) |
+| `importFirstDataColumnIndex` / `importLastDataColumnIndex`                                                  | `0`     | First/last data column on import (1-based)              |
+| `importCsvCharset`                                                                                          | (inherit) | CSV only. Character encoding used to read this sheet's CSV. Blank (`""`) inherits the workbook value |
+| `importCsvDelimiter`                                                                                        | (inherit) | CSV only. Delimiter used to read this sheet's CSV (`char`). NUL (`'\0'`) inherits the workbook value |
 
 ### `@PxlRowIndex` (targets a field)
 
@@ -462,15 +462,8 @@ Import-only: It is not used on export (or sample export).
 | Attribute                                                                                                       | Default    | Description                                                                                                     |
 |----------------------------------------------------------------------------------------------------------------|------------|----------------------------------------------------------------------------------------------------------------|
 | `name`                                                                                                         | field name | Column name (array). Must match the actual column name to bind (whitespace ignored, case-sensitive).<br/>When specified as an array, only one of them must exist |
-| `pattern`                                                                                                      | `""`       | Common fallback pattern used when `importPattern` / `exportPattern` are empty.<br/>When parsing, it must match the value in full (↑ *Common to Import*) |
-| `collectionSeparator`                                                                                          | `";"`      | Common fallback used when `importCollectionSeparator` / `exportCollectionSeparator` are empty                   |
-| `importEnabled`                                                                                                | `true`     | Whether import is enabled                                                                                       |
-| `importTrim`                                                                                                   | `true`     | Whether to trim the string on import.<br/>When `false`, numbers/dates/`Boolean`, etc., may fail to parse or get a wrong value due to whitespace |
-| `importUnique`                                                                                                 | `false`    | Whether to check uniqueness of column values on import                                                          |
-| `importPattern`                                                                                                | `""`       | Import format (numeric=`DecimalFormat`, date/time=`DateTimeFormat`, `Duration`/`Period`=`DurationFormatUtils`).<br/>Must match the cell value in full; leftover characters make the value invalid.<br/>Date/time falls back to the default pattern on failure (a partial match counts as a failure, so the fallback formatters get their turn), and `Duration`/`Period` falls back to ISO-8601 the same way |
-| `importTrueString` / `importFalseString`                                                                       | `"true"`/`"false"` | `String` column: renders a boolean cell as this string.<br/>`Boolean` column: interprets this string (case-insensitive) as true/false (takes priority over the built-in tokens) |
-| `importCollectionSeparator`                                                                                    | `""`       | Separator to split a cell value into Collection elements.<br/>The entire literal string (`"::"`·`", "`, etc., multi-character allowed). |
-| `importOverrideSuperClassColumn`                                                                               | `false`    | Whether to override the superclass field of the same column name                                               |
+| `pattern`                                                                                                      | `""`       | Common fallback pattern used when `exportPattern` / `importPattern` are empty.<br/>When parsing, it must match the value in full (↑ *Common to Import*) |
+| `collectionSeparator`                                                                                          | `";"`      | Common fallback used when `exportCollectionSeparator` / `importCollectionSeparator` are empty                   |
 | `exportEnabled` / `exportSampleEnabled`                                                                        | `true`     | Whether export / sample export is enabled                                                                       |
 | `exportSample`                                                                                                 | `""`       | Value to put in the cell on sample export.<br/>Parsed into the column type, so it must be a value that type accepts (`PxlCellCodecException` otherwise).<br/>Left unset, the sample cell gets `exportNullString` |
 | `exportTrim`                                                                                                   | `false`    | Whether to trim the string on export (not applied to `char`/`Character` columns)                                |
@@ -487,30 +480,37 @@ Import-only: It is not used on export (or sample export).
 | `exportStringAsPicture`                                                                                        | `false`    | Insert an image URL string into the cell as an image |
 | `exportStringAsFormula`                                                                                        | `false`    | Compute a formula string (leading `=`) and apply it to the cell.<br/>Takes precedence over `exportStringAsPicture` when both are set |
 | `exportColumnRequiredHeaderCellStyler` / `exportColumnOptionalHeaderCellStyler` / `exportColumnDataCellStyler` | (unspecified) | Column-level cell style (delegates to the Sheet level when unspecified)                                      |
+| `importEnabled`                                                                                                | `true`     | Whether import is enabled                                                                                       |
+| `importTrim`                                                                                                   | `true`     | Whether to trim the string on import.<br/>When `false`, numbers/dates/`Boolean`, etc., may fail to parse or get a wrong value due to whitespace |
+| `importUnique`                                                                                                 | `false`    | Whether to check uniqueness of column values on import                                                          |
+| `importPattern`                                                                                                | `""`       | Import format (numeric=`DecimalFormat`, date/time=`DateTimeFormat`, `Duration`/`Period`=`DurationFormatUtils`).<br/>Must match the cell value in full; leftover characters make the value invalid.<br/>Date/time falls back to the default pattern on failure (a partial match counts as a failure, so the fallback formatters get their turn), and `Duration`/`Period` falls back to ISO-8601 the same way |
+| `importTrueString` / `importFalseString`                                                                       | `"true"`/`"false"` | `String` column: renders a boolean cell as this string.<br/>`Boolean` column: interprets this string (case-insensitive) as true/false (takes priority over the built-in tokens) |
+| `importCollectionSeparator`                                                                                    | `""`       | Separator to split a cell value into Collection elements.<br/>The entire literal string (`"::"`·`", "`, etc., multi-character allowed). |
+| `importOverrideSuperClassColumn`                                                                               | `false`    | Whether to override the superclass field of the same column name                                               |
 
-### `@PxlImportConverter` / `@PxlExportConverter` (targets a method)
+### `@PxlExportConverter` / `@PxlImportConverter` (targets a method)
 
-Specify custom String ↔ object conversion for an Enum or user-defined class.
+Specify custom object ↔ String conversion for an Enum or user-defined class.
 
 ```java
-// String → value (static, return type is the target type)
-@PxlImportConverter
-public static EnumOrObjectType pxlImportConverter(final String str) {
-    return ...;
-}
-
 // value → String
 @PxlExportConverter
 public String pxlExportConverter() {
     return ...;
 }
+
+// String → value (static, return type is the target type)
+@PxlImportConverter
+public static EnumOrObjectType pxlImportConverter(final String str) {
+    return ...;
+}
 ```
 
 > **Constraints:**   
-> A `@PxlImportConverter` method must be `static`, and its return type must match the target type (enum/user-defined class) (since it is a factory that creates a new
-> value from a string, instance methods are not supported).  
 > `@PxlExportConverter` can be either an instance method (`String pxlExportConverter()`) or a `static` method that takes the target value as an argument
-> (`static String pxlExportConverter(Type value)`), and its return type must be `String`.
+> (`static String pxlExportConverter(Type value)`), and its return type must be `String`.  
+> A `@PxlImportConverter` method must be `static`, and its return type must match the target type (enum/user-defined class) (since it is a factory that creates a new
+> value from a string, instance methods are not supported).
 
 ---
 
@@ -518,7 +518,7 @@ public String pxlExportConverter() {
 
 ### Option Usage
 
-Option objects (`PxlImportWorkbookOption`·`PxlExportWorkbookOption`) are a bundle of values that override, at runtime, the values declared with the `@PxlWorkbook`·`@PxlSheet`·`@PxlColumn` annotations, created per workbook.  
+Option objects (`PxlExportWorkbookOption`·`PxlImportWorkbookOption`) are a bundle of values that override, at runtime, the values declared with the `@PxlWorkbook`·`@PxlSheet`·`@PxlColumn` annotations, created per workbook.  
 When you pass this object to the `.override(...)` configuration step before the final (execute) step, the carried values overwrite the annotation values — fields not specified follow the annotation values (or defaults if none).  
 The `.override(...)` step itself can also be omitted, in which case the annotation values are used as-is.
 
@@ -558,12 +558,12 @@ List<Employee> rows = pxl.importExcel()
 
 Options are not a single workbook level but a 3-level tree of workbook → sheet → column, so they can be passed with a single `.override(...)`.
 
-- Put sheet options (`Pxl{Import,Export}SheetOption`) in the workbook option's `importSheetOptions`/`exportSheetOptions`.
-- Put column options (`Pxl{Import,Export}ColumnOption`) in the sheet option's `importColumnOptions`/`exportColumnOptions`.
+- Put sheet options (`Pxl{Export,Import}SheetOption`) in the workbook option's `exportSheetOptions`/`importSheetOptions`.
+- Put column options (`Pxl{Export,Import}ColumnOption`) in the sheet option's `exportColumnOptions`/`importColumnOptions`.
 - Attach child options with the builder's list setter (`.importColumnOptions(List)`, etc.) or the `add*Option(...)` method.
 - Matching key: a sheet option is linked to its target by `fieldName` (the `@PxlSheet` field name of the workbook class), and a column option by `fieldName` (the `@PxlColumn` field name of the row class).  
   If you omit a sheet option's `fieldName`, it applies to all sheets as a wildcard (`*`); the single-sheet form (`sheet(...)`) uses this approach.
-- Renaming at runtime: a sheet option overrides `@PxlSheet(name)` with `importSheetNames`/`exportSheetNames`, and a column option overrides `@PxlColumn(name)` with `importColumnNames`/`exportColumnNames` (a list, so aliases work the same as in the annotation).  
+- Renaming at runtime: a sheet option overrides `@PxlSheet(name)` with `exportSheetNames`/`importSheetNames`, and a column option overrides `@PxlColumn(name)` with `exportColumnNames`/`importColumnNames` (a list, so aliases work the same as in the annotation).  
   They replace the annotation `name`, so they are bundle keys as well — with i18n on, an overriding name is translated before it is matched or written (↓ [i18n](#i18n)).
 - Any level/field not specified follows the annotation value (or default if none).
 
@@ -693,20 +693,20 @@ Pxl.resetMessageLocale();               // revert to the JVM default locale
 
 ## i18n
 
-If you specify a `ResourceBundle` via `@PxlWorkbook`'s `import/exportI18nBaseName`, `import/exportI18nLanguage`, `import/exportI18nCountry`,
+If you specify a `ResourceBundle` via `@PxlWorkbook`'s `export/importI18nBaseName`, `export/importI18nLanguage`, `export/importI18nCountry`,
 sheet/column names are translated for matching/output (UTF-8 properties supported).  
 The `name` value of `@PxlColumn`/`@PxlSheet` becomes the bundle key. It is an ordinary `ResourceBundle` key, and the
 bundle is usually shared with the rest of the application, so namespace it (`staff.column.role`) instead of using a
 bare word that another message could collide with.
 
 i18n is disabled by default (opt-in).  
-It works only when `import/exportI18nBaseName` is explicitly specified (or a `ResourceBundle` is injected into the option); if the base name is empty, no bundle is loaded and the name is used as-is.  
+It works only when `export/importI18nBaseName` is explicitly specified (or a `ResourceBundle` is injected into the option); if the base name is empty, no bundle is loaded and the name is used as-is.  
 If a base name is specified but its `ResourceBundle` cannot be found, it fails with `PxlI18nException`.
 
 Instead of naming a base name, you can hand PXL a bundle you already hold, through the workbook option's
-`importResourceBundle`/`exportResourceBundle`.  
+`exportResourceBundle`/`importResourceBundle`.  
 An injected bundle takes precedence over the annotation: the
-`import/exportI18nBaseName`·`Language`·`Country` triple is not even loaded, so it cannot fail with `PxlI18nException`.  
+`export/importI18nBaseName`·`Language`·`Country` triple is not even loaded, so it cannot fail with `PxlI18nException`.  
 Use it when the bundle comes from somewhere the annotation cannot name — a container-managed `MessageSource`, or a
 locale chosen per request.
 
@@ -786,13 +786,13 @@ private List<String> roles;
 
 ## Row/Column Index Rules Within a Sheet
 
-Index attributes of `@PxlSheet` such as `importHeaderRowIndex`, `exportFirstDataColumnIndex` are all 1-based,
+Index attributes of `@PxlSheet` such as `exportFirstDataColumnIndex`, `importHeaderRowIndex` are all 1-based,
 and the default value `0` means auto (first/last automatic).
 
 | Attribute              | Default   | Constraint                                       |
 |------------------------|-----------|--------------------------------------------------|
 | `HeaderRowIndex`       | first row | Must be smaller than `FirstDataRowIndex`         |
-| `FirstDataRowIndex`    | second row | Greater than `HeaderRowIndex` and at most `LastDataRowIndex` |
+| `FirstDataRowIndex`    | row after the header | Greater than `HeaderRowIndex` and at most `LastDataRowIndex` |
 | `LastDataRowIndex`     | last row  | At least `FirstDataRowIndex`                      |
 | `FirstDataColumnIndex` | first column | At most `LastDataColumnIndex`                  |
 | `LastDataColumnIndex`  | last column | At least `FirstDataColumnIndex`                 |
@@ -849,8 +849,8 @@ private LocalTime startTime;
 private BigDecimal amount;
 ```
 
-> To use different formats for import/export, provide `importPattern` / `exportPattern` separately.  
-> For date/time, the format is not strictly enforced on import (parsed with the fixed ISO default pattern) but is enforced on export.  
+> To use different formats for export/import, provide `exportPattern` / `importPattern` separately.  
+> For date/time, the format is enforced on export but not strictly enforced on import (parsed with the fixed ISO default pattern).  
 > The default write pattern is ISO-8601, so the output of a value without a pattern is the same on any machine.  
 > The default read pattern of LocalDateTime accepts both `T` (`yyyy-MM-dd'T'HH:mm:ss`) and space (`yyyy-MM-dd HH:mm:ss`). 
 
@@ -859,7 +859,7 @@ private BigDecimal amount;
 ```java
 @PxlColumn(name = "Flag",
         exportTrueString = "Y", exportFalseString = "N",
-        importTrueString = "Y", importFalseString = "N")   // use the same values for import/export to round-trip
+        importTrueString = "Y", importFalseString = "N")   // use the same values for export/import to round-trip
 private Boolean flag;
 ```
 
@@ -882,7 +882,7 @@ private Grade grade;   // matched against the toString() override value or the c
 
 ### Column: Custom Object
 
-Put `@PxlImportConverter` (static, return type = target type) / `@PxlExportConverter` (instance or static, returns `String`).
+Put `@PxlExportConverter` (instance or static, returns `String`) / `@PxlImportConverter` (static, return type = target type).
 
 ```java
 @Getter                     // (optional) for your convenience — PXL converts this type through the converters below, so a getter is not required.
@@ -912,7 +912,7 @@ public class Money {
 private Money price;
 ```
 
-> Without a converter, import uses the single-argument `String` constructor and export uses the overridden `toString()`.
+> Without a converter, export uses the overridden `toString()` and import uses the single-argument `String` constructor.
 
 ### Column: Masking Export
 
@@ -1275,11 +1275,11 @@ List<Employee> rows = pxl.importExcel()
 - ✅ **Columns whose names do not match**  
   If required (`@NotNull`/`@NotEmpty`/`@NotBlank`), an exception is raised; if not required, it is silently excluded.
 - ✅ **Indices are 1-based**  
-  `importHeaderRowIndex`, `exportFirstDataColumnIndex`, etc., are all 1-based.  
+  `exportFirstDataColumnIndex`, `importHeaderRowIndex`, etc., are all 1-based.  
   The value received by `@PxlRowIndex` is likewise 1-based — the spreadsheet row number of the imported row.
 - ✅ **The default CSV encoding is `UTF-8`**  
-  Specify other encodings (`US-ASCII`·`MS949`·`EUC-KR`, etc.) with `importCsvCharset(...)`, or `exportCsvCharset(...)` when writing.
-  In the workbook form each sheet is its own file, so a sheet that differs from the rest can name its own `@PxlSheet(importCsvCharset)` / `(importCsvDelimiter)` — and, on the writing side, `(exportCsvCharset)` / `(exportCsvDelimiter)` / `(exportCsvBom)` — instead of forcing the whole workbook onto one setting.
+  Specify other encodings (`US-ASCII`·`MS949`·`EUC-KR`, etc.) with `exportCsvCharset(...)` when writing, or `importCsvCharset(...)` when reading.
+  In the workbook form each sheet is its own file, so a sheet that differs from the rest can name its own `@PxlSheet(exportCsvCharset)` / `(exportCsvDelimiter)` / `(exportCsvBom)` — and, on the reading side, `(importCsvCharset)` / `(importCsvDelimiter)` — instead of forcing the whole workbook onto one setting.
 - ✅ **A CSV export quotes only what needs quoting**  
   A value such as `"010"` or `"1E+10"` is written unquoted, so Excel reads it back as the number `10` or `1e10`. PXL reads it back as the string it was; the loss happens in the spreadsheet application, not in the file. There is no quoting-policy setting yet — write such values with a `pattern` if the display matters.
 - ✅ **`long` / `BigInteger` / `BigDecimal` precision**  

@@ -19,13 +19,12 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Codec for {@link LocalTime} column values - parses cells/strings into {@link LocalTime} on
- * import and writes {@link LocalTime} into cells on export.
+ * Codec for {@link LocalTime} column values - writes {@link LocalTime} into cells on export and
+ * parses cells/strings into {@link LocalTime} on import.
  *
- * <p>Import reads NUMERIC cells as Excel time fractions and strings via the column's cached
- * {@link DateTimeFormatter} (falling back to the built-in read formatters, then ISO-8601). A BOOLEAN cell
- * is rejected as an unsupported cell type. Export writes either a formatted string or a numeric Excel-time
- * cell.
+ * <p>Export writes either a formatted string or a numeric Excel-time cell. Import reads NUMERIC cells as
+ * Excel time fractions and strings via the column's cached {@link DateTimeFormatter} (falling back to the
+ * built-in read formatters, then ISO-8601); a BOOLEAN cell is rejected as an unsupported cell type.
  */
 final class PxlLocalTimeCodec {
 
@@ -35,6 +34,98 @@ final class PxlLocalTimeCodec {
     private PxlLocalTimeCodec() {
 
         throw new AssertionError("no instances of this class");
+    }
+
+    /**
+     * Writes the given value as a {@link LocalTime} cell and returns the exported string. A {@link String}
+     * source is parsed with the export formatter; a {@link LocalTime} source is used directly. A
+     * {@code null} result blanks the cell; otherwise the cell is written as a formatted string when
+     * exported to string, or as a numeric Excel-time cell when no pattern/masking applies.
+     *
+     * @param cell       the target cell, or {@code null} to only compute the string
+     * @param object     the source value (a {@link String} or {@link LocalTime})
+     * @param columnMeta the resolved export metadata for this column
+     * @return the exported string, or {@code null} when blank
+     * @throws PxlCellCodecException if the source is unsupported or the string is not a valid time
+     */
+    static String buildLocalTimeCell(final Cell cell,
+                                     final Object object,
+                                     final PxlExportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        DateTimeFormatter exportTimeFormatter = columnMeta.getExportDateTimeFormatterCache();
+        if (Objects.isNull(exportTimeFormatter)) {
+            exportTimeFormatter = PxlCodecConstants.localTimeWriteFormatter;
+        }
+
+        LocalTime localTimeValue;
+
+        if (object instanceof String) {
+            final String stringValue = (String) object;
+
+            if (StringUtils.isBlank(stringValue)) {
+                localTimeValue = null;
+            } else {
+                try {
+                    localTimeValue = LocalTime.parse(stringValue, exportTimeFormatter);
+                } catch (DateTimeParseException dateTimeParseException) {
+                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "LocalTime"), dateTimeParseException);
+                }
+            }
+        } else if (object instanceof LocalTime) {
+            localTimeValue = (LocalTime) object;
+        } else {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "LocalTime"));
+        }
+
+        if (Objects.isNull(localTimeValue)) {
+            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
+            return null;
+        } else {
+            final String cellString = makeLocalTimeExportString(localTimeValue, columnMeta);
+            if (Objects.nonNull(cell)) {
+                if (columnMeta.isExportedToString()) {
+                    cell.setCellValue(cellString);
+                } else {
+                    // When there is no pattern/masking, write it as a Numeric (Excel time fraction) cell rather than a string.
+                    PxlDateCellSupport.writeNumericTimeCell(cell, localTimeValue, columnMeta, PxlCodecConstants.localTimeExcelFormat);
+                }
+            }
+
+            return cellString;
+        }
+    }
+
+    /**
+     * Renders the export string for a {@link LocalTime}: formats it with the configured export {@link DateTimeFormatter}
+     * (or the built-in default write formatter when none is set), then applies string-level export processing via
+     * {@link PxlStringCodec#makeExportString}.
+     *
+     * @param localTimeValue the value to render
+     * @param columnMeta     resolved export metadata for the column
+     * @return the export string representation, or {@code null} when the value is {@code null}
+     * @throws PxlCellCodecException if the value cannot be formatted with the export formatter
+     */
+    private static String makeLocalTimeExportString(final LocalTime localTimeValue,
+                                                    final PxlExportColumnMeta columnMeta)
+            throws PxlCellCodecException {
+
+        if (Objects.isNull(localTimeValue)) {
+            return null;
+        }
+
+        DateTimeFormatter exportTimeFormatter = columnMeta.getExportDateTimeFormatterCache();
+        if (Objects.isNull(exportTimeFormatter)) {
+            exportTimeFormatter = PxlCodecConstants.localTimeWriteFormatter;
+        }
+
+        try {
+            final String stringValue = localTimeValue.format(exportTimeFormatter);
+
+            return PxlStringCodec.makeExportString(stringValue, columnMeta);
+        } catch (DateTimeException dateTimeException) {
+            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(localTimeValue), "LocalTime"), dateTimeException);
+        }
     }
 
     /**
@@ -133,98 +224,6 @@ final class PxlLocalTimeCodec {
         }
 
         throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_IMPORT_PARSE_INVALID, String.valueOf(stringValue), "LocalTime"));
-    }
-
-    /**
-     * Writes the given value as a {@link LocalTime} cell and returns the exported string. A {@link String}
-     * source is parsed with the export formatter; a {@link LocalTime} source is used directly. A
-     * {@code null} result blanks the cell; otherwise the cell is written as a formatted string when
-     * exported to string, or as a numeric Excel-time cell when no pattern/masking applies.
-     *
-     * @param cell       the target cell, or {@code null} to only compute the string
-     * @param object     the source value (a {@link String} or {@link LocalTime})
-     * @param columnMeta the resolved export metadata for this column
-     * @return the exported string, or {@code null} when blank
-     * @throws PxlCellCodecException if the source is unsupported or the string is not a valid time
-     */
-    static String buildLocalTimeCell(final Cell cell,
-                                     final Object object,
-                                     final PxlExportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        DateTimeFormatter exportTimeFormatter = columnMeta.getExportDateTimeFormatterCache();
-        if (Objects.isNull(exportTimeFormatter)) {
-            exportTimeFormatter = PxlCodecConstants.localTimeWriteFormatter;
-        }
-
-        LocalTime localTimeValue;
-
-        if (object instanceof String) {
-            final String stringValue = (String) object;
-
-            if (StringUtils.isBlank(stringValue)) {
-                localTimeValue = null;
-            } else {
-                try {
-                    localTimeValue = LocalTime.parse(stringValue, exportTimeFormatter);
-                } catch (DateTimeParseException dateTimeParseException) {
-                    throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(stringValue), "LocalTime"), dateTimeParseException);
-                }
-            }
-        } else if (object instanceof LocalTime) {
-            localTimeValue = (LocalTime) object;
-        } else {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_CONVERT_UNSUPPORTED, object.getClass().getSimpleName(), "LocalTime"));
-        }
-
-        if (Objects.isNull(localTimeValue)) {
-            Optional.ofNullable(cell).ifPresent(Cell::setBlank);
-            return null;
-        } else {
-            final String cellString = makeLocalTimeExportString(localTimeValue, columnMeta);
-            if (Objects.nonNull(cell)) {
-                if (columnMeta.isExportedToString()) {
-                    cell.setCellValue(cellString);
-                } else {
-                    // When there is no pattern/masking, write it as a Numeric (Excel time fraction) cell rather than a string.
-                    PxlDateCellSupport.writeNumericTimeCell(cell, localTimeValue, columnMeta, PxlCodecConstants.localTimeExcelFormat);
-                }
-            }
-
-            return cellString;
-        }
-    }
-
-    /**
-     * Renders the export string for a {@link LocalTime}: formats it with the configured export {@link DateTimeFormatter}
-     * (or the built-in default write formatter when none is set), then applies string-level export processing via
-     * {@link PxlStringCodec#makeExportString}.
-     *
-     * @param localTimeValue the value to render
-     * @param columnMeta     resolved export metadata for the column
-     * @return the export string representation, or {@code null} when the value is {@code null}
-     * @throws PxlCellCodecException if the value cannot be formatted with the export formatter
-     */
-    private static String makeLocalTimeExportString(final LocalTime localTimeValue,
-                                                    final PxlExportColumnMeta columnMeta)
-            throws PxlCellCodecException {
-
-        if (Objects.isNull(localTimeValue)) {
-            return null;
-        }
-
-        DateTimeFormatter exportTimeFormatter = columnMeta.getExportDateTimeFormatterCache();
-        if (Objects.isNull(exportTimeFormatter)) {
-            exportTimeFormatter = PxlCodecConstants.localTimeWriteFormatter;
-        }
-
-        try {
-            final String stringValue = localTimeValue.format(exportTimeFormatter);
-
-            return PxlStringCodec.makeExportString(stringValue, columnMeta);
-        } catch (DateTimeException dateTimeException) {
-            throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_PARSE_INVALID, String.valueOf(localTimeValue), "LocalTime"), dateTimeException);
-        }
     }
 
 }

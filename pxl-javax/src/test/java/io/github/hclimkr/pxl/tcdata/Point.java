@@ -4,7 +4,7 @@ import lombok.*;
 
 /**
  * Custom object type.
- * Import round-trips via a single-arg String constructor, export via the overridden toString.
+ * Export goes through the overridden toString, import round-trips via a single-arg String constructor.
  */
 @Getter
 @Setter
