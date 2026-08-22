@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-08-22
+
 ### Added
 
 - **`java.util.UUID` is now a supported column type, in both directions and in all four paths** (Excel import,
@@ -374,7 +376,8 @@ First public release.
 - Around 30 built-in field-type codecs (numbers, `BigInteger`/`BigDecimal`, full `java.time` including
   zoned/offset/`Duration`/`Period`, enums, collections, and custom objects), with per-column custom converters.
 
-[Unreleased]: https://github.com/hclimkr/pxl/compare/v0.9.4...HEAD
+[Unreleased]: https://github.com/hclimkr/pxl/compare/v0.9.5...HEAD
+[0.9.5]: https://github.com/hclimkr/pxl/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/hclimkr/pxl/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/hclimkr/pxl/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/hclimkr/pxl/compare/v0.9.1...v0.9.2

@@ -92,7 +92,7 @@ List<Employee> employees = pxl.importExcel()
 <dependency>
     <groupId>io.github.hclimkr</groupId>
     <artifactId>pxl-javax</artifactId>
-    <version>0.9.4</version>
+    <version>0.9.5</version>
 </dependency>
 ```
 
@@ -101,7 +101,7 @@ List<Employee> employees = pxl.importExcel()
 <dependency>
     <groupId>io.github.hclimkr</groupId>
     <artifactId>pxl-jakarta</artifactId>
-    <version>0.9.4</version>
+    <version>0.9.5</version>
 </dependency>
 ```
 
@@ -109,12 +109,12 @@ List<Employee> employees = pxl.importExcel()
 
 ```groovy
 // javax 변형 (Java 8+)
-implementation 'io.github.hclimkr:pxl-javax:0.9.4'
+implementation 'io.github.hclimkr:pxl-javax:0.9.5'
 ```
 
 ```groovy
 // jakarta 변형 (Java 17+)
-implementation 'io.github.hclimkr:pxl-jakarta:0.9.4'
+implementation 'io.github.hclimkr:pxl-jakarta:0.9.5'
 ```
 
 ---
