@@ -40,8 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Regression tests verifying that previously fixed issues remain fixed.
  * <p>
- * Each test corresponds to a "fixed" item in {@code .claude_doc/pxl-issues-and-history.md} and fails to catch
- * any side effect (bug reintroduction) caused by source refactoring.
+ * Each test corresponds to one such fix and fails to catch any side effect (bug reintroduction) caused by
+ * source refactoring.
  * <p>
  * A fix has to hold on every terminal, so each test that exports is swept across {@link ExportDest}. The
  * import-only ones build their input with raw POI or a CSV string and never export at all.
