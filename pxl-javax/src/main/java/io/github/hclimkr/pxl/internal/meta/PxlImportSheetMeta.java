@@ -220,7 +220,7 @@ public final class PxlImportSheetMeta {
             final Class<? extends Collection<?>> rowConcreteCollectionClass = PxlClassSupport.getConcreteCollectionClass(rowCollectionClass);
 
             // Get the generic class of the Collection.
-            final Class<?> rowClass = PxlReflectionSupport.getParameterizedArgument0(sheetField);
+            final Class<?> rowClass = PxlReflectionSupport.getFirstTypeArgument(sheetField);
 
             final PxlImportSheetOption sheetOption = Optional.ofNullable(sheetOptions)
                     .flatMap(options -> options.stream()

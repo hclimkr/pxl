@@ -71,7 +71,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
         final boolean exportDataValidation = workbookMeta.isExportDataValidation();
         if (exportDataValidation && Objects.nonNull(validator)) {
-            validateDataConstraint(validator, workbookObject, null, null);
+            validateBeanConstraints(validator, workbookObject, null, null);
         }
 
         final List<PxlExportSheetOption> sheetOptions = workbookMeta.getExportSheetOptions();
@@ -95,7 +95,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
             final Collection<?> rowObjects = getRowObjects(sheetMeta.getSheetField(), workbookObject);
 
             if (exportDataValidation && Objects.nonNull(validator) && Objects.nonNull(rowObjects)) {
-                validateDataConstraint(validator, rowObjects, sheetMeta.getActualExportSheetName(), null);
+                validateBeanConstraints(validator, rowObjects, sheetMeta.getActualExportSheetName(), null);
             }
 
             buildSheet(sheetMeta, rowObjects);
@@ -159,7 +159,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
 
         final boolean exportDataValidation = workbookMeta.isExportDataValidation();
         if (exportDataValidation && Objects.nonNull(validator)) {
-            validateDataConstraint(validator, rowObjects, null, null);
+            validateBeanConstraints(validator, rowObjects, null, null);
         }
 
         final Workbook workbook = workbookMeta.getWorkbook();
@@ -250,7 +250,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         final boolean exportDataValidation = workbookMeta.isExportDataValidation();
         if (exportDataValidation && Objects.nonNull(validator)) {
             for (final Collection<?> rowObjects : sheetObjects) {
-                validateDataConstraint(validator, rowObjects, null, null);
+                validateBeanConstraints(validator, rowObjects, null, null);
             }
         }
 
@@ -441,7 +441,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         final int numOfSheets = workbookMeta.getWorkbook().getNumberOfSheets();
         final int maxNumOfSheets = workbookMeta.getExportFileFormat().getMaxExportSheets();
 
-        resolveExportRowIndices(sheetMeta, numOfObjects);
+        applyExportRowIndices(sheetMeta, numOfObjects);
         final int actualExportOriginDataRowIndex = sheetMeta.getActualExportOriginDataRowIndex();
         final int actualExportBoundDataRowIndex = sheetMeta.getActualExportBoundDataRowIndex();
 
@@ -498,7 +498,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
                     throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_EXPORT_SHEET_ROW_COUNT_EXCEEDED, uniqueSheetName, String.valueOf(maxNumOfRows)));
                 }
 
-                buildSheetInternally(sheetMeta, uniqueSheetName, groupRowObjects);
+                buildPhysicalSheet(sheetMeta, uniqueSheetName, groupRowObjects);
             }
         } else {
             // Earlier group expansion may have already reached the workbook limit, so check before creating a non-group sheet too.
@@ -506,7 +506,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
                 throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_SHEET_COUNT_EXCEEDED, String.valueOf(maxNumOfSheets)));
             }
 
-            buildSheetInternally(sheetMeta, sheetMeta.getActualExportSheetName(), rowObjects);
+            buildPhysicalSheet(sheetMeta, sheetMeta.getActualExportSheetName(), rowObjects);
         }
     }
 
@@ -520,9 +520,9 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      * @param rowObjects the row objects to write into this physical sheet
      * @throws PxlCellCodecException if a cell value cannot be encoded
      */
-    private static void buildSheetInternally(final PxlExportSheetMeta sheetMeta,
-                                             final String sheetName,
-                                             final Collection<?> rowObjects)
+    private static void buildPhysicalSheet(final PxlExportSheetMeta sheetMeta,
+                                           final String sheetName,
+                                           final Collection<?> rowObjects)
             throws PxlCellCodecException {
 
         final PxlExportWorkbookMeta workbookMeta = sheetMeta.getWorkbookMeta();
@@ -545,7 +545,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         // Create a sheet using the given name.
         final Sheet sheet = workbookMeta.getWorkbook().createSheet(WorkbookUtil.createSafeSheetName(sheetName));
 
-        preBuildRows(sheet, sheetMeta, rowObjects);
+        prepareSheetBeforeRows(sheet, sheetMeta, rowObjects);
 
         // Create the header row as the first row.
         buildHeaderRow(sheet, columnMetas, actualExportHeaderRowIndex);
@@ -569,7 +569,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         // So that the auto-filter/dropdown range matches the rows actually written, apply this sheet's real bound only during post-processing and then restore it.
         // (In a group export, sheetInfo's bound is based on the total row count, so it must be restored for the next group's loop.)
         sheetMeta.setActualExportBoundDataRowIndex(actualWrittenBoundDataRowIndex);
-        postBuildRows(sheet, sheetMeta);
+        finishSheetAfterRows(sheet, sheetMeta);
         sheetMeta.setActualExportBoundDataRowIndex(actualExportBoundDataRowIndex);
     }
 
@@ -590,7 +590,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         final PxlExportWorkbookMeta workbookMeta = sheetMeta.getWorkbookMeta();
 
         // A sample sheet always carries exactly one data row, so the declared data bound plays no part here.
-        resolveExportRowIndices(sheetMeta, 1);
+        applyExportRowIndices(sheetMeta, 1);
         final int actualExportHeaderRowIndex = sheetMeta.getActualExportHeaderRowIndex();
         final int actualExportOriginDataRowIndex = sheetMeta.getActualExportOriginDataRowIndex();
 
@@ -607,7 +607,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         final Sheet sheet = workbookMeta.getWorkbook().createSheet(WorkbookUtil.createSafeSheetName(sheetMeta.getActualExportSheetName()));
 
         // A sample sheet carries one image per picture column, whatever the column's type.
-        preBuildRows(sheet, sheetMeta, null);
+        prepareSheetBeforeRows(sheet, sheetMeta, null);
 
         // Create the header row as the first row.
         buildHeaderRow(sheet, columnMetas, actualExportHeaderRowIndex);
@@ -615,7 +615,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         buildSampleRow(sheet, columnMetas, actualExportOriginDataRowIndex);
 
         sheetMeta.setActualExportBoundDataRowIndex(actualExportOriginDataRowIndex + 1); // exclusive
-        postBuildRows(sheet, sheetMeta);
+        finishSheetAfterRows(sheet, sheetMeta);
     }
 
     /**
@@ -790,9 +790,9 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      * @param rowObjects the row objects about to be written, used to size the picture columns; {@code null}
      *                   for a sample sheet, which carries one picture per column
      */
-    private static void preBuildRows(final Sheet sheet,
-                                     final PxlExportSheetMeta sheetMeta,
-                                     final Collection<?> rowObjects) {
+    private static void prepareSheetBeforeRows(final Sheet sheet,
+                                               final PxlExportSheetMeta sheetMeta,
+                                               final Collection<?> rowObjects) {
 
         final List<PxlExportColumnMeta> columnMetas = sheetMeta.getExportColumnMetas();
 
@@ -826,18 +826,18 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      * @param sheet     the sheet being built
      * @param sheetMeta the resolved sheet meta providing the column metas and options
      */
-    private static void postBuildRows(final Sheet sheet,
-                                      final PxlExportSheetMeta sheetMeta) {
+    private static void finishSheetAfterRows(final Sheet sheet,
+                                             final PxlExportSheetMeta sheetMeta) {
 
         final List<PxlExportColumnMeta> columnMetas = sheetMeta.getExportColumnMetas();
 
         // Set a filter on all columns.
         if (sheetMeta.isExportColumnFilter()) {
-            showColumnFilter(sheet, sheetMeta);
+            setColumnFilter(sheet, sheetMeta);
         }
 
         // Set a dropdown list on Enum-typed columns.
-        showDropDownList(sheet, sheetMeta);
+        setDropDownList(sheet, sheetMeta);
 
         // Adjust the column widths.
         fitColumnWidth(sheet, columnMetas);
@@ -849,8 +849,8 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      * @param sheet     the sheet being built
      * @param sheetMeta the resolved sheet meta providing the header/data row and column bounds
      */
-    private static void showColumnFilter(final Sheet sheet,
-                                         final PxlExportSheetMeta sheetMeta) {
+    private static void setColumnFilter(final Sheet sheet,
+                                        final PxlExportSheetMeta sheetMeta) {
 
         final int firstRowIndex = Math.min(sheetMeta.getActualExportHeaderRowIndex(), sheetMeta.getActualExportOriginDataRowIndex());
         final int lastRowIndex = sheetMeta.getActualExportBoundDataRowIndex() - 1;        // inclusive
@@ -869,8 +869,8 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      * @param sheet     the sheet being built
      * @param sheetMeta the resolved sheet meta providing the column metas and data-row bounds
      */
-    private static void showDropDownList(final Sheet sheet,
-                                         final PxlExportSheetMeta sheetMeta) {
+    private static void setDropDownList(final Sheet sheet,
+                                        final PxlExportSheetMeta sheetMeta) {
 
         final List<PxlExportColumnMeta> columnMetas = sheetMeta.getExportColumnMetas();
 
@@ -995,7 +995,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
             if (columnClass == String.class) {
                 horizontalImageNum = 1;
             } else if (PxlClassSupport.isCollectionClass(columnClass)) {
-                horizontalImageNum = countWidestPictureRow(columnField, rowObjects);
+                horizontalImageNum = countMaxPicturesInRow(columnField, rowObjects);
             } else {
                 continue;
             }
@@ -1022,7 +1022,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
      * @param rowObjects  the row objects about to be written, may be {@code null} or empty
      * @return the number of images to leave room for, between one and {@code EXPORT_HORIZONTAL_NUMBER_OF_PICTURE}
      */
-    private static int countWidestPictureRow(final Field columnField,
+    private static int countMaxPicturesInRow(final Field columnField,
                                              final Collection<?> rowObjects) {
 
         int widest = 1;

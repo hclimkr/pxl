@@ -76,7 +76,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
 
         final boolean exportDataValidation = workbookMeta.isExportDataValidation();
         if (exportDataValidation && Objects.nonNull(validator)) {
-            validateDataConstraint(validator, rowObjects, null, null);
+            validateBeanConstraints(validator, rowObjects, null, null);
         }
 
         final PxlExportSheetMeta sheetMeta = makeSheetMeta(sheetName, rowObjects.getClass(), rowClass, workbookMeta);
@@ -93,7 +93,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
 
         final int numOfObjects = PxlCollectionUtils.size(rowObjects);
 
-        resolveExportRowIndices(sheetMeta, numOfObjects);
+        applyExportRowIndices(sheetMeta, numOfObjects);
         final int actualExportHeaderRowIndex = sheetMeta.getActualExportHeaderRowIndex();
         final int actualExportOriginDataRowIndex = sheetMeta.getActualExportOriginDataRowIndex();
         final int actualExportBoundDataRowIndex = sheetMeta.getActualExportBoundDataRowIndex();
@@ -178,7 +178,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
         }
 
         // A sample always carries exactly one data row, so the declared data bound plays no part.
-        resolveExportRowIndices(sheetMeta, 1);
+        applyExportRowIndices(sheetMeta, 1);
         final int actualExportHeaderRowIndex = sheetMeta.getActualExportHeaderRowIndex();
         final int actualExportOriginDataRowIndex = sheetMeta.getActualExportOriginDataRowIndex();
 

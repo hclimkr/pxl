@@ -30,10 +30,10 @@ abstract class PxlAbstractBinder {
      * @param rowIndex  the row index reported in the thrown exception (may be {@code null})
      * @throws PxlValidationException if one or more constraints are violated; the message concatenates the distinct violation messages
      */
-    protected static void validateDataConstraint(final Validator validator,
-                                                 final Object object,
-                                                 final String sheetName,
-                                                 final Integer rowIndex)
+    protected static void validateBeanConstraints(final Validator validator,
+                                                  final Object object,
+                                                  final String sheetName,
+                                                  final Integer rowIndex)
             throws PxlValidationException {
 
         if (Objects.isNull(validator) || Objects.isNull(object)) {
@@ -62,10 +62,10 @@ abstract class PxlAbstractBinder {
      * @param rowIndex  the row index reported in the thrown exception (may be {@code null})
      * @throws PxlValidationException if any element violates a constraint
      */
-    protected static void validateDataConstraint(final Validator validator,
-                                                 final Collection<?> objects,
-                                                 final String sheetName,
-                                                 final Integer rowIndex)
+    protected static void validateBeanConstraints(final Validator validator,
+                                                  final Collection<?> objects,
+                                                  final String sheetName,
+                                                  final Integer rowIndex)
             throws PxlValidationException {
 
         if (Objects.isNull(validator) || PxlCollectionUtils.isEmpty(objects)) {
@@ -76,7 +76,7 @@ abstract class PxlAbstractBinder {
         // final Set<ConstraintViolation<Collection<Object>>> violations = validator.validate(objects);
 
         for (final Object object : objects) {
-            validateDataConstraint(validator, object, sheetName, rowIndex);
+            validateBeanConstraints(validator, object, sheetName, rowIndex);
         }
     }
 

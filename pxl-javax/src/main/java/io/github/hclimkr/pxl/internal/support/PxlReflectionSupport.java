@@ -324,7 +324,7 @@ public final class PxlReflectionSupport {
      * @return the first type argument as a concrete class
      * @throws PxlReflectionException when the field is a raw type or its first type argument is not a concrete class
      */
-    public static Class<?> getParameterizedArgument0(final Field field)
+    public static Class<?> getFirstTypeArgument(final Field field)
             throws PxlReflectionException {
 
         final Type genericType = field.getGenericType();

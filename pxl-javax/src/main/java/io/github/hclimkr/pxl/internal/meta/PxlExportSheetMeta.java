@@ -267,7 +267,7 @@ public final class PxlExportSheetMeta {
                     (Class<? extends Collection<?>>) sheetField.getType();
 
             // Get the generic class of the Collection.
-            final Class<?> rowClass = PxlReflectionSupport.getParameterizedArgument0(sheetField);
+            final Class<?> rowClass = PxlReflectionSupport.getFirstTypeArgument(sheetField);
 
             final PxlExportSheetOption sheetOption = Optional.ofNullable(sheetOptions)
                     .flatMap(options -> options.stream()

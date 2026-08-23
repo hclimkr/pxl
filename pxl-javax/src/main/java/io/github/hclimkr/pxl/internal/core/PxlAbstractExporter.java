@@ -25,8 +25,8 @@ abstract class PxlAbstractExporter extends PxlAbstractBinder {
      * @param sheetMeta    the sheet meta carrying the declared indices and receiving the resolved ones
      * @param numOfObjects the number of row objects available to write
      */
-    protected static void resolveExportRowIndices(final PxlExportSheetMeta sheetMeta,
-                                                  final int numOfObjects) {
+    protected static void applyExportRowIndices(final PxlExportSheetMeta sheetMeta,
+                                                final int numOfObjects) {
 
         final int defaultHeaderRowIndex = 0;
 

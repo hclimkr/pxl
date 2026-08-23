@@ -27,8 +27,8 @@ abstract class PxlAbstractImporter extends PxlAbstractBinder {
      * @param workbookName   the name to set (may be {@code null})
      * @throws PxlNullPointerException if {@code workbookObject} is {@code null}
      */
-    protected static void setWorkbookNameToWorkbookObject(final Object workbookObject,
-                                                          @Nullable final String workbookName)
+    protected static void injectWorkbookName(final Object workbookObject,
+                                             @Nullable final String workbookName)
             throws PxlNullPointerException {
 
         PxlAssertSupport.notNull(workbookObject, "workbookObject");

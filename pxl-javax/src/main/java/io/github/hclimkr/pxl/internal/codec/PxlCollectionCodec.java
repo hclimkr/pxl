@@ -59,7 +59,7 @@ final class PxlCollectionCodec {
                                       final PxlExportColumnMeta columnMeta)
             throws PxlReflectionException, PxlCellCodecException, PxlArgumentException {
 
-        final Class<?> elementClass = PxlReflectionSupport.getParameterizedArgument0(columnMeta.getColumnField());
+        final Class<?> elementClass = PxlReflectionSupport.getFirstTypeArgument(columnMeta.getColumnField());
 
         Collection<?> collectionObject;
         if (object instanceof String) {
@@ -126,7 +126,7 @@ final class PxlCollectionCodec {
                 strings.add(PxlUuidCodec.buildUuidCell(null, element, columnMeta));
             } else if (elementClass.isEnum()) {
                 strings.add(PxlEnumCodec.buildEnumCell(null, element, columnMeta));
-            } else if (columnMeta.isExportCustomConvertable()) {
+            } else if (columnMeta.isExportCustomConvertible()) {
                 strings.add(PxlObjectCodec.buildObjectCell(null, element, columnMeta));
             } else {
                 throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_ELEMENT_TYPE_UNSUPPORTED, String.valueOf(element.getClass().getSimpleName())));
@@ -189,7 +189,7 @@ final class PxlCollectionCodec {
             throws PxlReflectionException, PxlCellCodecException {
 
         final Class<?> collectionClass = columnMeta.getColumnClass();
-        final Class<?> elementClass = PxlReflectionSupport.getParameterizedArgument0(columnMeta.getColumnField());
+        final Class<?> elementClass = PxlReflectionSupport.getFirstTypeArgument(columnMeta.getColumnField());
 
         if (StringUtils.isEmpty(collectionStringValue)) {
             return null;
@@ -291,7 +291,7 @@ final class PxlCollectionCodec {
             for (final String s : strings) {
                 valueObjects.add(PxlEnumCodec.parseEnumValue(s, columnMeta));
             }
-        } else if (columnMeta.isImportCustomConvertable()) {
+        } else if (columnMeta.isImportCustomConvertible()) {
             for (final String s : strings) {
                 valueObjects.add(PxlObjectCodec.parseObjectValue(s, columnMeta));
             }

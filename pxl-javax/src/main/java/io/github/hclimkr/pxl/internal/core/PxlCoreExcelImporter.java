@@ -71,7 +71,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
 
         // Set the name on the sheet-name field.
         if (Objects.nonNull(workbookName)) {
-            setWorkbookNameToWorkbookObject(workbookObject, workbookName);
+            injectWorkbookName(workbookObject, workbookName);
         }
 
         final List<PxlImportSheetMeta> sheetMetas = PxlImportSheetMeta.makeImportSheetMetas(workbookClass, workbookMeta, sheetOptions);
@@ -86,7 +86,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
             }
         }
 
-        readSheetsFromWorkbook(workbook, workbookMeta, sheetMetas);
+        resolveAllSheetsFromWorkbook(workbook, workbookMeta, sheetMetas);
 
         final FormulaEvaluator formulaEvaluator = PxlWorkbookUtils.createFormulaEvaluator(workbook);
 
@@ -104,7 +104,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
 
         final boolean importDataValidation = workbookMeta.isImportDataValidation();
         if (importDataValidation && Objects.nonNull(validator)) {
-            validateDataConstraint(validator, workbookObject, null, null);
+            validateBeanConstraints(validator, workbookObject, null, null);
         }
 
         return workbookObject;
@@ -153,7 +153,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
             }
         }
 
-        readSheetFromWorkbook(workbook, sheetMeta);
+        resolveSheetFromWorkbook(workbook, sheetMeta);
 
         final FormulaEvaluator formulaEvaluator = PxlWorkbookUtils.createFormulaEvaluator(workbook);
 
@@ -172,9 +172,9 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
      * @param sheetMetas   the sheet metas to resolve against the workbook's sheets
      * @throws PxlDataException if the workbook exceeds the maximum sheet count, or a required or duplicate sheet check fails
      */
-    private static void readSheetsFromWorkbook(final Workbook workbook,
-                                               final PxlImportWorkbookMeta workbookMeta,
-                                               final List<PxlImportSheetMeta> sheetMetas)
+    private static void resolveAllSheetsFromWorkbook(final Workbook workbook,
+                                                     final PxlImportWorkbookMeta workbookMeta,
+                                                     final List<PxlImportSheetMeta> sheetMetas)
             throws PxlDataException {
 
         final int numOfSheets = workbook.getNumberOfSheets();
@@ -184,7 +184,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
         }
 
         for (final PxlImportSheetMeta sheetMeta : sheetMetas) {
-            readSheetFromWorkbook(workbook, sheetMeta);
+            resolveSheetFromWorkbook(workbook, sheetMeta);
         }
     }
 
@@ -196,8 +196,8 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
      * @param sheetMeta the sheet meta to resolve; its actual index/name are set on match
      * @throws PxlDataException if the sheet appears more than once, or a required sheet is missing
      */
-    private static void readSheetFromWorkbook(final Workbook workbook,
-                                              final PxlImportSheetMeta sheetMeta)
+    private static void resolveSheetFromWorkbook(final Workbook workbook,
+                                                 final PxlImportSheetMeta sheetMeta)
             throws PxlDataException {
 
         if (!sheetMeta.isImportEnabled()) {
@@ -397,7 +397,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
                 }
 
                 if (importDataValidation && Objects.nonNull(validator)) {
-                    validateDataConstraint(validator, rowObject, sheetName, rowIndex);
+                    validateBeanConstraints(validator, rowObject, sheetName, rowIndex);
                 }
 
                 rowObjects.add(rowObject);

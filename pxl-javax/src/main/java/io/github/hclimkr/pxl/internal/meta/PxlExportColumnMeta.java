@@ -213,7 +213,7 @@ public final class PxlExportColumnMeta {
             if (StringUtils.isNotBlank(exportPattern)) {
                 // For a Collection column, the element type is the target of the pattern.
                 final Class<?> patternTargetClass = PxlClassSupport.isCollectionClass(this.columnClass)
-                        ? PxlReflectionSupport.getParameterizedArgument0(this.columnField)
+                        ? PxlReflectionSupport.getFirstTypeArgument(this.columnField)
                         : this.columnClass;
 
                 if (PxlClassSupport.isNumberClass(patternTargetClass)) {
@@ -239,12 +239,12 @@ public final class PxlExportColumnMeta {
 
             final Class<?> targetClass;
             if (PxlClassSupport.isCollectionClass(this.columnClass)) {
-                targetClass = PxlReflectionSupport.getParameterizedArgument0(this.columnField);
+                targetClass = PxlReflectionSupport.getFirstTypeArgument(this.columnField);
             } else {
                 targetClass = this.columnClass;
             }
 
-            if (PxlClassSupport.isCustomConvertableClass(targetClass)) {
+            if (PxlClassSupport.isCustomConvertibleClass(targetClass)) {
                 this.exportCustomConverterMeta = PxlExportConverterMeta.of(targetClass);
             }
         }
@@ -266,7 +266,7 @@ public final class PxlExportColumnMeta {
      *
      * @return {@code true} if a custom export converter is resolved for this column
      */
-    public boolean isExportCustomConvertable() {
+    public boolean isExportCustomConvertible() {
 
         return Objects.nonNull(exportCustomConverterMeta);
     }
@@ -583,7 +583,7 @@ public final class PxlExportColumnMeta {
             throws PxlReflectionException {
 
         return PxlClassSupport.isCollectionClass(columnField.getType())
-                ? PxlReflectionSupport.getParameterizedArgument0(columnField)
+                ? PxlReflectionSupport.getFirstTypeArgument(columnField)
                 : columnField.getType();
     }
 

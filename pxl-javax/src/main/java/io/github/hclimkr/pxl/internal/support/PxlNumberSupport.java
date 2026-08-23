@@ -225,7 +225,7 @@ public final class PxlNumberSupport {
      * @return the value as a {@link BigDecimal} when it is finite
      * @throws PxlCellCodecException when the value is NaN or Infinity
      */
-    public static BigDecimal requireFinite(final double value, final String typeName)
+    public static BigDecimal requireFiniteAsBigDecimal(final double value, final String typeName)
             throws PxlCellCodecException {
 
         requireFiniteForImport(value, typeName);

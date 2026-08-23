@@ -293,7 +293,7 @@ public final class PxlClassSupport {
      * @param clazz the type to test
      * @return {@code true} if the type is an enum or a custom type
      */
-    public static boolean isCustomConvertableClass(final Class<?> clazz) {
+    public static boolean isCustomConvertibleClass(final Class<?> clazz) {
 
         return clazz.isEnum() || PxlClassSupport.isCustomClass(clazz);
     }

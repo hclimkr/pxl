@@ -147,7 +147,7 @@ final class PxlBigIntegerCodec {
         switch (cellType) {
             case NUMERIC:
                 final double numericValue = cell.getNumericCellValue();
-                bigIntegerValue = PxlNumberSupport.requireFinite(numericValue, "BigInteger").toBigInteger();
+                bigIntegerValue = PxlNumberSupport.requireFiniteAsBigDecimal(numericValue, "BigInteger").toBigInteger();
                 break;
 
             case STRING:

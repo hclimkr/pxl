@@ -16,7 +16,7 @@ import java.lang.reflect.Type;
  *
  * @param <T> the captured type
  * @deprecated The binder resolves a collection field's element type straight from the declared field instead, via
- * {@link PxlReflectionSupport#getParameterizedArgument0(Field)}, so nothing in PXL creates one of
+ * {@link PxlReflectionSupport#getFirstTypeArgument(Field)}, so nothing in PXL creates one of
  * these any more. Kept only so that any outside caller still compiles; it may be removed in a future release.
  */
 @Deprecated

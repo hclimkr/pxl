@@ -17,7 +17,8 @@ import java.util.Optional;
  * Codec for {@link Boolean} column values - writes {@link Boolean} into cells on export and parses
  * cells/strings into {@link Boolean} on import.
  *
- * <p>Export renders the value with the column's export true/false/null strings. On import, NUMERIC cells
+ * <p>Export renders the value with the column's export true/false strings and then applies the column's
+ * export trim and masking options to that text. On import, NUMERIC cells
  * are {@code true} when non-zero; STRING cells honour the column's import true/false strings (matched
  * case-insensitively) before falling back to {@link BooleanUtils#toBooleanObject}; BLANK/blank values map
  * to {@code null}.
@@ -35,8 +36,8 @@ final class PxlBooleanCodec {
     /**
      * Writes the given value as a {@link Boolean} cell and returns the exported string. A {@link String}
      * source is parsed via {@link BooleanUtils#toBooleanObject}; a {@link Boolean} source is used directly.
-     * A {@code null} result blanks the cell; otherwise the column's export true/false/null strings are
-     * written.
+     * A {@code null} result blanks the cell; otherwise the column's export true/false strings are written,
+     * after the column's export trim and masking options are applied to them.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
      * @param object     the source value (a {@link String} or {@link Boolean})

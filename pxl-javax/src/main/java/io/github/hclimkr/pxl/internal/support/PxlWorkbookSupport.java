@@ -479,7 +479,7 @@ public final class PxlWorkbookSupport {
      * @throws IOException if the file cannot be read
      */
     @Deprecated
-    private static boolean isXLSX(final File file)
+    private static boolean isXlsx(final File file)
             throws IOException {
 
         return FileMagic.OOXML.equals(FileMagic.valueOf(file));
@@ -493,7 +493,7 @@ public final class PxlWorkbookSupport {
      * @throws IOException if the stream cannot be read
      */
     @Deprecated
-    private static boolean isXLSX(final InputStream is)
+    private static boolean isXlsx(final InputStream is)
             throws IOException {
 
         return FileMagic.OOXML.equals(FileMagic.valueOf(is));

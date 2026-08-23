@@ -877,7 +877,7 @@ public class PxlTypeConversionTests {
 
     @Test
     public void bigTypes_largeFiniteNumericCell_beyondLongRange_imports() throws Exception {
-        // requireFinite has no range check - a finite NUMERIC value far beyond the Long range (~9.2e18) must also
+        // requireFiniteAsBigDecimal has no range check - a finite NUMERIC value far beyond the Long range (~9.2e18) must also
         // import correctly as BigInteger/BigDecimal (if the unification misroutes Big* to the range overload, this test breaks).
         final byte[] bytes = sheet("Big", s -> {
             final Row header = s.createRow(0);

@@ -85,7 +85,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
         // Set the name on the sheet-name field.
         if (Objects.nonNull(workbookName)) {
-            setWorkbookNameToWorkbookObject(workbookObject, workbookName);
+            injectWorkbookName(workbookObject, workbookName);
         }
 
         final PxlImportWorkbookMeta workbookMeta = PxlImportWorkbookMeta.makeImportWorkbookMeta(workbookClass, workbookOption);
@@ -95,7 +95,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
         final List<PxlImportSheetMeta> sheetMetas = PxlImportSheetMeta.makeImportSheetMetas(workbookClass, workbookMeta, sheetOptions);
         workbookMeta.addImportSheetMetas(sheetMetas);
 
-        readSheetsFromCsv(csvNames, csvStreams, sheetMetas);
+        resolveAllSheetsFromCsv(csvNames, csvStreams, sheetMetas);
 
         for (final PxlImportSheetMeta sheetMeta : sheetMetas) {
             // Reference the sheet that uses the given name.
@@ -119,7 +119,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
 
         final boolean importDataValidation = workbookMeta.isImportDataValidation();
         if (importDataValidation && Objects.nonNull(validator)) {
-            validateDataConstraint(validator, workbookObject, null, null);
+            validateBeanConstraints(validator, workbookObject, null, null);
         }
 
         return workbookObject;
@@ -170,7 +170,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
         final PxlImportSheetMeta sheetMeta = PxlImportSheetMeta.makeImportSheetMeta(Collections.singletonList(csvName), rowCollectionClass, rowClass, workbookMeta, sheetOption);
         workbookMeta.addImportSheetMeta(sheetMeta);
 
-        readSheetFromCsv(sheetMeta);
+        resolveSheetFromCsv(sheetMeta);
 
         final Collection<Object> rowObjects = parseSheet(csvStream, sheetMeta, validator);
 
@@ -187,9 +187,9 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
      * @throws PxlDataException if the name/stream counts differ, the sheet-count limit is exceeded,
      *                          a sheet or CSV matches ambiguously, or a required sheet is missing
      */
-    private static void readSheetsFromCsv(final List<String> csvNames,
-                                          final List<InputStream> csvStreams,
-                                          final List<PxlImportSheetMeta> sheetMetas)
+    private static void resolveAllSheetsFromCsv(final List<String> csvNames,
+                                                final List<InputStream> csvStreams,
+                                                final List<PxlImportSheetMeta> sheetMetas)
             throws PxlDataException {
 
         if (PxlCollectionUtils.size(csvNames) != PxlCollectionUtils.size(csvStreams)) {
@@ -250,7 +250,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
      *
      * @param sheetMeta the sheet meta to resolve; its actual index/name are set when import is enabled
      */
-    private static void readSheetFromCsv(final PxlImportSheetMeta sheetMeta) {
+    private static void resolveSheetFromCsv(final PxlImportSheetMeta sheetMeta) {
 
         if (!sheetMeta.isImportEnabled()) {
             return;
@@ -462,7 +462,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
             }
 
             if (importDataValidation && Objects.nonNull(validator)) {
-                validateDataConstraint(validator, rowObject, sheetName, rowIndex);
+                validateBeanConstraints(validator, rowObject, sheetName, rowIndex);
             }
 
             rowObjects.add(rowObject);

@@ -140,7 +140,7 @@ public final class PxlImportColumnMeta {
             if (StringUtils.isNotBlank(importPattern)) {
                 // For a Collection column, the element type is the target of the pattern.
                 final Class<?> patternTargetClass = PxlClassSupport.isCollectionClass(this.columnClass)
-                        ? PxlReflectionSupport.getParameterizedArgument0(this.columnField)
+                        ? PxlReflectionSupport.getFirstTypeArgument(this.columnField)
                         : this.columnClass;
 
                 if (PxlClassSupport.isNumberClass(patternTargetClass)) {
@@ -172,12 +172,12 @@ public final class PxlImportColumnMeta {
 
             final Class<?> targetClass;
             if (PxlClassSupport.isCollectionClass(this.columnClass)) {
-                targetClass = PxlReflectionSupport.getParameterizedArgument0(this.columnField);
+                targetClass = PxlReflectionSupport.getFirstTypeArgument(this.columnField);
             } else {
                 targetClass = this.columnClass;
             }
 
-            if (PxlClassSupport.isCustomConvertableClass(targetClass)) {
+            if (PxlClassSupport.isCustomConvertibleClass(targetClass)) {
                 this.importCustomConverterMeta = PxlImportConverterMeta.of(targetClass);
             }
         }
@@ -199,7 +199,7 @@ public final class PxlImportColumnMeta {
      *
      * @return {@code true} if a custom import converter is resolved for this column
      */
-    public boolean isImportCustomConvertable() {
+    public boolean isImportCustomConvertible() {
 
         return Objects.nonNull(importCustomConverterMeta);
     }

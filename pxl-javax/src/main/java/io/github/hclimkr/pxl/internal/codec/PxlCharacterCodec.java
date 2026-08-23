@@ -17,6 +17,8 @@ import java.util.Optional;
  * Codec for {@link Character} column values - writes {@link Character} into cells on export and parses
  * cells/strings into {@link Character} on import. The first character of the cell/string is taken; NUMERIC
  * cells are stringified via {@link NumberToTextConverter} and BOOLEAN cells map to {@code '1'}/{@code '0'}.
+ * Export writes the character as a text cell, after the column's export trim and masking options are applied
+ * to it.
  */
 final class PxlCharacterCodec {
 

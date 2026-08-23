@@ -194,17 +194,17 @@ public class PxlInternalTests {
     }
 
     @Test
-    public void reflectionSupport_getParameterizedArgument0_variants() throws Exception {
+    public void reflectionSupport_getFirstTypeArgument_variants() throws Exception {
         final Field stringList = AllTypesRow.class.getDeclaredField("stringList");   // List<String>
-        assertThat(PxlReflectionSupport.getParameterizedArgument0(stringList)).isEqualTo(String.class);
+        assertThat(PxlReflectionSupport.getFirstTypeArgument(stringList)).isEqualTo(String.class);
 
         // a non-parameterized (raw) field is rejected
         final Field text = AllTypesRow.class.getDeclaredField("text");   // String
-        assertThrows(PxlReflectionException.class, () -> PxlReflectionSupport.getParameterizedArgument0(text));
+        assertThrows(PxlReflectionException.class, () -> PxlReflectionSupport.getFirstTypeArgument(text));
 
         // a nested generic (List<List<String>>) whose first argument is not a concrete Class is rejected
         final Field nested = NestedCollectionRow.class.getDeclaredField("nested");
-        assertThrows(PxlReflectionException.class, () -> PxlReflectionSupport.getParameterizedArgument0(nested));
+        assertThrows(PxlReflectionException.class, () -> PxlReflectionSupport.getFirstTypeArgument(nested));
     }
 
     @Test

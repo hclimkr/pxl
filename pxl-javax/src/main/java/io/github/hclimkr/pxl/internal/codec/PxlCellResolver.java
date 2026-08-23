@@ -139,7 +139,7 @@ public final class PxlCellResolver {
             return PxlEnumCodec.buildEnumCell(cell, object, columnMeta);
         } else if (PxlClassSupport.isCollectionClass(columnClass)) {
             return PxlCollectionCodec.buildCollectionCell(cell, object, columnMeta);
-        } else if (columnMeta.isExportCustomConvertable()) {
+        } else if (columnMeta.isExportCustomConvertible()) {
             return PxlObjectCodec.buildObjectCell(cell, object, columnMeta);
         } else {
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_COLUMN_TYPE_UNSUPPORTED, String.valueOf(columnClass.getSimpleName())));
@@ -272,7 +272,7 @@ public final class PxlCellResolver {
             valueObject = PxlEnumCodec.parseEnumValue(cell, columnMeta);
         } else if (PxlClassSupport.isCollectionClass(columnClass)) {
             valueObject = PxlCollectionCodec.parseCollectionValue(cell, columnMeta);
-        } else if (columnMeta.isImportCustomConvertable()) {
+        } else if (columnMeta.isImportCustomConvertible()) {
             valueObject = PxlObjectCodec.parseObjectValue(cell, columnMeta);
         } else {
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_COLUMN_TYPE_UNSUPPORTED, String.valueOf(columnClass.getSimpleName())));
@@ -369,7 +369,7 @@ public final class PxlCellResolver {
             valueObject = PxlEnumCodec.parseEnumValue(s, columnMeta);
         } else if (PxlClassSupport.isCollectionClass(columnClass)) {
             valueObject = PxlCollectionCodec.parseCollectionValue(s, columnMeta);
-        } else if (columnMeta.isImportCustomConvertable()) {
+        } else if (columnMeta.isImportCustomConvertible()) {
             valueObject = PxlObjectCodec.parseObjectValue(s, columnMeta);
         } else {
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_COLUMN_TYPE_UNSUPPORTED, String.valueOf(columnClass.getSimpleName())));
