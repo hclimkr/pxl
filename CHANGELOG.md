@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`exportTrim` and `exportMasking` now apply to `char`, `Character` and `boolean`/`Boolean` columns**, so those
+  columns can write different text than before. Every other type already ran its rendered string through the same
+  step, which made a masking rule a silent no-op on these three - an undocumented gap for `boolean`/`Boolean`, and
+  a stated limitation for `char`/`Character` that is now lifted. Under `exportMasking = "[a-z]"` a `Boolean` column
+  writes `****` rather than `true`; under `exportTrim` a whitespace character trims away to an empty cell. Columns
+  that set neither option are unaffected, and the import direction is untouched.
+
 ## [0.9.5] - 2026-08-22
 
 ### Added

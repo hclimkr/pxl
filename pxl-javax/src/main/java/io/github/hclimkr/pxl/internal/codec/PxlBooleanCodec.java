@@ -80,11 +80,12 @@ final class PxlBooleanCodec {
     }
 
     /**
-     * Renders the export string for a {@link Boolean} using the configured true/false/null string representations.
+     * Renders the export string for a {@link Boolean} using the configured true/false/null string representations,
+     * then applies string-level export processing via {@link PxlStringCodec#makeExportString}.
      *
      * @param booleanValue the value to render
      * @param columnMeta   resolved export metadata for the column
-     * @return the configured true or false string, or the configured null string when the value is {@code null}
+     * @return the trimmed and/or masked true or false string
      */
     private static String makeBooleanExportString(final Boolean booleanValue,
                                                   final PxlExportColumnMeta columnMeta) {
@@ -93,7 +94,9 @@ final class PxlBooleanCodec {
         final String exportTrueString = columnMeta.getExportTrueString();
         final String exportFalseString = columnMeta.getExportFalseString();
 
-        return BooleanUtils.toString(booleanValue, exportTrueString, exportFalseString, exportNullString);
+        final String stringValue = BooleanUtils.toString(booleanValue, exportTrueString, exportFalseString, exportNullString);
+
+        return PxlStringCodec.makeExportString(stringValue, columnMeta);
     }
 
     /**

@@ -19,7 +19,8 @@ import java.util.Optional;
  * {@link NumberToTextConverter}); boolean cells map to {@code '1'}/{@code '0'}. Because {@code char} cannot be {@code null},
  * empty/blank input parses to {@code (char) 0}, the type's own default - the same choice the other primitive codecs make
  * ({@code 0}, {@code 0.0}), so an empty value leaves the field indistinguishable from one that was never set. Export always
- * writes the character as a text cell (no numeric formatting or masking).
+ * writes the character as a text cell (no numeric formatting), after the column's export trim and masking options are
+ * applied to it.
  */
 final class PxlPrimitiveCharCodec {
 
@@ -33,8 +34,9 @@ final class PxlPrimitiveCharCodec {
 
     /**
      * Writes a {@code char} value into a cell. Accepts a {@link Character} directly or a {@link String} (its first character is
-     * used; empty becomes {@code null}). A {@code null} value blanks the cell; otherwise the single-character string is written
-     * as a text cell.
+     * used; empty becomes {@code null}). A {@code null} value blanks the cell; otherwise the character goes through the
+     * column's export trim and masking options and the resulting string is written as a text cell - trimming a whitespace
+     * character therefore leaves an empty string.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
      * @param object     the source value ({@link Character} or {@link String})
@@ -71,26 +73,29 @@ final class PxlPrimitiveCharCodec {
             Optional.ofNullable(cell).ifPresent(Cell::setBlank);
             return null;
         } else {
-            final String cellString = makePrimitiveCharExportString(charValue);
+            final String cellString = makePrimitiveCharExportString(charValue, columnMeta);
             Optional.ofNullable(cell).ifPresent(c -> c.setCellValue(cellString));
             return cellString;
         }
     }
 
     /**
-     * Renders the export string for a {@code char}: returns the character's {@link Character#toString()} form, or {@code null}
-     * when the value is {@code null}.
+     * Renders the export string for a {@code char}: takes the character's {@link Character#toString()} form and applies
+     * string-level export processing via {@link PxlStringCodec#makeExportString}, or returns {@code null} when the value
+     * is {@code null}.
      *
-     * @param charValue the value to render
-     * @return the single-character string, or {@code null} when the value is {@code null}
+     * @param charValue  the value to render
+     * @param columnMeta resolved export metadata for the column
+     * @return the trimmed and/or masked single-character string, or {@code null} when the value is {@code null}
      */
-    private static String makePrimitiveCharExportString(final Character charValue) {
+    private static String makePrimitiveCharExportString(final Character charValue,
+                                                        final PxlExportColumnMeta columnMeta) {
 
         if (Objects.isNull(charValue)) {
             return null;
         }
 
-        return charValue.toString();
+        return PxlStringCodec.makeExportString(charValue.toString(), columnMeta);
     }
 
     /**

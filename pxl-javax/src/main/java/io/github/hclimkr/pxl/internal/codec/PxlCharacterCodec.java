@@ -30,8 +30,9 @@ final class PxlCharacterCodec {
 
     /**
      * Writes the given value as a single-character string cell and returns it. A {@link String} source
-     * contributes its first character; a {@link Character} source is used directly. A {@code null} result
-     * blanks the cell.
+     * contributes its first character; a {@link Character} source is used directly. The character then goes
+     * through the column's export trim and masking options, so trimming a whitespace character leaves an empty
+     * string. A {@code null} result blanks the cell.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
      * @param object     the source value (a {@link String} or {@link Character})
@@ -68,25 +69,28 @@ final class PxlCharacterCodec {
             Optional.ofNullable(cell).ifPresent(Cell::setBlank);
             return null;
         } else {
-            final String cellString = makeCharacterExportString(charValue);
+            final String cellString = makeCharacterExportString(charValue, columnMeta);
             Optional.ofNullable(cell).ifPresent(c -> c.setCellValue(cellString));
             return cellString;
         }
     }
 
     /**
-     * Renders the export string for a {@link Character}: its {@link Character#toString()} form.
+     * Renders the export string for a {@link Character}: its {@link Character#toString()} form, then applies
+     * string-level export processing via {@link PxlStringCodec#makeExportString}.
      *
-     * @param charValue the value to render
-     * @return the single-character string, or {@code null} when the value is {@code null}
+     * @param charValue  the value to render
+     * @param columnMeta the resolved export metadata for this column
+     * @return the trimmed and/or masked single-character string, or {@code null} when the value is {@code null}
      */
-    private static String makeCharacterExportString(final Character charValue) {
+    private static String makeCharacterExportString(final Character charValue,
+                                                    final PxlExportColumnMeta columnMeta) {
 
         if (Objects.isNull(charValue)) {
             return null;
         }
 
-        return charValue.toString();
+        return PxlStringCodec.makeExportString(charValue.toString(), columnMeta);
     }
 
     /**

@@ -1586,6 +1586,61 @@ public class PxlTypeConversionTests {
     }
 
     // ==================================================================
+    // char/Character/Boolean masking and trim: the three codecs that render their own text now pass it through the
+    // same string-level export processing as every other type, so exportMasking and exportTrim reach them too.
+    // ==================================================================
+
+    private static CharBoolMaskTrimRow charBoolMaskTrimRow() {
+        // Every column is filled: a primitive char left at its default would put a NUL character into the sheet.
+        final CharBoolMaskTrimRow row = new CharBoolMaskTrimRow();
+        row.setMaskWrapChar('x');
+        row.setMaskPrimChar('y');
+        row.setMaskBool(Boolean.TRUE);
+        row.setTrimWrapChar(' ');
+        row.setTrimPrimChar(' ');
+        row.setTrimBool(Boolean.TRUE);
+        return row;
+    }
+
+    // Locates the data cell by its header text; a value trimmed away leaves a blank cell, which POI may drop entirely.
+    private static String charBoolCellOf(final Workbook workbook, final String headerName) {
+        final Sheet sheet = workbook.getSheet("T");
+        for (final Cell headerCell : sheet.getRow(0)) {
+            if (headerName.equals(headerCell.getStringCellValue())) {
+                final Cell dataCell = sheet.getRow(1).getCell(headerCell.getColumnIndex());
+                return Objects.isNull(dataCell) ? "" : dataCell.getStringCellValue();
+            }
+        }
+        return null;
+    }
+
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void charBoolMasking_exportMasksRenderedText(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
+                .sheet(CharBoolMaskTrimRow.class, Arrays.asList(charBoolMaskTrimRow()), "T")
+                .override(noValidationOption()), dest, testInfo)) {
+            // The "[a-z]" mask covers the single character as well as every letter of the rendered "true".
+            assertThat(charBoolCellOf(workbook, "MaskWrapChar")).isEqualTo("*");
+            assertThat(charBoolCellOf(workbook, "MaskPrimChar")).isEqualTo("*");
+            assertThat(charBoolCellOf(workbook, "MaskBool")).isEqualTo("****");
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void charBoolTrim_exportTrimsRenderedText(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
+                .sheet(CharBoolMaskTrimRow.class, Arrays.asList(charBoolMaskTrimRow()), "T")
+                .override(noValidationOption()), dest, testInfo)) {
+            // A whitespace character trims away entirely; the padded true string keeps only its letter.
+            assertThat(charBoolCellOf(workbook, "TrimWrapChar")).isEmpty();
+            assertThat(charBoolCellOf(workbook, "TrimPrimChar")).isEmpty();
+            assertThat(charBoolCellOf(workbook, "TrimBool")).isEqualTo("Y");
+        }
+    }
+
+    // ==================================================================
     // UUID: a value that only has meaning as text. Import accepts the canonical 8-4-4-4-12 form in either case and
     // nothing else; export always writes that form in lower case. The strictness belongs to the codec rather than to
     // UUID.fromString, which counts the hyphen-separated groups but not their digits and so would widen "1-1-1-1-1"
