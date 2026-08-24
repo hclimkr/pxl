@@ -134,7 +134,7 @@ public abstract class PxlException extends Exception {
      *
      * <p>The tag words and the join format are localized through the diagnostic message bundle
      * ({@code pxl-messages}): English by default, overridable process-wide via
-     * {@link Pxl#setMessageLocale(Locale)}.</p>
+     * {@link Pxl#setMessageLocale(Locale)} and per thread via {@link Pxl#setThreadMessageLocale(Locale)}.</p>
      *
      * @param sheetName   sheet name (may be {@code null})
      * @param rowIndex    zero-based row index (may be {@code null})

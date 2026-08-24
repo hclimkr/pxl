@@ -641,7 +641,7 @@ private String code;
 
 경계를 넘는 예외는 모두 `Pxl` 경계에서 checked `PxlException` 계열로 정규화된다.  
 예외의 메시지 문구는 다국어로 지역화된다.  
-기본은 영어이며 한국어를 제공하고 `Pxl.setMessageLocale(Locale)`로 언어를 전역 지정한다.  
+기본은 영어이며 한국어를 제공하고, 언어는 `Pxl.setMessageLocale(Locale)`로 프로세스 전역 또는 `Pxl.setThreadMessageLocale(Locale)`로 스레드 단위로 지정한다.  
 자세한 내용은 [i18n](#i18n)의 "예외·진단 메시지 언어"를 참조한다.
 
 | 예외                        | 발생 시점                                                                                                                              |
@@ -668,15 +668,29 @@ private String code;
 PXL이 던지는 예외 메시지와 진단 로그 문구는 다국어를 지원한다.  
 이 문구들은 라이브러리가 아티팩트에 동봉한 번들(`pxl-messages`)에서 해석되며, 기본은 영어이고 한국어를 제공한다.
 
-- 프로세스 전역 locale로 결정된다.  
-  기본은 JVM 기본 locale(`Locale.getDefault()`), `Pxl.setMessageLocale(Locale)`로 전역 지정하고 `Pxl.resetMessageLocale()`로 해제한다.  
+- 좁은 것부터 2단으로 결정된다 — 호출 스레드의 오버라이드 → 프로세스 전역 오버라이드 → JVM 기본 locale(`Locale.getDefault()`).  
   매칭되는 번역이 없으면 영어로 폴백한다.
+- `Pxl.setMessageLocale(Locale)`이 프로세스 전역 단을 지정하고 `Pxl.resetMessageLocale()`로 해제한다.  
+  기동 시 한 번 지정하면 프로세스가 사는 동안 모든 스레드에 보인다.
+- `Pxl.setThreadMessageLocale(Locale)`은 호출 스레드에만 적용되며 그 스레드에서 전역 단보다 우선한다. `Pxl.resetThreadMessageLocale()`로 해제하면 전역 단 → JVM 기본 순으로 폴백한다.  
+  요청 하나의 메시지를 그 요청의 언어로 내보낼 때 쓴다.
+- 스레드 단은 스레드 경계를 넘어 전파되지 않는다(스레드 풀 인계, `CompletableFuture.supplyAsync`, 리액티브 스케줄러) — 새 스레드에서도 적용해야 한다면 거기서 다시 지정한다.  
+  풀 스레드라면 스레드를 풀에 반납하기 전에 반드시 해제한다. 그러지 않으면 그 스레드에 이후 배정된 무관한 작업이 그 값을 물려받는다. 전역 단은 두 문제 모두 없다.
 - 콘텐츠 i18n(시트/컬럼명, `@PxlWorkbook` 기반·워크북별)과 독립적이다. 영문 산출물을 만들면서 서버 로그의 예외는 한국어로 보거나 그 반대도 가능하다.
 
 ```java
+// 프로세스 전역: 기동 시 한 번 지정하면 모든 스레드가 본다
 Pxl.setMessageLocale(Locale.ENGLISH);   // 이후 예외/진단 문구를 영어로
 // ...
 Pxl.resetMessageLocale();               // JVM 기본 locale로 복귀
+
+// 스레드 단위: 예를 들어 요청 하나 동안만, 반드시 finally에서 해제
+try {
+    Pxl.setThreadMessageLocale(requestLocale);
+    // ... export/import ...
+} finally {
+    Pxl.resetThreadMessageLocale();     // 전역 단으로 폴백
+}
 ```
 
 ---

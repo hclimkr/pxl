@@ -149,27 +149,68 @@ public final class Pxl {
 
     /**
      * Overrides the locale used for the library's own diagnostic messages (exception text and the
-     * location tag) process-wide.
+     * location tag) process-wide, for every thread that has no override of its own. Set it once at
+     * startup and it stays in effect for the life of the process.
      *
      * <p>This is independent of the per-workbook sheet/column name translation configured via
-     * {@code @PxlWorkbook}: diagnostic messages are a library-owned, process-wide concern. When no override
-     * is set the JVM default locale ({@link Locale#getDefault()}) is used; the base bundle is English and
-     * Korean is available. Pass {@code null} (or call {@link #resetMessageLocale()}) to clear the override.</p>
+     * {@code @PxlWorkbook}: diagnostic messages are a library-owned concern with their own locale. When
+     * no override is set the JVM default locale ({@link Locale#getDefault()}) is used; the base bundle
+     * is English and Korean is available. Pass {@code null} (or call {@link #resetMessageLocale()}) to
+     * clear the override.</p>
      *
-     * @param locale the locale for diagnostic messages; {@code null} reverts to the JVM default
+     * <p>To vary the language per request instead - each request handled on its own thread, as a servlet
+     * container or web framework does - use {@link #setThreadMessageLocale(Locale)}, which takes
+     * precedence over this one on the thread that sets it.</p>
+     *
+     * @param locale the locale for diagnostic messages process-wide; {@code null} reverts to the JVM default
      */
     public static void setMessageLocale(final Locale locale) {
 
-        PxlI18nDiagnostic.setOverrideLocale(locale);
+        PxlI18nDiagnostic.setGlobalOverrideLocale(locale);
     }
 
     /**
-     * Clears any locale override set via {@link #setMessageLocale(Locale)}, reverting diagnostic messages
-     * to the JVM default locale ({@link Locale#getDefault()}).
+     * Clears the process-wide locale override set via {@link #setMessageLocale(Locale)}, reverting
+     * diagnostic messages to the JVM default locale ({@link Locale#getDefault()}) on every thread that
+     * has no override of its own.
+     *
+     * <p>Thread overrides set via {@link #setThreadMessageLocale(Locale)} are unaffected; clear those
+     * with {@link #resetThreadMessageLocale()}.</p>
      */
     public static void resetMessageLocale() {
 
-        PxlI18nDiagnostic.setOverrideLocale(null);
+        PxlI18nDiagnostic.setGlobalOverrideLocale(null);
+    }
+
+    /**
+     * Overrides the locale used for the library's own diagnostic messages on the calling thread only,
+     * taking precedence there over {@link #setMessageLocale(Locale)}. Use it to render a request's
+     * messages in that request's language, by setting it from the framework's per-request locale at the
+     * start of the request.
+     *
+     * <p>The override is invisible to other threads and does not follow work across thread boundaries
+     * (thread pool hand-off, {@code CompletableFuture.supplyAsync}, reactive schedulers) - call this
+     * again on the new thread if the override still applies there. On a pooled thread (e.g. a servlet
+     * container's request-handling thread), call {@link #resetThreadMessageLocale()} before the thread
+     * returns to the pool, or a later unrelated task on that thread will observe the stale override.</p>
+     *
+     * @param locale the locale for diagnostic messages on this thread; {@code null} clears the thread
+     *               override, so this thread falls back to the process-wide override and then to the
+     *               JVM default
+     */
+    public static void setThreadMessageLocale(final Locale locale) {
+
+        PxlI18nDiagnostic.setThreadOverrideLocale(locale);
+    }
+
+    /**
+     * Clears the calling thread's locale override set via {@link #setThreadMessageLocale(Locale)}, so
+     * this thread falls back to the process-wide override ({@link #setMessageLocale(Locale)}) and, when
+     * that is unset, to the JVM default locale ({@link Locale#getDefault()}).
+     */
+    public static void resetThreadMessageLocale() {
+
+        PxlI18nDiagnostic.setThreadOverrideLocale(null);
     }
 
 }

@@ -651,7 +651,7 @@ private String code;
 
 Exceptions that cross the boundary are all normalized at the `Pxl` boundary into the checked `PxlException` family.  
 Exception message text is localized into multiple languages.  
-The default is English, Korean is provided, and the language is set globally with `Pxl.setMessageLocale(Locale)`.  
+The default is English, Korean is provided, and the language is set process-wide with `Pxl.setMessageLocale(Locale)` or for one thread with `Pxl.setThreadMessageLocale(Locale)`.  
 For details, see "Exception/Diagnostic Message Language" in [i18n](#i18n).
 
 | Exception                 | When it occurs                          |
@@ -678,15 +678,29 @@ However, `PxlRuntimeException` is the exception: it is unchecked (in the `Runtim
 The exception messages and diagnostic log text that PXL throws support multiple languages.  
 This text is resolved from the bundle (`pxl-messages`) that the library bundles into its artifact; the default is English, and Korean is provided.
 
-- Determined by the process-wide locale.  
-  The default is the JVM default locale (`Locale.getDefault()`), set globally with `Pxl.setMessageLocale(Locale)` and cleared with `Pxl.resetMessageLocale()`.  
+- Resolved in two tiers, narrowest first: the calling thread's override, then the process-wide override, then the JVM default locale (`Locale.getDefault()`).  
   If there is no matching translation, it falls back to English.
+- `Pxl.setMessageLocale(Locale)` sets the process-wide tier, and `Pxl.resetMessageLocale()` clears it.  
+  Set once at startup, it is visible to every thread for the life of the process.
+- `Pxl.setThreadMessageLocale(Locale)` sets the tier for the calling thread only, taking precedence there over the process-wide one; `Pxl.resetThreadMessageLocale()` clears it, dropping back to the process-wide tier and then to the JVM default.  
+  Use it to render one request's messages in that request's language.
+- The thread tier does not follow work across thread boundaries (thread pool hand-off, `CompletableFuture.supplyAsync`, reactive schedulers) — set it again on the new thread if it still applies there.  
+  On a pooled thread, clear it before the thread returns to the pool, or a later unrelated task on that thread inherits it. The process-wide tier has neither concern.
 - It is independent of content i18n (sheet/column names, `@PxlWorkbook`-based·per-workbook). You can produce English output while viewing server-log exceptions in Korean, or vice versa.
 
 ```java
+// process-wide: set once at startup, seen by every thread
 Pxl.setMessageLocale(Locale.ENGLISH);   // subsequent exception/diagnostic text in English
 // ...
 Pxl.resetMessageLocale();               // revert to the JVM default locale
+
+// per thread: e.g. for the duration of one request, always cleared in finally
+try {
+    Pxl.setThreadMessageLocale(requestLocale);
+    // ... export/import ...
+} finally {
+    Pxl.resetThreadMessageLocale();     // fall back to the process-wide tier
+}
 ```
 
 ---

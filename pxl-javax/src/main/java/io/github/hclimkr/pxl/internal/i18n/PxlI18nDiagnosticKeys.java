@@ -5,8 +5,8 @@ package io.github.hclimkr.pxl.internal.i18n;
  * <p>
  * These keys index {@code pxl-messages*.properties} (shipped inside the pxl artifact) and are resolved
  * through {@link PxlI18nDiagnostic}. They are distinct from the consumer-facing sheet/column name translation,
- * whose bundle and locale come from {@code @PxlWorkbook}; exception/diagnostic text is a library-owned,
- * process-wide concern (see {@link PxlI18nDiagnostic} for the locale strategy).
+ * whose bundle and locale come from {@code @PxlWorkbook}; exception/diagnostic text is a library-owned
+ * concern with its own locale (see {@link PxlI18nDiagnostic} for the two-tier locale strategy).
  */
 public final class PxlI18nDiagnosticKeys {
 

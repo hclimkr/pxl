@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`Pxl.setThreadMessageLocale(Locale)` / `Pxl.resetThreadMessageLocale()`**, a per-thread tier for the
+  diagnostic-message locale. It was resolvable only process-wide, so a server could not answer each request
+  in that request's language - the one call available sets it for every thread, and a request setting its own
+  locale would change the messages of every other request in flight. Resolution now runs narrowest first:
+  the thread override, then `Pxl.setMessageLocale(Locale)` (unchanged in meaning and behavior), then the JVM
+  default. A thread override must be cleared before a pooled thread is returned, and does not cross threads.
+
 ### Changed
 
 - **`exportTrim` and `exportMasking` now apply to `char`, `Character` and `boolean`/`Boolean` columns**, so those

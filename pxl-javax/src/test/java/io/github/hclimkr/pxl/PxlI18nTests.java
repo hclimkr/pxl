@@ -22,6 +22,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.ByteArrayInputStream;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static io.github.hclimkr.pxl.tcdata.Fixtures.noValidationOption;
 import static io.github.hclimkr.pxl.tcdata.TestExports.emit;
@@ -418,10 +419,11 @@ public class PxlI18nTests {
     }
 
     // ------------------------------------------------------------------
-    // Diagnostic-message i18n (exception text) - a global locale independent of workbook content i18n.
-    // The default is the JVM default locale, with a process-wide override via Pxl.setMessageLocale.
+    // Diagnostic-message i18n (exception text) - a locale of its own, independent of workbook content i18n.
+    // Resolved in two tiers, narrowest first: the calling thread's override (Pxl.setThreadMessageLocale),
+    // then the process-wide override (Pxl.setMessageLocale), then the JVM default locale.
     // The base bundle is English and Korean (_ko) exists; an unmatched locale falls back to English.
-    // Since this is global state, always revert with resetMessageLocale in finally.
+    // Both tiers outlive the test method, so always revert them in finally.
     // ------------------------------------------------------------------
 
     @Test
@@ -578,6 +580,91 @@ public class PxlI18nTests {
                     .hasMessageContaining("workbook(Object) 또는 sheet(...) 중 하나를 지정해야 합니다.");
         } finally {
             Pxl.resetMessageLocale();
+        }
+    }
+
+    // Renders a tagged message on a brand-new thread. A thread override set by the caller cannot reach it,
+    // so what comes back is what the process-wide tier (or the JVM default) says.
+    private static String tagMessageOnNewThread() throws InterruptedException {
+        final AtomicReference<String> captured = new AtomicReference<>();
+        final Thread thread = new Thread(() -> captured.set(new PxlValidationException("S", 0, "c", null, "boom").getMessage()));
+
+        thread.start();
+        thread.join();
+
+        return captured.get();
+    }
+
+    @Test
+    public void messageLocale_globalOverride_visibleFromOtherThread() throws InterruptedException {
+        final Locale savedDefault = Locale.getDefault();
+        try {
+            // The "set it once at startup" form: a thread that never called setMessageLocale itself still sees it.
+            // The JVM default is pinned to English so Korean output can only have come from the process-wide tier.
+            Locale.setDefault(Locale.ENGLISH);
+            Pxl.setMessageLocale(Locale.KOREAN);
+
+            assertThat(tagMessageOnNewThread()).isEqualTo("'S' 시트, 1행, 'c' 열: boom");
+        } finally {
+            Pxl.resetMessageLocale();
+            Locale.setDefault(savedDefault);
+        }
+    }
+
+    @Test
+    public void messageLocale_threadOverride_winsOverGlobalOnThatThread() {
+        try {
+            // The process-wide tier says English, so Korean here can only have come from the thread tier.
+            Pxl.setMessageLocale(Locale.ENGLISH);
+            Pxl.setThreadMessageLocale(Locale.KOREAN);
+
+            assertThat(new PxlValidationException("S", 0, "c", null, "boom").getMessage())
+                    .isEqualTo("'S' 시트, 1행, 'c' 열: boom");
+        } finally {
+            Pxl.resetThreadMessageLocale();
+            Pxl.resetMessageLocale();
+        }
+    }
+
+    @Test
+    public void messageLocale_threadOverride_notVisibleToOtherThread() throws InterruptedException {
+        final Locale savedDefault = Locale.getDefault();
+        try {
+            // What makes a per-request language safe: the thread tier must not reach a concurrently running
+            // thread. With no process-wide override set, that other thread follows the JVM default.
+            Locale.setDefault(Locale.ENGLISH);
+            Pxl.setThreadMessageLocale(Locale.KOREAN);
+
+            assertThat(new PxlValidationException("S", 0, "c", null, "boom").getMessage())
+                    .isEqualTo("'S' 시트, 1행, 'c' 열: boom");
+            assertThat(tagMessageOnNewThread()).isEqualTo("sheet 'S', row 1, column 'c': boom");
+        } finally {
+            Pxl.resetThreadMessageLocale();
+            Locale.setDefault(savedDefault);
+        }
+    }
+
+    @Test
+    public void messageLocale_threadOverrideReset_fallsBackToGlobalNotJvmDefault() {
+        final Locale savedDefault = Locale.getDefault();
+        try {
+            // Clearing the thread tier drops to the process-wide tier, not straight to the JVM default -
+            // which is pinned to English here so the two are told apart.
+            Locale.setDefault(Locale.ENGLISH);
+            Pxl.setMessageLocale(Locale.KOREAN);
+            Pxl.setThreadMessageLocale(Locale.ENGLISH);
+
+            assertThat(new PxlValidationException("S", 0, "c", null, "boom").getMessage())
+                    .isEqualTo("sheet 'S', row 1, column 'c': boom");
+
+            Pxl.resetThreadMessageLocale();
+
+            assertThat(new PxlValidationException("S", 0, "c", null, "boom").getMessage())
+                    .isEqualTo("'S' 시트, 1행, 'c' 열: boom");
+        } finally {
+            Pxl.resetThreadMessageLocale();
+            Pxl.resetMessageLocale();
+            Locale.setDefault(savedDefault);
         }
     }
 
