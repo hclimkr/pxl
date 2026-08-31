@@ -25,6 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writes `****` rather than `true`; under `exportTrim` a whitespace character trims away to an empty cell. Columns
   that set neither option are unaffected, and the import direction is untouched.
 
+### Fixed
+
+- **The CSV import sheet form now refuses a second source instead of silently discarding it.** It counted the
+  names only, so `fromStreams` given one name and several streams parsed the first and threw the rest away
+  without an exception or a warning - the workbook form has always refused a name/stream count mismatch. Both
+  lists are counted now, so a longer list on either side raises `PxlArgumentException`
+  (`builder.import.csv.singleSourceOnly`) at the final method, as `fromFiles` with several files already did.
+
 ## [0.9.5] - 2026-08-22
 
 ### Added

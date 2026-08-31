@@ -302,6 +302,41 @@ public class PxlCsvImportTests {
         assertThat(departments.get(0).getHeadcount()).isEqualTo(12);
     }
 
+    @Test
+    public void importCsvStreams_sheetForm_multipleStreams_throws() {
+        // The sheet form takes one source, so it must count the streams too, not just the names. Reading the first
+        // and dropping the rest would lose data without a word.
+        final List<String> csvNames = Arrays.asList("Employees");
+        final List<InputStream> csvStreams = Arrays.asList(stream(EMPLOYEES_CSV), stream(EMPLOYEES_CSV), stream(EMPLOYEES_CSV));
+
+        assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
+                .sheet(Employee.class)
+                .fromStreams(csvNames, csvStreams));
+    }
+
+    @Test
+    public void importCsvStreams_sheetForm_multipleNames_throws() {
+        // The mirror direction of the same rule, so neither list may grow past the single source on its own.
+        final List<String> csvNames = Arrays.asList("Employees", "Departments");
+        final List<InputStream> csvStreams = Arrays.asList(stream(EMPLOYEES_CSV), stream(DEPARTMENTS_CSV));
+
+        assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
+                .sheet(Employee.class)
+                .fromStreams(csvNames, csvStreams));
+    }
+
+    @Test
+    public void importCsvFiles_sheetForm_multipleFiles_throws(@TempDir final Path tempDir) throws Exception {
+        // fromFiles pairs each name with its own stream, so it reaches the same rejection through both lists at once.
+        final List<File> csvFiles = Arrays.asList(
+                writeCsv(tempDir, "Employees.csv", EMPLOYEES_CSV),
+                writeCsv(tempDir, "Departments.csv", DEPARTMENTS_CSV));
+
+        assertThrows(PxlArgumentException.class, () -> pxl.importCsv()
+                .sheet(Employee.class)
+                .fromFiles(csvFiles));
+    }
+
     // ------------------------------------------------------------------
     // Workbook form (multiple CSVs -> @PxlWorkbook, with file name/name becoming the sheet name)
     // ------------------------------------------------------------------

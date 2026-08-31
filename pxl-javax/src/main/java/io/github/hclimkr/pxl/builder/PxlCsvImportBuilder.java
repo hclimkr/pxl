@@ -285,10 +285,13 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
          * names, so the files may be given in any order. Use {@link #fromStreams(List, List)} to name the sheets
          * explicitly instead.</p>
          *
+         * <p>The sheet form takes a single source only, so more than one file is rejected rather than silently
+         * dropped.</p>
+         *
          * @param csvFiles the CSV files
          * @return the parsed result
          * @throws PxlNullPointerException if {@code csvFiles} is {@code null}
-         * @throws PxlArgumentException    if {@code csvFiles} is empty
+         * @throws PxlArgumentException    if {@code csvFiles} is empty, or if the sheet form is given more than one file
          * @throws PxlException            if a file cannot be opened or read, or if parsing fails
          */
         public R fromFiles(final List<File> csvFiles)
@@ -341,12 +344,17 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
          *
          * <p>The given streams are <strong>not closed</strong>; the caller retains ownership and is responsible for closing them.</p>
          *
+         * <p>Each name is paired with the stream at the same position, so the two lists must be the same size. The
+         * sheet form takes a single source only, so a longer list on either side is rejected rather than silently
+         * dropped.</p>
+         *
          * @param csvNames   the CSV names
          * @param csvStreams the CSV input streams (not closed by this method)
          * @return the parsed result
          * @throws PxlNullPointerException if {@code csvNames} or {@code csvStreams} is {@code null}
-         * @throws PxlArgumentException    if {@code csvNames} or {@code csvStreams} is empty
-         * @throws PxlException            if parsing fails
+         * @throws PxlArgumentException    if {@code csvNames} or {@code csvStreams} is empty, or if the sheet form is
+         *                                 given more than one name or stream
+         * @throws PxlException            if parsing fails, or if the name and stream counts differ in the workbook form
          */
         public R fromStreams(final List<String> csvNames,
                              final List<InputStream> csvStreams)
@@ -367,10 +375,14 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
         /**
          * Runs the configured parse over the given CSV names and streams and returns the typed result.
          *
+         * <p>The sheet form checks both lists, not just the names: a second stream handed to a single-source terminal
+         * would otherwise be dropped without a word. The workbook form leaves the size check to the core, which
+         * rejects a name/stream count mismatch.</p>
+         *
          * @param names   the CSV names
          * @param streams the CSV input streams
          * @return the parsed result
-         * @throws PxlArgumentException if the sheet form is given more than one source
+         * @throws PxlArgumentException if the sheet form is given more than one name or stream
          * @throws PxlException         if parsing fails
          */
         private R parse(final List<String> names, final List<InputStream> streams)
@@ -380,7 +392,7 @@ public final class PxlCsvImportBuilder extends PxlAbstractImportBuilder {
             if (Objects.nonNull(workbookClass)) {
                 result = PxlCoreCsvImporter.parseCsv(workbookName, names, streams, workbookClass, option, validator);
             } else {
-                if (names.size() != 1) {
+                if (names.size() != 1 || streams.size() != 1) {
                     throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.BUILDER_IMPORT_CSV_SINGLE_SOURCE_ONLY));
                 }
                 result = PxlCoreCsvImporter.parseCsv(names.get(0), streams.get(0), collectionClass, rowClass, option, validator);

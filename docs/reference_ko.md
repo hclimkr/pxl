@@ -208,7 +208,8 @@ implementation 'org.apache.logging.log4j:log4j-core:2.26.1'
 - import는 `.sheet(...)`를 연달아 체인할 수 없다 — 여러 시트를 읽는 방법은 두 가지다.
     - 워크북 형태로 한 번에: `@PxlWorkbook` 클래스를 `.workbook(...)`에 주면 `@PxlSheet` 필드별로 여러 시트가 한 번에 바인딩된다.  
       CSV는 한 파일이 한 시트이므로 이 형태에서 소스를 `.fromFiles(List<File>)`·`.fromStreams(List<String>, List<InputStream>)`로 여러 개 넘긴다(파일명에서 확장자를 뗀 이름·`csvNames`가 `@PxlSheet` 이름과 매칭된다 — 공백과 대소문자를 무시한다).
-    - 시트별로 나눠서: 같은 빌더 인스턴스로 `.sheet(...)`를 시트마다 호출하고 각각 마지막(실행) 단계까지 실행한다. 소스는 실행 단계에서 지정하므로 스트림은 호출마다 새로 열어 준다(파일은 매번 내부에서 열고 닫는다).
+    - 시트별로 나눠서: 같은 빌더 인스턴스로 `.sheet(...)`를 시트마다 호출하고 각각 마지막(실행) 단계까지 실행한다. 소스는 실행 단계에서 지정하므로 스트림은 호출마다 새로 열어 준다(파일은 매번 내부에서 열고 닫는다).  
+      이 형태에서 CSV 체인은 소스를 하나만 받으므로, `.fromFiles(List<File>)`·`.fromStreams(List<String>, List<InputStream>)`에 파일을 둘 이상 — 또는 이름이나 스트림을 둘 이상 — 넘기면 첫 소스만 읽고 나머지를 버리는 대신 마지막 메서드에서 `PxlArgumentException`(`builder.import.csv.singleSourceOnly`)이 발생한다.
 - 구성 단계의 `.override(...)`은 선택적이며 체인 안에서 위치를 자유롭게 정할 수 있다 — `.workbook(...)`/`.sheet(...)`의 앞이든 뒤든 마지막(실행) 단계 전이기만 하면 된다(여러 번 지정하면 마지막 값이 적용된다). 옵션 객체에 담긴 값으로 애노테이션 값을 런타임에 오버라이드한다.  
   export는 `.override(...)`에 `PxlExportWorkbookOption`을, import는 `PxlImportWorkbookOption`을 인자로 넘긴다(생략하면 애노테이션 값을 그대로 쓴다).
   import는 워크북 이름을 덮어쓰는 `.workbookName(String)`도 같은 위치에 둘 수 있다. 생략하면 파일에서 읽는 엑셀 import는 확장자를 제거한 파일명을 워크북 이름으로 쓴다 — [`@PxlWorkbookName`](#pxlworkbookname-필드-대상) 참조.
