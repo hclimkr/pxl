@@ -255,6 +255,10 @@ public interface PxlConstants {
      * A header is deliberately not set on this format: a {@code CSVPrinter} built from a format carrying one
      * writes that header itself on construction, and PXL writes the header from the column metadata, so the
      * file would carry two header lines.
+     * <p>
+     * This is the only place the export dialect is stated. Both the printer the core writes through and the
+     * builder's delimiter pre-check derive from it, so changing the quote, escape or comment character here
+     * moves what counts as a usable delimiter in both at once.
      */
     CSVFormat DEFAULT_EXPORT_CSV_FORMAT = CSVFormat
             .EXCEL

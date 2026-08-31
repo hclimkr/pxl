@@ -764,6 +764,19 @@ public class PxlCsvExportTests {
 
     @ParameterizedTest
     @EnumSource(value = ExportDest.class, names = {"FILE", "STREAM"})
+    public void exportCsv_delimiterEqualToQuoteChar_throws(final ExportDest dest) {
+        // Commons-CSV judges a delimiter by whether it collides with the dialect's quote, escape or comment
+        // character, so what counts as usable follows the dialect the printer is built from rather than the
+        // character on its own.
+        assertThrows(PxlArgumentException.class, () -> emit(pxl.exportCsv()
+                .sheet(Employee.class, twoEmployees(), "Employees")
+                .override(PxlExportWorkbookOption.builder()
+                        .exportCsvDelimiter('"')
+                        .build()), dest, testInfo));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ExportDest.class, names = {"FILE", "STREAM"})
     public void exportCsv_valuesCarryingCsvSyntax_areQuotedAndSurviveTheRoundTrip(final ExportDest dest) throws Exception {
         final Employee awkward = new Employee();
         awkward.setName("Doe, John \"JD\"\nsecond line");

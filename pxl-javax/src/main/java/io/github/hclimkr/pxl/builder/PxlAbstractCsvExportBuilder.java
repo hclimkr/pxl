@@ -10,7 +10,6 @@ import io.github.hclimkr.pxl.internal.meta.PxlExportWorkbookMeta;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
 import io.github.hclimkr.pxl.option.PxlExportSheetOption;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
-import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.DeferredFileOutputStream;
@@ -237,6 +236,11 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
     /**
      * Rejects a field delimiter Commons-CSV cannot build a format with, before the destination is opened.
      *
+     * <p>The check is run against {@code PxlConstants.DEFAULT_EXPORT_CSV_FORMAT}, the same dialect the core builds
+     * its {@code CSVPrinter} from. Commons-CSV judges a delimiter by whether it collides with the quote, escape or
+     * comment character, so a check that reassembled the dialect for itself would go on validating the old one
+     * once that constant changed.</p>
+     *
      * @param workbookMeta the resolved export metadata for the workbook
      * @param sheetName    the sheet name named in the failure message
      * @throws PxlArgumentException if the delimiter cannot be used
@@ -248,7 +252,7 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
         final char delimiter = resolveCsvDelimiter(workbookMeta);
 
         try {
-            CSVFormat.EXCEL.builder().setQuote('"').setDelimiter(delimiter).build();
+            PxlConstants.DEFAULT_EXPORT_CSV_FORMAT.builder().setDelimiter(delimiter).build();
         } catch (IllegalArgumentException e) {
             throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.BUILDER_EXPORT_CSV_DELIMITER_INVALID, sheetName, String.valueOf(delimiter)));
         }
