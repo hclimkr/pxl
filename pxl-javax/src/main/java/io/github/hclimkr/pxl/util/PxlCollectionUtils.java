@@ -6,7 +6,10 @@ import java.util.stream.Collectors;
 
 /**
  * Null-safe collection and array helpers used throughout PXL: emptiness/size checks, safe indexed
- * access, and duplicate/uniqueness detection.
+ * access, building a list of empty strings, and duplicate/uniqueness detection.
+ * <p>
+ * Nothing here throws. An argument that makes no sense is answered the way an absent one is - a
+ * {@code null} collection reads as empty, an out-of-range index as no element, a negative count as none.
  */
 public final class PxlCollectionUtils {
 
@@ -100,6 +103,29 @@ public final class PxlCollectionUtils {
     public static <T> Collection<T> emptyIfNull(final Collection<T> collection) {
 
         return Objects.isNull(collection) ? Collections.emptyList() : collection;
+    }
+
+    /**
+     * Returns a mutable list of the given size whose every element is the empty string {@code ""}.
+     * A count of zero or less yields an empty list.
+     * <p>
+     * The list is meant to be written into by index - a fixed-width record whose fields are filled in as they
+     * are resolved, leaving the untouched ones empty - so it is an {@link ArrayList} rather than the immutable
+     * list {@link Collections#nCopies(int, Object)} would give.
+     *
+     * @param numOfElements the number of empty strings the list holds
+     * @return a mutable list of empty strings, never {@code null}
+     */
+    public static List<String> makeEmptyStringList(final int numOfElements) {
+
+        final int safeNumOfElements = Math.max(0, numOfElements);
+        final List<String> emptyStringList = new ArrayList<>(safeNumOfElements);
+
+        for (int index = 0; index < safeNumOfElements; index++) {
+            emptyStringList.add("");
+        }
+
+        return emptyStringList;
     }
 
     /**

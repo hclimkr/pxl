@@ -226,7 +226,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
             throws IOException {
 
         for (int rowIndex = fromRowIndex; rowIndex < toRowIndex; rowIndex++) {
-            csvPrinter.printRecord(makeEmptyRecord(numOfFields));
+            csvPrinter.printRecord(PxlCollectionUtils.makeEmptyStringList(numOfFields));
         }
     }
 
@@ -244,7 +244,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
                                           final int numOfFields)
             throws IOException {
 
-        final List<String> record = makeEmptyRecord(numOfFields);
+        final List<String> record = PxlCollectionUtils.makeEmptyStringList(numOfFields);
         for (final PxlExportColumnMeta columnMeta : columnMetas) {
             final int exportColumnIndex = columnMeta.getActualExportColumnIndex();
             if (exportColumnIndex < 0) {
@@ -279,7 +279,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
             throws IOException, PxlCellCodecException {
 
         final String sheetName = sheetMeta.getActualExportSheetName();
-        final List<String> record = makeEmptyRecord(countFields(columnMetas));
+        final List<String> record = PxlCollectionUtils.makeEmptyStringList(countFields(columnMetas));
 
         for (final PxlExportColumnMeta columnMeta : columnMetas) {
             final int exportColumnIndex = columnMeta.getActualExportColumnIndex();
@@ -325,7 +325,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
 
         final String sheetName = sheetMeta.getActualExportSheetName();
         final int rowIndex = sheetMeta.getActualExportOriginDataRowIndex();
-        final List<String> record = makeEmptyRecord(countFields(columnMetas));
+        final List<String> record = PxlCollectionUtils.makeEmptyStringList(countFields(columnMetas));
 
         for (final PxlExportColumnMeta columnMeta : columnMetas) {
             final int exportColumnIndex = columnMeta.getActualExportColumnIndex();
@@ -420,22 +420,6 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
         }
 
         return maxColumnIndex + 1;
-    }
-
-    /**
-     * Creates a record of empty fields.
-     *
-     * @param numOfFields the number of fields
-     * @return the record values
-     */
-    private static List<String> makeEmptyRecord(final int numOfFields) {
-
-        final List<String> record = new ArrayList<>(numOfFields);
-        for (int index = 0; index < numOfFields; index++) {
-            record.add("");
-        }
-
-        return record;
     }
 
 }

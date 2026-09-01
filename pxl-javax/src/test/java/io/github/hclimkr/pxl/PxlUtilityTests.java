@@ -1010,6 +1010,25 @@ public class PxlUtilityTests {
         assertThat(PxlCollectionUtils.hasAllSame(Collections.<Integer>emptyList())).isTrue();
         assertThat(PxlCollectionUtils.hasAllSame((List<Integer>) null)).isTrue();
     }
+
+    @Test
+    public void collectionUtils_makeEmptyStringList_buildsAListThatCanBeWrittenIntoByIndex() {
+        final List<String> record = PxlCollectionUtils.makeEmptyStringList(3);
+        assertThat(record).containsExactly("", "", "");
+
+        // The caller fills the fields it resolves and leaves the rest empty, so the list has to be mutable -
+        // Collections.nCopies would give the same contents and refuse the write.
+        record.set(1, "x");
+        assertThat(record).containsExactly("", "x", "");
+    }
+
+    @Test
+    public void collectionUtils_makeEmptyStringList_zeroOrNegativeCount_answersEmpty() {
+        // Nothing in this class throws: a count that makes no sense is answered like an absent one.
+        assertThat(PxlCollectionUtils.makeEmptyStringList(0)).isEmpty();
+        assertThat(PxlCollectionUtils.makeEmptyStringList(-1)).isEmpty();
+    }
+
     // ==================================================================
     // styler/ apply methods (optional stylers that no built-in default uses)
     // ==================================================================
