@@ -10,18 +10,20 @@ import io.github.hclimkr.pxl.internal.meta.PxlExportColumnMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlExportSheetMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlExportWorkbookMeta;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.internal.support.PxlOptionSupport;
 import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
 import io.github.hclimkr.pxl.option.PxlExportSheetOption;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.lang3.StringUtils;
 
 import javax.validation.Validator;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Core CSV writer for export.
@@ -361,11 +363,7 @@ public final class PxlCoreCsvExporter extends PxlAbstractExporter {
                                                     final PxlExportWorkbookMeta workbookMeta)
             throws PxlNullPointerException, PxlArgumentException, PxlDataException {
 
-        final PxlExportSheetOption sheetOption = Optional.ofNullable(workbookMeta.getExportSheetOptions())
-                .flatMap(options -> options.stream()
-                        .filter(o -> StringUtils.equals(o.getFieldName(), PxlConstants.SHEET_FIELD_NAME_WILD_CARD))
-                        .findFirst())
-                .orElse(null);
+        final PxlExportSheetOption sheetOption = PxlOptionSupport.findExportWildcardSheetOption(workbookMeta.getExportSheetOptions());
 
         final PxlExportSheetMeta sheetMeta = PxlExportSheetMeta.makeExportSheetMeta(sheetName, rowCollectionClass, rowClass, workbookMeta, sheetOption);
         workbookMeta.addExportSheetMeta(sheetMeta);

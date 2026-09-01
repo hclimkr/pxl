@@ -10,6 +10,7 @@ import io.github.hclimkr.pxl.internal.meta.PxlImportColumnMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlImportSheetMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlImportWorkbookMeta;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.internal.support.PxlOptionSupport;
 import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
@@ -161,11 +162,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
         final PxlImportWorkbookMeta workbookMeta = PxlImportWorkbookMeta.makeImportWorkbookMeta(null, workbookOption);
         workbookMeta.setImportFileFormat(PxlFileFormat.CSV);
 
-        final PxlImportSheetOption sheetOption = Optional.ofNullable(workbookMeta.getImportSheetOptions())
-                .flatMap(options -> options.stream()
-                        .filter(o -> StringUtils.equals(o.getFieldName(), PxlConstants.SHEET_FIELD_NAME_WILD_CARD))
-                        .findFirst())
-                .orElse(null);
+        final PxlImportSheetOption sheetOption = PxlOptionSupport.findImportWildcardSheetOption(workbookMeta.getImportSheetOptions());
 
         final PxlImportSheetMeta sheetMeta = PxlImportSheetMeta.makeImportSheetMeta(Collections.singletonList(csvName), rowCollectionClass, rowClass, workbookMeta, sheetOption);
         workbookMeta.addImportSheetMeta(sheetMeta);

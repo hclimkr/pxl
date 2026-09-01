@@ -17,7 +17,6 @@ import io.github.hclimkr.pxl.styler.PxlStyler;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import io.github.hclimkr.pxl.util.PxlColumnUtils;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
@@ -151,11 +150,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
         PxlAssertSupport.notNull(rowClass, "rowClass");
         PxlAssertSupport.notNull(workbookMeta, "workbookMeta");
 
-        final PxlExportSheetOption sheetOption = Optional.ofNullable(workbookMeta.getExportSheetOptions())
-                .flatMap(options -> options.stream()
-                        .filter(o -> StringUtils.equals(o.getFieldName(), PxlConstants.SHEET_FIELD_NAME_WILD_CARD))
-                        .findFirst())
-                .orElse(null);
+        final PxlExportSheetOption sheetOption = PxlOptionSupport.findExportWildcardSheetOption(workbookMeta.getExportSheetOptions());
 
         final boolean exportDataValidation = workbookMeta.isExportDataValidation();
         if (exportDataValidation && Objects.nonNull(validator)) {

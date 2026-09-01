@@ -8,6 +8,7 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlExportWorkbookMeta;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.internal.support.PxlOptionSupport;
 import io.github.hclimkr.pxl.option.PxlExportSheetOption;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import org.apache.commons.io.FileUtils;
@@ -252,7 +253,10 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
         final char delimiter = resolveCsvDelimiter(workbookMeta);
 
         try {
-            PxlConstants.DEFAULT_EXPORT_CSV_FORMAT.builder().setDelimiter(delimiter).build();
+            PxlConstants.DEFAULT_EXPORT_CSV_FORMAT
+                    .builder()
+                    .setDelimiter(delimiter)
+                    .build();
         } catch (IllegalArgumentException e) {
             throw new PxlArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.BUILDER_EXPORT_CSV_DELIMITER_INVALID, sheetName, String.valueOf(delimiter)));
         }
@@ -268,7 +272,7 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
      */
     private String resolveCsvCharsetName(final PxlExportWorkbookMeta workbookMeta) {
 
-        return Optional.ofNullable(findWildcardSheetOption(workbookMeta))
+        return Optional.ofNullable(PxlOptionSupport.findExportWildcardSheetOption(workbookMeta.getExportSheetOptions()))
                 .map(PxlExportSheetOption::getExportCsvCharset)
                 .filter(StringUtils::isNotBlank)
                 .orElseGet(workbookMeta::getExportCsvCharset);
@@ -282,7 +286,7 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
      */
     private char resolveCsvDelimiter(final PxlExportWorkbookMeta workbookMeta) {
 
-        return Optional.ofNullable(findWildcardSheetOption(workbookMeta))
+        return Optional.ofNullable(PxlOptionSupport.findExportWildcardSheetOption(workbookMeta.getExportSheetOptions()))
                 .map(PxlExportSheetOption::getExportCsvDelimiter)
                 .filter(delimiter -> delimiter != PxlConstants.UNSPECIFIED_EXPORT_CSV_DELIMITER)
                 .orElseGet(workbookMeta::getExportCsvDelimiter);
@@ -297,24 +301,9 @@ abstract class PxlAbstractCsvExportBuilder extends PxlAbstractExportBuilder {
      */
     private boolean resolveCsvBom(final PxlExportWorkbookMeta workbookMeta) {
 
-        return Optional.ofNullable(findWildcardSheetOption(workbookMeta))
+        return Optional.ofNullable(PxlOptionSupport.findExportWildcardSheetOption(workbookMeta.getExportSheetOptions()))
                 .map(PxlExportSheetOption::getExportCsvBom)
                 .orElseGet(workbookMeta::isExportCsvBom);
-    }
-
-    /**
-     * Returns the wildcard sheet option, the only sheet-level override reachable from the sheet form.
-     *
-     * @param workbookMeta the resolved export metadata for the workbook
-     * @return the wildcard sheet option, or {@code null} if none is registered
-     */
-    private PxlExportSheetOption findWildcardSheetOption(final PxlExportWorkbookMeta workbookMeta) {
-
-        return Optional.ofNullable(workbookMeta.getExportSheetOptions())
-                .flatMap(options -> options.stream()
-                        .filter(o -> StringUtils.equals(o.getFieldName(), PxlConstants.SHEET_FIELD_NAME_WILD_CARD))
-                        .findFirst())
-                .orElse(null);
     }
 
     /**

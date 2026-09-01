@@ -10,10 +10,7 @@ import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nContent;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
-import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
-import io.github.hclimkr.pxl.internal.support.PxlClassSupport;
-import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
-import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
+import io.github.hclimkr.pxl.internal.support.*;
 import io.github.hclimkr.pxl.option.PxlExportColumnOption;
 import io.github.hclimkr.pxl.option.PxlExportSheetOption;
 import io.github.hclimkr.pxl.styler.PxlStyler;
@@ -269,15 +266,7 @@ public final class PxlExportSheetMeta {
             // Get the generic class of the Collection.
             final Class<?> rowClass = PxlReflectionSupport.getFirstTypeArgument(sheetField);
 
-            final PxlExportSheetOption sheetOption = Optional.ofNullable(sheetOptions)
-                    .flatMap(options -> options.stream()
-                            .filter(o -> StringUtils.equals(o.getFieldName(), sheetField.getName()))
-                            .findFirst())
-                    .orElseGet(() -> Optional.ofNullable(sheetOptions)
-                            .flatMap(options -> options.stream()
-                                    .filter(o -> StringUtils.equals(o.getFieldName(), PxlConstants.SHEET_FIELD_NAME_WILD_CARD))
-                                    .findFirst())
-                            .orElse(null));
+            final PxlExportSheetOption sheetOption = PxlOptionSupport.findExportSheetOption(sheetOptions, sheetField.getName());
 
             final List<String> candidateSheetNames = makeCandidateSheetNames(workbookMeta, sheetOption, sheetAnnotation, sheetField);
 

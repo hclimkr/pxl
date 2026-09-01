@@ -1,7 +1,6 @@
 package io.github.hclimkr.pxl.builder;
 
 import io.github.hclimkr.pxl.Pxl;
-import io.github.hclimkr.pxl.PxlConstants;
 import io.github.hclimkr.pxl.exception.*;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.core.PxlCoreExcelImporter;
@@ -9,17 +8,20 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlImportWorkbookMeta;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.internal.support.PxlOptionSupport;
 import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
 import io.github.hclimkr.pxl.util.PxlWorkbookUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Workbook;
 
 import javax.validation.Validator;
 import java.io.File;
 import java.io.InputStream;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Excel import builder. Created via {@link Pxl#importExcel()}.
@@ -388,11 +390,7 @@ public final class PxlExcelImportBuilder extends PxlAbstractImportBuilder {
                     final List<PxlImportSheetOption> sheetOptions = workbookMeta.getImportSheetOptions();
                     result = PxlCoreExcelImporter.parseExcel(resolveWorkbookName(excelFile), workbook, workbookClass, workbookMeta, sheetOptions, validator);
                 } else {
-                    final PxlImportSheetOption sheetOption = Optional.ofNullable(workbookMeta.getImportSheetOptions())
-                            .flatMap(options -> options.stream()
-                                    .filter(o -> StringUtils.equals(o.getFieldName(), PxlConstants.SHEET_FIELD_NAME_WILD_CARD))
-                                    .findFirst())
-                            .orElse(null);
+                    final PxlImportSheetOption sheetOption = PxlOptionSupport.findImportWildcardSheetOption(workbookMeta.getImportSheetOptions());
                     result = PxlCoreExcelImporter.parseExcel(workbook, candidateSheetNames, collectionClass, rowClass, workbookMeta, sheetOption, validator);
                 }
 

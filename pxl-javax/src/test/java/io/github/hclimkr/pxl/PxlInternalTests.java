@@ -14,6 +14,7 @@ import io.github.hclimkr.pxl.internal.meta.*;
 import io.github.hclimkr.pxl.internal.support.*;
 import io.github.hclimkr.pxl.option.PxlExportSheetOption;
 import io.github.hclimkr.pxl.option.PxlExportWorkbookOption;
+import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.tcdata.*;
 import io.github.hclimkr.pxl.type.PxlExcelEngine;
 import io.github.hclimkr.pxl.type.PxlFileFormat;
@@ -56,7 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * without notice along with the internals themselves.
  * <p>
  * Covered areas: {@code internal/codec} (the export dispatcher's string form), {@code internal/support}
- * (reflection, class, number, date-time, temporal-amount, workbook, type-reference helpers),
+ * (reflection, class, number, date-time, temporal-amount, workbook, option, type-reference helpers),
  * {@code internal/meta} (converter metadata and the workbook/sheet/column factory chain), {@code internal/core}
  * (contents handler, exporter argument validation), {@code internal/i18n} and {@code internal/constraint}.
  */
@@ -146,7 +147,7 @@ public class PxlInternalTests {
 
 
     // ==================================================================
-    // internal/support helpers (reflection, class, number, date-time, temporal-amount, workbook, type-reference)
+    // internal/support helpers (reflection, class, number, date-time, temporal-amount, workbook, option, type-reference)
     // ==================================================================
 
     // ------------------------------------------------------------------
@@ -451,6 +452,70 @@ public class PxlInternalTests {
         // a raw (non-parameterized) subclass has no captured type argument -> rejected
         assertThrows(IllegalArgumentException.class, () -> new PxlTypeReference() {
         });
+    }
+
+    // ------------------------------------------------------------------
+    // PxlOptionSupport (sheet option lookup: field name first, wildcard fallback)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void optionSupport_wildcardLookup_skipsNamedOptions() {
+        // The sheet form has no field to name, so only the wildcard applies however many named options are registered.
+        final PxlExportSheetOption namedExport = PxlExportSheetOption.builder().fieldName("employees").build();
+        final PxlExportSheetOption wildcardExport = PxlExportSheetOption.builder().build();   // fieldName defaults to "*"
+        assertThat(PxlOptionSupport.findExportWildcardSheetOption(Arrays.asList(namedExport, wildcardExport)))
+                .isSameAs(wildcardExport);
+
+        final PxlImportSheetOption namedImport = PxlImportSheetOption.builder().fieldName("employees").build();
+        final PxlImportSheetOption wildcardImport = PxlImportSheetOption.builder().build();
+        assertThat(PxlOptionSupport.findImportWildcardSheetOption(Arrays.asList(namedImport, wildcardImport)))
+                .isSameAs(wildcardImport);
+    }
+
+    @Test
+    public void optionSupport_namedLookup_prefersFieldNameOverWildcard() {
+        final PxlExportSheetOption namedExport = PxlExportSheetOption.builder().fieldName("employees").build();
+        final PxlExportSheetOption wildcardExport = PxlExportSheetOption.builder().build();
+        // the wildcard is listed first, so a positional match would pick the wrong one
+        final List<PxlExportSheetOption> exportOptions = Arrays.asList(wildcardExport, namedExport);
+        assertThat(PxlOptionSupport.findExportSheetOption(exportOptions, "employees")).isSameAs(namedExport);
+        assertThat(PxlOptionSupport.findExportSheetOption(exportOptions, "departments")).isSameAs(wildcardExport);   // no such field -> wildcard
+
+        final PxlImportSheetOption namedImport = PxlImportSheetOption.builder().fieldName("employees").build();
+        final PxlImportSheetOption wildcardImport = PxlImportSheetOption.builder().build();
+        final List<PxlImportSheetOption> importOptions = Arrays.asList(wildcardImport, namedImport);
+        assertThat(PxlOptionSupport.findImportSheetOption(importOptions, "employees")).isSameAs(namedImport);
+        assertThat(PxlOptionSupport.findImportSheetOption(importOptions, "departments")).isSameAs(wildcardImport);
+    }
+
+    @Test
+    public void optionSupport_namedLookup_blankFieldName_matchesWildcardOnly() {
+        // A blank name carries nothing to match, so it must not be compared against the registered field names.
+        final PxlExportSheetOption namedExport = PxlExportSheetOption.builder().fieldName("employees").build();
+        final PxlExportSheetOption wildcardExport = PxlExportSheetOption.builder().build();
+        final List<PxlExportSheetOption> exportOptions = Arrays.asList(namedExport, wildcardExport);
+        assertThat(PxlOptionSupport.findExportSheetOption(exportOptions, null)).isSameAs(wildcardExport);
+        assertThat(PxlOptionSupport.findExportSheetOption(exportOptions, "   ")).isSameAs(wildcardExport);
+
+        final PxlImportSheetOption namedImport = PxlImportSheetOption.builder().fieldName("employees").build();
+        final PxlImportSheetOption wildcardImport = PxlImportSheetOption.builder().build();
+        final List<PxlImportSheetOption> importOptions = Arrays.asList(namedImport, wildcardImport);
+        assertThat(PxlOptionSupport.findImportSheetOption(importOptions, null)).isSameAs(wildcardImport);
+        assertThat(PxlOptionSupport.findImportSheetOption(importOptions, "   ")).isSameAs(wildcardImport);
+    }
+
+    @Test
+    public void optionSupport_noMatchingOption_returnsNull() {
+        final List<PxlExportSheetOption> namedOnly =
+                Collections.singletonList(PxlExportSheetOption.builder().fieldName("employees").build());
+        assertThat(PxlOptionSupport.findExportWildcardSheetOption(namedOnly)).isNull();          // no wildcard registered
+        assertThat(PxlOptionSupport.findExportSheetOption(namedOnly, "departments")).isNull();   // neither the name nor a wildcard
+
+        // an absent or empty override list is the common case and must not be treated as a match
+        assertThat(PxlOptionSupport.findExportWildcardSheetOption(null)).isNull();
+        assertThat(PxlOptionSupport.findExportSheetOption(Collections.emptyList(), "employees")).isNull();
+        assertThat(PxlOptionSupport.findImportWildcardSheetOption(null)).isNull();
+        assertThat(PxlOptionSupport.findImportSheetOption(Collections.emptyList(), "employees")).isNull();
     }
 
     // ==================================================================
