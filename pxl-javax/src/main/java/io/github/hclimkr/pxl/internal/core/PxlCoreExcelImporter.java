@@ -170,12 +170,13 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
      * @param workbook     the open POI workbook to inspect
      * @param workbookMeta the resolved import metadata for the workbook
      * @param sheetMetas   the sheet metas to resolve against the workbook's sheets
-     * @throws PxlDataException if the workbook exceeds the maximum sheet count, or a required or duplicate sheet check fails
+     * @throws PxlNullPointerException if {@code workbook} is {@code null}
+     * @throws PxlDataException        if the workbook exceeds the maximum sheet count, or a required or duplicate sheet check fails
      */
     private static void resolveAllSheetsFromWorkbook(final Workbook workbook,
                                                      final PxlImportWorkbookMeta workbookMeta,
                                                      final List<PxlImportSheetMeta> sheetMetas)
-            throws PxlDataException {
+            throws PxlNullPointerException, PxlDataException {
 
         final int numOfSheets = workbook.getNumberOfSheets();
         final int maxNumOfSheets = workbookMeta.getImportFileFormat().getMaxImportSheets();
@@ -194,11 +195,12 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
      *
      * @param workbook  the open POI workbook to inspect
      * @param sheetMeta the sheet meta to resolve; its actual index/name are set on match
-     * @throws PxlDataException if the sheet appears more than once, or a required sheet is missing
+     * @throws PxlNullPointerException if {@code workbook} is {@code null}
+     * @throws PxlDataException        if the sheet appears more than once, or a required sheet is missing
      */
     private static void resolveSheetFromWorkbook(final Workbook workbook,
                                                  final PxlImportSheetMeta sheetMeta)
-            throws PxlDataException {
+            throws PxlNullPointerException, PxlDataException {
 
         if (!sheetMeta.isImportEnabled()) {
             return;
@@ -211,12 +213,10 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
 
         final int numOfSheets = workbook.getNumberOfSheets();
         for (int workbookSheetIndex = 0; workbookSheetIndex < numOfSheets; workbookSheetIndex++) {
-            final Sheet workbookSheet = workbook.getSheetAt(workbookSheetIndex);
-            if (Objects.isNull(workbookSheet)) {
-                continue;
-            }
-
-            final String workbookSheetName = StringUtils.deleteWhitespace(workbookSheet.getSheetName());
+            // Only the name is compared here, so it is read without reaching for the sheet: on a streaming
+            // workbook getSheetAt opens the sheet's own part to build a reader for it, which would mean opening
+            // every sheet in the workbook to resolve one. A missing name is blank and falls through below.
+            final String workbookSheetName = StringUtils.deleteWhitespace(workbook.getSheetName(workbookSheetIndex));
             if (StringUtils.isBlank(workbookSheetName)) {
                 continue;
             }
@@ -233,7 +233,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
         }
 
         if ((sheetMeta.isRequired()) && (sheetMeta.getActualImportSheetIndex() < 0)) {
-            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NOT_FOUND, sheetNames));
+            throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NOT_FOUND, sheetNames, PxlWorkbookUtils.getSheetNamesOfWorkbook(workbook)));
         }
     }
 

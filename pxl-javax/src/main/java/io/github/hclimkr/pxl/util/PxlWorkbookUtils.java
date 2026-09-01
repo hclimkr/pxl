@@ -31,13 +31,15 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 /**
  * Workbook-related utilities: opening a workbook from a file or stream, writing it out (optionally encrypted),
- * closing it (disposing of a streaming workbook's temp files), creating a formula evaluator, and reading the
- * {@code @PxlWorkbookName} field of a workbook object.
+ * closing it (disposing of a streaming workbook's temp files), creating a formula evaluator, listing the sheet
+ * names it holds, and reading the {@code @PxlWorkbookName} field of a workbook object.
  */
 public final class PxlWorkbookUtils {
 
@@ -233,6 +235,38 @@ public final class PxlWorkbookUtils {
                 .orElse(null);
 
         return formulaEvaluator;
+    }
+
+    /**
+     * Returns the names of the sheets the workbook holds, in workbook order.
+     * <p>
+     * The names are taken as they are, neither whitespace-stripped nor case-folded the way sheet matching compares
+     * them, so the result is what the user sees when opening the file.
+     * <p>
+     * The names are read with {@code getSheetName(int)} rather than through the sheets themselves, which matters
+     * for a streaming workbook ({@link StreamingWorkbook}): there the name comes from the sheet properties parsed
+     * once out of the workbook part, while {@code getSheetAt(int)} opens the sheet's own part to build a reader
+     * for it, and {@code sheetIterator()} does that for every sheet at once. Reaching for a sheet can also fail
+     * on a streaming workbook, and this lookup is used while assembling a diagnostic message, where a failure
+     * would hide the error being reported.
+     *
+     * @param workbook the workbook to read the sheet names from
+     * @return the sheet names in workbook order; empty when the workbook holds no sheet
+     * @throws PxlNullPointerException if {@code workbook} is {@code null}
+     */
+    public static List<String> getSheetNamesOfWorkbook(final Workbook workbook)
+            throws PxlNullPointerException {
+
+        PxlAssertSupport.notNull(workbook, "workbook");
+
+        final int numOfSheets = workbook.getNumberOfSheets();
+        final List<String> sheetNames = new ArrayList<>(numOfSheets);
+
+        for (int sheetIndex = 0; sheetIndex < numOfSheets; sheetIndex++) {
+            sheetNames.add(workbook.getSheetName(sheetIndex));
+        }
+
+        return sheetNames;
     }
 
     /**

@@ -240,7 +240,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
             }
 
             if ((sheetMeta.isRequired()) && (sheetMeta.getActualImportSheetIndex() < 0)) {
-                throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NOT_FOUND, sheetNames));
+                throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_SHEET_NOT_FOUND, sheetNames, csvNames));
             }
         }
     }

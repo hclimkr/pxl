@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Exception scenario tests - file/validation/special double/duplicate sheet/password/stream-reader formula, plus type parsing failures (bool/bigdecimal/biginteger/localdate/duration/period), integer/byte out-of-range, ERROR cell, no default constructor, RowIndex type/unsupported type/grouping field typo, and which validation pass reports a violation when a @PxlSheet field carries @Valid.
+ * Exception scenario tests - file/validation/special double/duplicate sheet/missing sheet/password/stream-reader formula, plus type parsing failures (bool/bigdecimal/biginteger/localdate/duration/period), integer/byte out-of-range, ERROR cell, no default constructor, RowIndex type/unsupported type/grouping field typo, and which validation pass reports a violation when a @PxlSheet field carries @Valid.
  * <p>
  * A failure has to be raised on every terminal alike, so each test that exports is swept across
  * {@link ExportDest}. What stays a plain {@code @Test} is a test whose subject is a config-step guard or one
@@ -488,6 +488,40 @@ public class PxlExceptionTests {
                         .override(noValidationOption()), dest, testInfo));
 
         assertThat(exception.getMessage().toUpperCase(Locale.ROOT)).contains("EMPLOYEES");
+    }
+
+    // ------------------------------------------------------------------
+    // import: a required sheet is missing -> the message names what the source holds
+    // ------------------------------------------------------------------
+
+    @Test
+    public void importSheet_missingSheetName_messageNamesTheWorkbookSheets() throws Exception {
+        // The sheet form always requires its sheet, so a name matching nothing fails. Naming only the sheet that
+        // was asked for leaves the caller guessing, so the message also lists what the workbook actually holds.
+        final byte[] bytes = headerOnlySheet("Rows");
+
+        final PxlDataException exception = assertThrows(PxlDataException.class, () ->
+                pxl.importExcel()
+                        .sheet(Employee.class, "Typo")
+                        .fromStream(new ByteArrayInputStream(bytes)));
+
+        assertThat(exception).hasMessageContaining("Typo");
+        assertThat(exception).hasMessageContaining("Rows");
+    }
+
+    @Test
+    public void importCsvWorkbook_missingRequiredSheet_messageNamesTheGivenSources() {
+        // The CSV workbook form is handed its sources by the caller, so those names go into the message as well -
+        // a source whose name matches no sheet is otherwise dropped without a word.
+        final String csv = "Name,Age\nAlice,30\n";
+
+        final PxlDataException exception = assertThrows(PxlDataException.class, () ->
+                pxl.importCsv()
+                        .workbook(ConstrainedCascadeWorkbook.class)
+                        .fromStreams(Arrays.asList("Typo"), Arrays.asList(stream(csv))));
+
+        assertThat(exception).hasMessageContaining("Rows");
+        assertThat(exception).hasMessageContaining("Typo");
     }
 
     // ------------------------------------------------------------------

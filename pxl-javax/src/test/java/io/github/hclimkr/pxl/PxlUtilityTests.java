@@ -50,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Ones that originally only printed output were turned into real tests with assertions, and the data is written mostly in English (ASCII).
  * <p>
  * The second part directly exercises the public {@code util/} helpers (PxlMiscUtils, PxlRegionUtils, PxlSheetUtils,
- * PxlRowUtils, PxlCellUtils, PxlCollectionUtils) against a plain XSSF workbook, since those are consumer-facing
+ * PxlRowUtils, PxlCellUtils, PxlCollectionUtils, PxlWorkbookUtils) against a plain XSSF workbook, since those are consumer-facing
  * entry points, and closes with the public stylers and the {@code PxlFileFormat} / {@code PxlExcelEngine} lookups.
  * <p>
  * Tests that reach into {@code internal/} live in {@link PxlInternalTests} instead - everything here is public API.
@@ -1411,6 +1411,52 @@ public class PxlUtilityTests {
             final Sheet cloned = PxlSheetUtils.cloneSheet(workbook, 0, "Src (2)");
 
             assertThat(workbook.getSheetName(workbook.getSheetIndex(cloned))).isEqualTo("Src (2)");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // PxlWorkbookUtils (sheet names)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void workbookUtils_getSheetNamesOfWorkbook_severalSheets_returnsThemInWorkbookOrder() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            workbook.createSheet("Employees");
+            workbook.createSheet("Sales Q1");
+            workbook.createSheet("NOTES");
+
+            // The names come back as they are - sheet matching removes whitespace and ignores case, but this
+            // lookup does not, because what it answers is what the user sees when opening the file.
+            assertThat(PxlWorkbookUtils.getSheetNamesOfWorkbook(workbook))
+                    .containsExactly("Employees", "Sales Q1", "NOTES");
+        }
+    }
+
+    @Test
+    public void workbookUtils_getSheetNamesOfWorkbook_noSheetOrNullWorkbook_answersEmptyOrRejects() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            assertThat(PxlWorkbookUtils.getSheetNamesOfWorkbook(workbook)).isEmpty();
+        }
+
+        assertThrows(PxlNullPointerException.class, () -> PxlWorkbookUtils.getSheetNamesOfWorkbook(null));
+    }
+
+    @Test
+    public void workbookUtils_getSheetNamesOfWorkbook_streamingWorkbook_readsNamesWithoutOpeningTheSheets() throws Exception {
+        // The names are read from the sheet properties, so they come back on a streaming workbook too - without
+        // opening a sheet part, which is what getSheetAt/sheetIterator would do there.
+        final byte[] xlsx;
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            workbook.createSheet("Employees").createRow(0).createCell(0).setCellValue("x");
+            workbook.createSheet("Sales Q1");
+            workbook.write(outputStream);
+            xlsx = outputStream.toByteArray();
+        }
+
+        try (Workbook streaming = StreamingReader.builder().open(new ByteArrayInputStream(xlsx))) {
+            assertThat(PxlWorkbookUtils.getSheetNamesOfWorkbook(streaming))
+                    .containsExactly("Employees", "Sales Q1");
         }
     }
 
