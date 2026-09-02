@@ -10,6 +10,7 @@ import io.github.hclimkr.pxl.internal.meta.PxlImportColumnMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlImportSheetMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlImportWorkbookMeta;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.internal.support.PxlNameMatchSupport;
 import io.github.hclimkr.pxl.internal.support.PxlOptionSupport;
 import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
@@ -216,7 +217,7 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
                     continue;
                 }
 
-                final String csvName = StringUtils.deleteWhitespace(PxlCollectionUtils.get(csvNames, csvStreamIndex));
+                final String csvName = PxlNameMatchSupport.normalizeName(PxlCollectionUtils.get(csvNames, csvStreamIndex));
                 if (StringUtils.isBlank(csvName)) {
                     continue;
                 }
@@ -537,12 +538,12 @@ public final class PxlCoreCsvImporter extends PxlAbstractImporter {
             final List<String> candidateColumnNames = columnMeta.getCandidateColumnNames();
 
             for (int importColumnIndex = actualImportOriginDataColumnIndex; importColumnIndex < actualImportBoundDataColumnIndex; importColumnIndex++) {
-                final String columnName = StringUtils.deleteWhitespace(PxlCollectionUtils.get(csvRecord.values(), importColumnIndex));
+                final String columnName = PxlNameMatchSupport.normalizeName(PxlCollectionUtils.get(csvRecord.values(), importColumnIndex));
                 if (StringUtils.isBlank(columnName)) {
                     continue;
                 }
 
-                if (candidateColumnNames.contains(columnName)) {
+                if (matchesColumnName(candidateColumnNames, columnName)) {
                     if (columnMeta.getActualImportColumnIndex() >= 0) {
                         throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_COLUMN_DUPLICATE, csvName, candidateColumnNames));
                     }

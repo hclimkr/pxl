@@ -11,6 +11,7 @@ import io.github.hclimkr.pxl.internal.meta.PxlImportColumnMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlImportSheetMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlImportWorkbookMeta;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.internal.support.PxlNameMatchSupport;
 import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.util.PxlCellUtils;
@@ -216,7 +217,7 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
             // Only the name is compared here, so it is read without reaching for the sheet: on a streaming
             // workbook getSheetAt opens the sheet's own part to build a reader for it, which would mean opening
             // every sheet in the workbook to resolve one. A missing name is blank and falls through below.
-            final String workbookSheetName = StringUtils.deleteWhitespace(workbook.getSheetName(workbookSheetIndex));
+            final String workbookSheetName = PxlNameMatchSupport.normalizeName(workbook.getSheetName(workbookSheetIndex));
             if (StringUtils.isBlank(workbookSheetName)) {
                 continue;
             }
@@ -491,12 +492,12 @@ public final class PxlCoreExcelImporter extends PxlAbstractImporter {
                     continue;
                 }
 
-                final String columnName = StringUtils.deleteWhitespace(PxlCellUtils.getCellStringValue(cell, workbookMeta.getImportDataFormatterCache()));
+                final String columnName = PxlNameMatchSupport.normalizeName(PxlCellUtils.getCellStringValue(cell, workbookMeta.getImportDataFormatterCache()));
                 if (StringUtils.isBlank(columnName)) {
                     continue;
                 }
 
-                if (candidateColumnNames.contains(columnName)) {
+                if (matchesColumnName(candidateColumnNames, columnName)) {
                     if (columnMeta.getActualImportColumnIndex() >= 0) {
                         throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CORE_IMPORT_COLUMN_DUPLICATE, sheetName, candidateColumnNames));
                     }

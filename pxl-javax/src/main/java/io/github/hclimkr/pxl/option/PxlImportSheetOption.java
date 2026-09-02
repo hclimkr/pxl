@@ -5,18 +5,17 @@ import io.github.hclimkr.pxl.annotation.PxlSheet;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.internal.support.PxlNameMatchSupport;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * Sheet import option, for an Excel or a CSV source alike. A CSV workbook is read as one file per sheet, so this
@@ -143,10 +142,7 @@ public final class PxlImportSheetOption {
 
         return Optional.ofNullable(sheetOption)
                 .flatMap(option -> Optional.ofNullable(option.getImportSheetNames())
-                        .map(names -> names.stream()
-                                .map(StringUtils::deleteWhitespace)
-                                .filter(StringUtils::isNotBlank)
-                                .collect(Collectors.toList())))
+                        .map(PxlNameMatchSupport::normalizeNames))
                 .orElse(null);
     }
 

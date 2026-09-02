@@ -10,10 +10,7 @@ import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nContent;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
-import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
-import io.github.hclimkr.pxl.internal.support.PxlClassSupport;
-import io.github.hclimkr.pxl.internal.support.PxlOptionSupport;
-import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
+import io.github.hclimkr.pxl.internal.support.*;
 import io.github.hclimkr.pxl.option.PxlImportColumnOption;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
@@ -398,10 +395,7 @@ public final class PxlImportSheetMeta {
 
         final Class<? extends Collection<?>> rowConcreteCollectionClass = PxlClassSupport.getConcreteCollectionClass(rowCollectionClass);
 
-        final List<String> sheetNames = candidateSheetNames.stream()
-                .map(StringUtils::deleteWhitespace)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.toList());
+        final List<String> sheetNames = PxlNameMatchSupport.normalizeNames(candidateSheetNames);
 
         if (PxlCollectionUtils.isEmpty(sheetNames)) {
             throw new PxlDataException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.META_SHEET_NAME_INVALID, candidateSheetNames));
@@ -546,22 +540,18 @@ public final class PxlImportSheetMeta {
 
         candidateSheetNames = PxlImportSheetOption.getImportSheetNames(sheetOption);
         if (PxlCollectionUtils.isNotEmpty(candidateSheetNames)) {
-            candidateSheetNames = candidateSheetNames.stream()
+            candidateSheetNames = PxlNameMatchSupport.normalizeNames(candidateSheetNames.stream()
                     .map(name -> PxlI18nContent.translate(importResourceBundle, name))
-                    .map(StringUtils::deleteWhitespace)
-                    .filter(StringUtils::isNotBlank)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toList()));
             if (PxlCollectionUtils.isNotEmpty(candidateSheetNames)) {
                 return candidateSheetNames;
             }
         }
 
         // Get the value of the @PxlSheet annotation, i.e. the sheet name.
-        candidateSheetNames = Arrays.stream(sheetAnnotation.name())
+        candidateSheetNames = PxlNameMatchSupport.normalizeNames(Arrays.stream(sheetAnnotation.name())
                 .map(name -> PxlI18nContent.translate(importResourceBundle, name))
-                .map(StringUtils::deleteWhitespace)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
         if (PxlCollectionUtils.isNotEmpty(candidateSheetNames)) {
             return candidateSheetNames;
         }

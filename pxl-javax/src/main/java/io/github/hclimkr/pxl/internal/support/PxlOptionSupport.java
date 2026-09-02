@@ -53,7 +53,7 @@ public final class PxlOptionSupport {
     public static PxlExportSheetOption findExportSheetOption(@Nullable final List<PxlExportSheetOption> sheetOptions,
                                                              @Nullable final String fieldName) {
 
-        return findByFieldName(sheetOptions, fieldName, PxlExportSheetOption::getFieldName);
+        return findSheetOptionByFieldName(sheetOptions, fieldName, PxlExportSheetOption::getFieldName);
     }
 
     /**
@@ -80,7 +80,7 @@ public final class PxlOptionSupport {
     public static PxlImportSheetOption findImportSheetOption(@Nullable final List<PxlImportSheetOption> sheetOptions,
                                                              @Nullable final String fieldName) {
 
-        return findByFieldName(sheetOptions, fieldName, PxlImportSheetOption::getFieldName);
+        return findSheetOptionByFieldName(sheetOptions, fieldName, PxlImportSheetOption::getFieldName);
     }
 
     /**
@@ -96,9 +96,9 @@ public final class PxlOptionSupport {
      * @param fieldNameGetter reads the field name an option overrides
      * @return the option in effect, or {@code null} if neither the named nor the wildcard option is registered
      */
-    private static <T> T findByFieldName(@Nullable final List<T> sheetOptions,
-                                         @Nullable final String fieldName,
-                                         final Function<T, String> fieldNameGetter) {
+    private static <T> T findSheetOptionByFieldName(@Nullable final List<T> sheetOptions,
+                                                    @Nullable final String fieldName,
+                                                    final Function<T, String> fieldNameGetter) {
 
         if (PxlCollectionUtils.isEmpty(sheetOptions)) {
             return null;

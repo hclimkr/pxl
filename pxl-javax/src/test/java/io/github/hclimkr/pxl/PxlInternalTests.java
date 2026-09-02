@@ -57,7 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * without notice along with the internals themselves.
  * <p>
  * Covered areas: {@code internal/codec} (the export dispatcher's string form), {@code internal/support}
- * (reflection, class, number, date-time, temporal-amount, workbook, option, type-reference helpers),
+ * (reflection, class, number, date-time, temporal-amount, workbook, option, name-match, type-reference helpers),
  * {@code internal/meta} (converter metadata and the workbook/sheet/column factory chain), {@code internal/core}
  * (contents handler, exporter argument validation), {@code internal/i18n} and {@code internal/constraint}.
  */
@@ -516,6 +516,61 @@ public class PxlInternalTests {
         assertThat(PxlOptionSupport.findExportSheetOption(Collections.emptyList(), "employees")).isNull();
         assertThat(PxlOptionSupport.findImportWildcardSheetOption(null)).isNull();
         assertThat(PxlOptionSupport.findImportSheetOption(Collections.emptyList(), "employees")).isNull();
+    }
+
+    // ------------------------------------------------------------------
+    // PxlNameMatchSupport (the name rules import binds by: whitespace always ignored, case only for sheets/enums)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void nameMatchSupport_normalizeName_stripsWhitespaceAnywhere() {
+        // whitespace is dropped wherever it sits, not just at the ends, which is what makes "Employee Name" and
+        // "EmployeeName" the same name
+        assertThat(PxlNameMatchSupport.normalizeName("  Employee \t Name  ")).isEqualTo("EmployeeName");
+        assertThat(PxlNameMatchSupport.normalizeName("   ")).isEmpty();
+        assertThat(PxlNameMatchSupport.normalizeName(null)).isNull();
+    }
+
+    @Test
+    public void nameMatchSupport_normalizeNames_dropsBlankEntriesKeepingOrder() {
+        // candidates are matched in declaration order, so the surviving names must keep theirs
+        assertThat(PxlNameMatchSupport.normalizeNames(Arrays.asList(" Employee Name ", "   ", null, "Age")))
+                .containsExactly("EmployeeName", "Age");
+        assertThat(PxlNameMatchSupport.normalizeNames(null)).isEmpty();
+        assertThat(PxlNameMatchSupport.normalizeNames(Collections.emptyList())).isEmpty();
+    }
+
+    @Test
+    public void nameMatchSupport_matchesAnyIgnoringCase_foldsCase() {
+        // the sheet rule: a CSV sheet is named after its file, and a file name carries whatever casing the file
+        // system holds
+        final List<String> candidates = Arrays.asList("Employees", "Staff");
+        assertThat(PxlNameMatchSupport.matchesAnyIgnoringCase(candidates, "EMPLOYEES")).isTrue();
+        assertThat(PxlNameMatchSupport.matchesAnyIgnoringCase(candidates, "employees")).isTrue();
+        assertThat(PxlNameMatchSupport.matchesAnyIgnoringCase(candidates, "Departments")).isFalse();
+        assertThat(PxlNameMatchSupport.matchesAnyIgnoringCase(candidates, null)).isFalse();
+        assertThat(PxlNameMatchSupport.matchesAnyIgnoringCase(Collections.emptyList(), "Employees")).isFalse();
+    }
+
+    @Test
+    public void nameMatchSupport_matchesAnyRespectingCase_keepsCase() {
+        // the column rule: two headers differing only in case are two columns, and REFERENCE documents it as such
+        final List<String> candidates = Arrays.asList("EmployeeName", "Age");
+        assertThat(PxlNameMatchSupport.matchesAnyRespectingCase(candidates, "EmployeeName")).isTrue();
+        assertThat(PxlNameMatchSupport.matchesAnyRespectingCase(candidates, "employeename")).isFalse();
+        assertThat(PxlNameMatchSupport.matchesAnyRespectingCase(candidates, null)).isFalse();
+        assertThat(PxlNameMatchSupport.matchesAnyRespectingCase(Collections.emptyList(), "Age")).isFalse();
+    }
+
+    @Test
+    public void nameMatchSupport_equalsNormalizedIgnoringCase_normalizesBothSides() {
+        // unlike the matching methods, this one normalizes what it is given: the enum caller compares values it
+        // reads one at a time
+        assertThat(PxlNameMatchSupport.equalsNormalizedIgnoringCase(" high  school ", "HIGHSCHOOL")).isTrue();
+        assertThat(PxlNameMatchSupport.equalsNormalizedIgnoringCase("HighSchool", "Middle School")).isFalse();
+        assertThat(PxlNameMatchSupport.equalsNormalizedIgnoringCase(null, null)).isTrue();
+        assertThat(PxlNameMatchSupport.equalsNormalizedIgnoringCase(null, "HighSchool")).isFalse();
+        assertThat(PxlNameMatchSupport.equalsNormalizedIgnoringCase("HighSchool", null)).isFalse();
     }
 
     // ==================================================================

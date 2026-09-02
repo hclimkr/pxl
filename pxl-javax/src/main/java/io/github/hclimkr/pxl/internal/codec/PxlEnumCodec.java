@@ -7,6 +7,7 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlExportColumnMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlExportColumnMeta.PxlExportConverterMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlImportColumnMeta;
+import io.github.hclimkr.pxl.internal.support.PxlNameMatchSupport;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -303,7 +304,7 @@ public final class PxlEnumCodec {
                 object = Stream.of(enumClass.getEnumConstants())
                         .filter(o -> {
                             try {
-                                return equalsEnumString((String) toStringMethod.invoke(o), stringValue);
+                                return PxlNameMatchSupport.equalsNormalizedIgnoringCase((String) toStringMethod.invoke(o), stringValue);
                             } catch (ReflectiveOperationException ignored) {
                                 return false;
                             }
@@ -313,7 +314,7 @@ public final class PxlEnumCodec {
 
                 if (Objects.isNull(object)) {
                     object = Stream.of(enumClass.getEnumConstants())
-                            .filter(o -> equalsEnumString(((Enum<?>) o).name(), stringValue))
+                            .filter(o -> PxlNameMatchSupport.equalsNormalizedIgnoringCase(((Enum<?>) o).name(), stringValue))
                             .findFirst()
                             .orElse(null);
 
@@ -334,28 +335,6 @@ public final class PxlEnumCodec {
         }
 
         return object;
-    }
-
-    /**
-     * Compares two enum-related strings for equality, ignoring case and all whitespace; the same reference (including both
-     * {@code null}) is equal, while a single {@code null} is not.
-     *
-     * @param s1 the first string
-     * @param s2 the second string
-     * @return {@code true} if the two strings are considered equal
-     */
-    private static boolean equalsEnumString(final String s1,
-                                            final String s2) {
-
-        if (s1 == s2) {
-            return true;
-        }
-
-        if (Objects.isNull(s1) || Objects.isNull(s2)) {
-            return false;
-        }
-
-        return StringUtils.equalsIgnoreCase(StringUtils.deleteWhitespace(s1), StringUtils.deleteWhitespace(s2));
     }
 
 }

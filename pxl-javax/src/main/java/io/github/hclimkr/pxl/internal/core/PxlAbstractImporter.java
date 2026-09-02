@@ -6,9 +6,9 @@ import io.github.hclimkr.pxl.exception.PxlReflectionException;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.internal.meta.PxlImportColumnMeta;
 import io.github.hclimkr.pxl.internal.support.PxlAssertSupport;
+import io.github.hclimkr.pxl.internal.support.PxlNameMatchSupport;
 import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
 import io.github.hclimkr.pxl.internal.support.PxlWorkbookSupport;
-import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -77,8 +77,27 @@ abstract class PxlAbstractImporter extends PxlAbstractBinder {
     protected static boolean matchesSheetName(final List<String> candidateSheetNames,
                                               final String sheetName) {
 
-        return candidateSheetNames.stream()
-                .anyMatch(candidateSheetName -> StringUtils.equalsIgnoreCase(candidateSheetName, sheetName));
+        return PxlNameMatchSupport.matchesAnyIgnoringCase(candidateSheetNames, sheetName);
+    }
+
+    /**
+     * Returns whether the column header read from the source matches any of the candidate names, respecting case.
+     *
+     * <p>Unlike a sheet name, a column header is written into the sheet next to the values it labels and is read
+     * back as it was written, so its casing carries meaning: two headers that differ only in case are two columns.
+     * Matching case-sensitively here is therefore the deliberate counterpart of
+     * {@link #matchesSheetName(List, String)}, not an omission.</p>
+     *
+     * <p>Both sides are expected to be whitespace-stripped already, which is what the callers compare.</p>
+     *
+     * @param candidateColumnNames the candidate column names to match against
+     * @param columnName           the column header read from the source
+     * @return {@code true} if any candidate equals {@code columnName} exactly; {@code false} otherwise
+     */
+    protected static boolean matchesColumnName(final List<String> candidateColumnNames,
+                                               final String columnName) {
+
+        return PxlNameMatchSupport.matchesAnyRespectingCase(candidateColumnNames, columnName);
     }
 
     /**

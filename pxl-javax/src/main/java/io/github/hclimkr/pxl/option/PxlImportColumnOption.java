@@ -2,15 +2,14 @@ package io.github.hclimkr.pxl.option;
 
 import io.github.hclimkr.pxl.annotation.PxlColumn;
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
+import io.github.hclimkr.pxl.internal.support.PxlNameMatchSupport;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * Column import option, for an Excel or a CSV source alike.
@@ -103,10 +102,7 @@ public final class PxlImportColumnOption {
 
         return Optional.ofNullable(columnOption)
                 .flatMap(option -> Optional.ofNullable(option.getImportColumnNames())
-                        .map(names -> names.stream()
-                                .map(StringUtils::deleteWhitespace)
-                                .filter(StringUtils::isNotBlank)
-                                .collect(Collectors.toList())))
+                        .map(PxlNameMatchSupport::normalizeNames))
                 .orElse(null);
     }
 

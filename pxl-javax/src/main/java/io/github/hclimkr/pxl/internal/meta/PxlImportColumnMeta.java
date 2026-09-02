@@ -343,22 +343,18 @@ public final class PxlImportColumnMeta {
 
         candidateColumnNames = PxlImportColumnOption.getImportColumnNames(columnOption);
         if (PxlCollectionUtils.isNotEmpty(candidateColumnNames)) {
-            candidateColumnNames = candidateColumnNames.stream()
+            candidateColumnNames = PxlNameMatchSupport.normalizeNames(candidateColumnNames.stream()
                     .map(name -> PxlI18nContent.translate(importResourceBundle, name))
-                    .map(StringUtils::deleteWhitespace)
-                    .filter(StringUtils::isNotBlank)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toList()));
             if (PxlCollectionUtils.isNotEmpty(candidateColumnNames)) {
                 return candidateColumnNames;
             }
         }
 
         // Get the value of the @PxlColumn annotation, i.e. the column name.
-        candidateColumnNames = Arrays.stream(columnAnnotation.name())
+        candidateColumnNames = PxlNameMatchSupport.normalizeNames(Arrays.stream(columnAnnotation.name())
                 .map(name -> PxlI18nContent.translate(importResourceBundle, name))
-                .map(StringUtils::deleteWhitespace)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
         if (PxlCollectionUtils.isNotEmpty(candidateColumnNames)) {
             return candidateColumnNames;
         }
