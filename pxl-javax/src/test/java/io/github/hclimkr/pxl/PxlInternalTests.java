@@ -31,8 +31,7 @@ import javax.validation.Path;
 import javax.validation.TraversableResolver;
 import java.io.StringWriter;
 import java.lang.annotation.ElementType;
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -57,7 +56,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * without notice along with the internals themselves.
  * <p>
  * Covered areas: {@code internal/codec} (the export dispatcher's string form), {@code internal/support}
- * (reflection, class, number, date-time, temporal-amount, workbook, option, name-match, type-reference helpers),
+ * (reflection, class, number, date-time, temporal-amount, workbook, option, name-match, converter-invocation,
+ * type-reference helpers),
  * {@code internal/meta} (converter metadata and the workbook/sheet/column factory chain), {@code internal/core}
  * (contents handler, exporter argument validation), {@code internal/i18n} and {@code internal/constraint}.
  */
@@ -571,6 +571,52 @@ public class PxlInternalTests {
         assertThat(PxlNameMatchSupport.equalsNormalizedIgnoringCase(null, null)).isTrue();
         assertThat(PxlNameMatchSupport.equalsNormalizedIgnoringCase(null, "HighSchool")).isFalse();
         assertThat(PxlNameMatchSupport.equalsNormalizedIgnoringCase("HighSchool", null)).isFalse();
+    }
+
+    // ------------------------------------------------------------------
+    // PxlConverterSupport (the reflective calls behind a column's custom converters)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void converterSupport_invokeExportConverter_staticTakesTheValue_instanceIsCalledOnIt() throws Exception {
+        // a static export converter receives the value as its argument
+        final StaticConverterObject staticObject = StaticConverterObject.fromString("boxed");
+        final Method staticConverter = StaticConverterObject.class.getMethod("toStaticString", StaticConverterObject.class);
+        assertThat(PxlConverterSupport.invokeExportConverter(staticConverter, staticObject)).isEqualTo("boxed");
+
+        // an instance export converter is called on the value itself, with no argument
+        final Money money = new Money("USD", 1_200L);
+        final Method instanceConverter = Money.class.getMethod("toExportString");
+        assertThat(PxlConverterSupport.invokeExportConverter(instanceConverter, money)).isEqualTo("USD 1200");
+    }
+
+    @Test
+    public void converterSupport_invokeImportConverter_prefersConverterOverConstructor() throws Exception {
+        final Method converter = Money.class.getMethod("fromExportString", String.class);
+        final Constructor<?> constructor = Point.class.getConstructor(String.class);
+
+        // the converter wins when both handles are present, and it is invoked statically
+        assertThat(PxlConverterSupport.invokeImportConverter(converter, constructor, "USD 1200"))
+                .isInstanceOfSatisfying(Money.class, money -> assertThat(money.getAmount()).isEqualTo(1_200L));
+
+        // the String constructor is reached only when there is no converter
+        assertThat(PxlConverterSupport.invokeImportConverter(null, constructor, "3, 4"))
+                .isInstanceOfSatisfying(Point.class, point -> assertThat(point.getY()).isEqualTo(4));
+    }
+
+    @Test
+    public void converterSupport_invokeImportConverter_noHandle_returnsNull() throws Exception {
+        // null is not a failure here but an answer: it says no handle applied, which is what lets an enum column
+        // fall through to scanning its constants while an object column reports PARSE_FAILED
+        assertThat(PxlConverterSupport.invokeImportConverter(null, null, "anything")).isNull();
+    }
+
+    @Test
+    public void converterSupport_unwrapInvocationCause_unwrapsOnlyTheReflectiveWrapper() {
+        // what the converter threw is what the user needs to see, and reflection hides it one level down
+        final IllegalStateException thrown = new IllegalStateException("converter-boom");
+        assertThat(PxlConverterSupport.unwrapInvocationCause(new InvocationTargetException(thrown))).isSameAs(thrown);
+        assertThat(PxlConverterSupport.unwrapInvocationCause(thrown)).isSameAs(thrown);
     }
 
     // ==================================================================

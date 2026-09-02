@@ -7,15 +7,14 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlExportColumnMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlExportColumnMeta.PxlExportConverterMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlImportColumnMeta;
+import io.github.hclimkr.pxl.internal.support.PxlConverterSupport;
 import io.github.hclimkr.pxl.internal.support.PxlNameMatchSupport;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
@@ -214,19 +213,14 @@ public final class PxlEnumCodec {
 
         try {
             if (Objects.nonNull(exportConverterMethod)) {
-                if (Modifier.isStatic(exportConverterMethod.getModifiers())) {
-                    stringValue = (String) exportConverterMethod.invoke(null, enumValue);
-                } else {
-                    stringValue = (String) exportConverterMethod.invoke(enumValue);
-                }
-                return stringValue;
+                return PxlConverterSupport.invokeExportConverter(exportConverterMethod, enumValue);
             } else if (Objects.nonNull(toStringMethod)) {
                 stringValue = (String) toStringMethod.invoke(enumValue);
             } else {
                 stringValue = ((Enum<?>) enumValue).name();
             }
         } catch (Exception e) {
-            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+            final Throwable cause = PxlConverterSupport.unwrapInvocationCause(e);
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_ENUM_FORMAT_ERROR, enumClass.getSimpleName()), cause);
         }
 
@@ -296,10 +290,8 @@ public final class PxlEnumCodec {
         Object object = null;
 
         try {
-            if (Objects.nonNull(importConverterMethod)) {
-                object = importConverterMethod.invoke(null, stringValue);
-            } else if (Objects.nonNull(constructor)) {
-                object = constructor.newInstance(stringValue);
+            if (Objects.nonNull(importConverterMethod) || Objects.nonNull(constructor)) {
+                object = PxlConverterSupport.invokeImportConverter(importConverterMethod, constructor, stringValue);
             } else if (Objects.nonNull(toStringMethod)) {
                 object = Stream.of(enumClass.getEnumConstants())
                         .filter(o -> {
@@ -328,7 +320,7 @@ public final class PxlEnumCodec {
         } catch (PxlCellCodecException e) {
             throw e;
         } catch (Exception e) {
-            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+            final Throwable cause = PxlConverterSupport.unwrapInvocationCause(e);
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(forExport ?
                     PxlI18nDiagnosticKeys.CODEC_EXPORT_ENUM_PARSE_ERROR :
                     PxlI18nDiagnosticKeys.CODEC_IMPORT_ENUM_PARSE_ERROR, String.valueOf(stringValue), enumClass.getSimpleName()), cause);

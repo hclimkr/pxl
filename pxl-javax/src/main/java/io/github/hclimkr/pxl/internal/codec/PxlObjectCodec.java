@@ -7,13 +7,12 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlExportColumnMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlExportColumnMeta.PxlExportConverterMeta;
 import io.github.hclimkr.pxl.internal.meta.PxlImportColumnMeta;
+import io.github.hclimkr.pxl.internal.support.PxlConverterSupport;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -172,16 +171,12 @@ final class PxlObjectCodec {
 
         try {
             if (Objects.nonNull(exportConverterMethod)) {
-                if (Modifier.isStatic(exportConverterMethod.getModifiers())) {
-                    stringValue = (String) exportConverterMethod.invoke(null, objectValue);
-                } else {
-                    stringValue = (String) exportConverterMethod.invoke(objectValue);
-                }
+                stringValue = PxlConverterSupport.invokeExportConverter(exportConverterMethod, objectValue);
             } else if (Objects.nonNull(toStringMethod)) {
                 stringValue = (String) toStringMethod.invoke(objectValue);
             }
         } catch (Exception e) {
-            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+            final Throwable cause = PxlConverterSupport.unwrapInvocationCause(e);
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_EXPORT_OBJECT_FORMAT_ERROR, objectClass.getSimpleName()), cause);
         }
 
@@ -249,10 +244,8 @@ final class PxlObjectCodec {
         Object object = null;
 
         try {
-            if (Objects.nonNull(importConverterMethod)) {
-                object = importConverterMethod.invoke(null, stringValue);
-            } else if (Objects.nonNull(constructor)) {
-                object = constructor.newInstance(stringValue);
+            if (Objects.nonNull(importConverterMethod) || Objects.nonNull(constructor)) {
+                object = PxlConverterSupport.invokeImportConverter(importConverterMethod, constructor, stringValue);
             } else {
                 throw new PxlCellCodecException(PxlI18nDiagnostic.get(forExport ?
                         PxlI18nDiagnosticKeys.CODEC_EXPORT_OBJECT_PARSE_FAILED :
@@ -261,7 +254,7 @@ final class PxlObjectCodec {
         } catch (PxlCellCodecException e) {
             throw e;
         } catch (Exception e) {
-            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+            final Throwable cause = PxlConverterSupport.unwrapInvocationCause(e);
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(forExport ?
                     PxlI18nDiagnosticKeys.CODEC_EXPORT_OBJECT_PARSE_ERROR :
                     PxlI18nDiagnosticKeys.CODEC_IMPORT_OBJECT_PARSE_ERROR, String.valueOf(stringValue), objectClass.getSimpleName()), cause);
