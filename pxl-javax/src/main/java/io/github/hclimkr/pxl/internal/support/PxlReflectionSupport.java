@@ -52,7 +52,7 @@ public final class PxlReflectionSupport {
     }
 
     /**
-     * Reads the value of the given field from the given object, making the field accessible first.
+     * Reads the value of the given field from the given object, making the field accessible unless it already is.
      *
      * @param field  the field to read
      * @param object the instance to read from
@@ -64,7 +64,7 @@ public final class PxlReflectionSupport {
             throws PxlReflectionException {
 
         try {
-            field.setAccessible(true);
+            makeAccessible(field);
             return field.get(object);
         } catch (Exception e) {
             throw new PxlReflectionException(e);
@@ -72,7 +72,7 @@ public final class PxlReflectionSupport {
     }
 
     /**
-     * Writes the given value into the given field of the given object, making the field accessible first.
+     * Writes the given value into the given field of the given object, making the field accessible unless it already is.
      *
      * @param field  the field to write
      * @param object the instance to write to
@@ -85,10 +85,29 @@ public final class PxlReflectionSupport {
             throws PxlReflectionException {
 
         try {
-            field.setAccessible(true);
+            makeAccessible(field);
             field.set(object, value);
         } catch (Exception e) {
             throw new PxlReflectionException(e);
+        }
+    }
+
+    /**
+     * Grants reflective access to the field unless it already has it.
+     * <p>
+     * The flag lives on the Field instance, and the binder reuses one instance per column across every row, so
+     * reading it first turns a per-cell setAccessible into a per-field one. The saving is small on its own but
+     * large when a SecurityManager is installed, since setAccessible then runs a full permission check on every
+     * call. {@code Field.canAccess(Object)} reads the same flag without the deprecation, but it is a Java 9 API
+     * and this module compiles with release 8.
+     *
+     * @param field the field to make accessible
+     */
+    @SuppressWarnings("deprecation")
+    private static void makeAccessible(final Field field) {
+
+        if (!field.isAccessible()) {
+            field.setAccessible(true);
         }
     }
 

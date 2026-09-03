@@ -107,6 +107,7 @@ final class PxlPrimitiveFloatCodec {
         if (Objects.isNull(floatValue)) {
             return null;
         }
+
         final DecimalFormat exportDecimalFormatter = columnMeta.getExportDecimalFormatterCache();
         final Pattern exportMaskingPattern = columnMeta.getExportMaskingPattern();
 

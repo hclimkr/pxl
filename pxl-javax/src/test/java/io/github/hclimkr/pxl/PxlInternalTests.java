@@ -223,6 +223,23 @@ public class PxlInternalTests {
     }
 
     @Test
+    public void reflectionSupport_fieldValue_repeatedAndFreshFieldCopies_bind() throws Exception {
+        // The helpers grant access only when the field does not already have it, and that flag lives on the Field
+        // instance. getDeclaredField hands out a new copy each call, so every copy must be granted access of its own,
+        // and a copy reused for many calls must keep working after the first grant.
+        final AllTypesRow row = new AllTypesRow();
+
+        PxlReflectionSupport.setFieldValue(AllTypesRow.class.getDeclaredField("text"), row, "first");
+        assertThat(PxlReflectionSupport.getFieldValue(AllTypesRow.class.getDeclaredField("text"), row)).isEqualTo("first");
+
+        final Field textField = AllTypesRow.class.getDeclaredField("text");
+        for (int i = 0; i < 3; i++) {
+            PxlReflectionSupport.setFieldValue(textField, row, "loop" + i);
+            assertThat(PxlReflectionSupport.getFieldValue(textField, row)).isEqualTo("loop" + i);
+        }
+    }
+
+    @Test
     public void reflectionSupport_getToStringMethod_findsOverride() {
         assertThat(PxlReflectionSupport.getToStringMethod(Point.class)).isNotNull();   // Point overrides toString
         assertThat(PxlReflectionSupport.getToStringMethod(Object.class)).isNull();     // only Object's default
