@@ -326,7 +326,7 @@ response.setHeader("Content-Disposition",
 | `byte`·`short`·`int` + 래퍼 클래스               | 숫자 셀로 기록(표현 범위가 2^53 미만이라 안전)                                                                                                                                                                                    |
 | `long`·`Long`                                  | 패턴 없으면 숫자 셀(double) → 2^53 초과 정밀도 손실.<br/>보존하려면 `pattern` 또는 `BigInteger`/`BigDecimal` 사용                                                                                                                        |
 | `float`·`double` + 래퍼 클래스                   | 숫자 셀                                                                                                                                                                                                             |
-| `char`·`Character`                             | 단일 문자 문자열로 기록.<br/>`exportTrim`·마스킹(`exportMasking`)이 그 문자열에 적용되므로, 공백 문자를 trim하면 빈 문자열이 된다                                                                                                                          |
+| `char`·`Character`                             | 단일 문자 문자열로 기록.<br/>`exportTrim`·마스킹(`exportMasking`)이 그 문자열에 적용되므로, 공백 문자를 trim하면 빈 문자열이 된다.<br/>값을 넣은 적 없는 `char`는 `null`일 수 없어 `'\0'`을 갖는데, 이는 값 없음으로 취급되어 `exportNullString`으로 기록된다                                                                                                                          |
 | `boolean`·`Boolean`                            | `exportTrueString`/`exportFalseString`에 따른 문자열로 기록.<br/>`exportTrim`·마스킹(`exportMasking`)은 그 문자열에 적용된다                                                                                                          |
 | `String`                                       | 텍스트 기록. `exportTrim`, 마스킹(`exportMasking`), `exportStringAsFormula`(선두 `=` → 수식), `exportStringAsPicture`(이미지) 옵션                                                                                                |
 | `BigInteger`·`BigDecimal`                      | 항상 문자열 셀로 정밀도 보존 → Excel 정렬·수식·필터 대상에서 제외될 수 있음.<br/>`pattern` 지정 시 `DecimalFormat`으로 반올림 가능                                                                                                                     |
@@ -340,8 +340,9 @@ response.setHeader("Content-Disposition",
 
 **Export 공통**
 
-- `null` 값 및 빈/공백 `String` 값은 컬럼의 `exportNullString`으로 기록되며, 그 기본값은 빈 문자열 `""`이다.  
+- `null` 값, 빈/공백 `String` 값, 그리고 `'\0'`인 채로 둔 `char` 필드는 컬럼의 `exportNullString`으로 기록되며, 그 기본값은 빈 문자열 `""`이다.  
   즉 타입과 무관하게 `null` 필드는 기본적으로 빈 문자열이 든 문자열 셀로 export된다.  
+  `char`가 여기 포함되는 것은 `null`일 수 없어 `'\0'`이 그 타입에서 "값 없음"을 말할 유일한 방법이기 때문이다. `Character`는 `null`이 이미 그 역할을 하므로 해당하지 않는다.  
   `exportNullString`으로 다른 문자열을 지정할 수 있다.
 - Export는 기본 XLSX로 생성되며, `exportExcelEngine`로 `HSSF` 엔진(XLS)·`SXSSF` 엔진(스트리밍 XLSX)도 선택할 수 있다. CSV export는 미지원이며, 엔진은 엑셀 writer이므로 CSV를 지정할 자리 자체가 없다.
 - 시트/컬럼 순서는 필드 선언 순서를 보장하지 않으므로, 순서가 중요하면 `exportOrder`를 지정한다.
@@ -467,7 +468,7 @@ import 전용: export(및 샘플 export)에서는 사용되지 않는다.
 | `exportMasking`                                                                                                | `""`       | 마스킹할 부분의 정규식                                                                                                   |
 | `exportOptionItems`                                                                                            | `{}`       | 선택 가능한 옵션 목록(드롭다운)                                                                                             |
 | `exportEnumDropDownListStyle`                                                                                  | `SET`      | Enum 필드를 드롭다운으로 설정할 스타일 (`SET` / `SORTED_SET` / `NONE`)                                                        |
-| `exportNullString`                                                                                             | `""`       | null 값(및 빈/공백 `String`)을 export할 때 쓸 문자열. 기본은 빈 문자열이 든 문자열 셀(blank 셀 아님)                                       |
+| `exportNullString`                                                                                             | `""`       | null 값(및 빈/공백 `String`, `'\0'`인 채로 둔 `char`)을 export할 때 쓸 문자열. 기본은 빈 문자열이 든 문자열 셀(blank 셀 아님)                                       |
 | `exportTrueString` / `exportFalseString`                                                                       | `"true"`/`"false"` | 참/거짓을 export할 때 쓸 문자열.<br/>커스텀 값을 다시 import하려면 `importTrueString`/`importFalseString`도 같은 값으로 지정               |
 | `exportStringAsPicture`                                                                                        | `false`    | 이미지 URL 문자열을 셀에 이미지로 삽입 |
 | `exportStringAsFormula`                                                                                        | `false`    | 수식 문자열(선두 `=`)을 계산하여 셀에 적용.<br/>`exportStringAsPicture`와 함께 지정하면 이쪽이 우선 |

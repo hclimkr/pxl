@@ -18,9 +18,11 @@ import java.util.Optional;
  * into {@code char} on import. The character is taken as the first character of the cell's text (numeric cells are first rendered via
  * {@link NumberToTextConverter}); boolean cells map to {@code '1'}/{@code '0'}. Because {@code char} cannot be {@code null},
  * empty/blank input parses to {@code (char) 0}, the type's own default - the same choice the other primitive codecs make
- * ({@code 0}, {@code 0.0}), so an empty value leaves the field indistinguishable from one that was never set. Export always
- * writes the character as a text cell (no numeric formatting), after the column's export trim and masking options are
- * applied to it.
+ * ({@code 0}, {@code 0.0}), so an empty value leaves the field indistinguishable from one that was never set. Export reads
+ * that same {@code (char) 0} back as an absent value: {@link PxlCellResolver#buildDataCell} turns it into the column's
+ * export-null string before this codec is reached, so an unset field never reaches a cell as a NUL character. Otherwise
+ * export always writes the character as a text cell (no numeric formatting), after the column's export trim and masking
+ * options are applied to it.
  */
 final class PxlPrimitiveCharCodec {
 
@@ -36,7 +38,8 @@ final class PxlPrimitiveCharCodec {
      * Writes a {@code char} value into a cell. Accepts a {@link Character} directly or a {@link String} (its first character is
      * used; empty becomes {@code null}). A {@code null} value blanks the cell; otherwise the character goes through the
      * column's export trim and masking options and the resulting string is written as a text cell - trimming a whitespace
-     * character therefore leaves an empty string.
+     * character therefore leaves an empty string. The {@code (char) 0} of an unset field does not arrive here:
+     * {@link PxlCellResolver#buildDataCell} has already rendered it as the column's export-null string.
      *
      * @param cell       the target cell (may be {@code null}, in which case only the return string is produced)
      * @param object     the source value ({@link Character} or {@link String})

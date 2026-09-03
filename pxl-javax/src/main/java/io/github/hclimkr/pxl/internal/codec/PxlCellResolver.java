@@ -46,9 +46,10 @@ public final class PxlCellResolver {
      * Writes a value into a cell according to the column's declared type and returns the string form of what was
      * written. A {@code null} cell computes the string without writing anything, which is what
      * {@link #buildDataString} uses to render a value for a format that has no cells. Answers {@code null} when
-     * {@code columnMeta} or the resolved column class is {@code null}. A {@code null} value (or a blank
-     * {@link String}) yields the column's configured export-null string. Otherwise dispatches on
-     * {@code columnMeta.getColumnClass()} to the matching per-type codec.
+     * {@code columnMeta} or the resolved column class is {@code null}. An absent value - {@code null}, a blank
+     * {@link String}, or the {@code (char) 0} an unset primitive {@code char} field holds - yields the column's
+     * configured export-null string. Otherwise dispatches on {@code columnMeta.getColumnClass()} to the matching
+     * per-type codec.
      *
      * @param cell       the target cell, or {@code null} to only compute the string
      * @param object     the source value
@@ -67,7 +68,7 @@ public final class PxlCellResolver {
             return null;
         }
 
-        if (Objects.isNull(object) || ((object instanceof String) && StringUtils.isBlank((String) object))) {
+        if (isAbsentExportValue(object, columnMeta)) {
             final String exportNullString = columnMeta.getExportNullString();
             Optional.ofNullable(cell).ifPresent(targetCell -> targetCell.setCellValue(exportNullString));
             return exportNullString;
@@ -144,6 +145,35 @@ public final class PxlCellResolver {
         } else {
             throw new PxlCellCodecException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.CODEC_COLUMN_TYPE_UNSUPPORTED, String.valueOf(columnClass.getSimpleName())));
         }
+    }
+
+    /**
+     * Answers whether the value is to be exported as the column's export-null string instead of being handed to a
+     * codec. That is the case for {@code null}, for a blank {@link String}, and for the NUL character held by a
+     * primitive {@code char} field that was never set - a {@code char} cannot be {@code null}, so {@code (char) 0}
+     * is the only way that type has of saying "no value". Left alone it would be written as a one-character NUL
+     * string, which both XLSX writers silently replace with a question mark while the file is saved, so the value
+     * would come back as {@code '?'} on the next import. A boxed {@link Character} is not treated this way: there
+     * {@code null} already means absent, and a {@code (char) 0} is a value the caller deliberately set.
+     *
+     * @param object     the source value
+     * @param columnMeta resolved export metadata for the target column
+     * @return {@code true} when the value is to be rendered as the export-null string
+     */
+    private static boolean isAbsentExportValue(@Nullable final Object object,
+                                               final PxlExportColumnMeta columnMeta) {
+
+        if (Objects.isNull(object)) {
+            return true;
+        }
+
+        if ((object instanceof String) && StringUtils.isBlank((String) object)) {
+            return true;
+        }
+
+        return (columnMeta.getColumnClass() == char.class)
+                && (object instanceof Character)
+                && (((Character) object).charValue() == (char) 0);
     }
 
     /**

@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A `char` column that was never set now exports as its `exportNullString` instead of a `?`.** A `char` cannot be
+  `null`, so an unset field holds `'\0'`, which passed the resolver's null gate and was written as a one-character
+  NUL string - a character XML 1.0 forbids, which both XLSX writers silently replace with `?` while saving. The
+  round trip slid from `'\0'` to `?` to the character `'?'`, with no exception or warning. `'\0'` is now taken as
+  the absent value it is, in every format. A boxed `Character` is unchanged: `null` already meant absent there, and
+  a `'\0'` the caller set deliberately is still written as it was.
+
 - **The CSV import sheet form now refuses a second source instead of silently discarding it.** It counted the
   names only, so `fromStreams` given one name and several streams parsed the first and threw the rest away
   without an exception or a warning - the workbook form has always refused a name/stream count mismatch. Both

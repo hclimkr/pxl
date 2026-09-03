@@ -157,6 +157,24 @@ public class PxlCsvExportTests {
         assertThat(lines.get(1)).isEqualTo(uuidText + "," + otherUuidText + ";" + uuidText + ",,,");
     }
 
+    @ParameterizedTest
+    @EnumSource(value = ExportDest.class, names = {"FILE", "STREAM"})
+    public void exportCsv_unsetPrimitiveChar_writesExportNullString(final ExportDest dest) throws Exception {
+        final UnsetCharRow row = new UnsetCharRow();
+        row.setSetChar('A');   // the control column, the only one given a value
+
+        final byte[] bytes = emit(pxl.exportCsv()
+                .sheet(UnsetCharRow.class, Arrays.asList(row), "Chars"), dest, testInfo);
+
+        // Parsed rather than compared as text: a record opening on an empty field is written as "" so that it cannot
+        // be read back as a blank line, which is a quoting rule of the printer rather than anything the codec decides.
+        final List<CSVRecord> records = recordsOf(bytes);
+        assertThat(records.get(0).toList()).containsExactly("UnsetChar", "UnsetCharDash", "SetChar", "UnsetWrapChar");
+        // A char that was never set holds (char) 0, which export takes as absent and renders with the column's
+        // export-null string - the same value the Excel path writes, since both render through buildDataCell.
+        assertThat(records.get(1).toList()).containsExactly("", "-", "A", "");
+    }
+
     // Not swept: only the stream destination is handed a stream it does not own.
     @Test
     public void exportCsv_toStream_flushesEverythingAndLeavesStreamOpen() throws Exception {

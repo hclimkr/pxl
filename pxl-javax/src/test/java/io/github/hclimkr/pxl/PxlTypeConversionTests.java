@@ -1591,7 +1591,8 @@ public class PxlTypeConversionTests {
     // ==================================================================
 
     private static CharBoolMaskTrimRow charBoolMaskTrimRow() {
-        // Every column is filled: a primitive char left at its default would put a NUL character into the sheet.
+        // Every column is filled: a primitive char left at its default is taken as an absent value and would be
+        // rendered as the export-null string, never reaching the masking or trimming under test.
         final CharBoolMaskTrimRow row = new CharBoolMaskTrimRow();
         row.setMaskWrapChar('x');
         row.setMaskPrimChar('y');
@@ -1638,6 +1639,62 @@ public class PxlTypeConversionTests {
             assertThat(charBoolCellOf(workbook, "TrimPrimChar")).isEmpty();
             assertThat(charBoolCellOf(workbook, "TrimBool")).isEqualTo("Y");
         }
+    }
+
+    // ==================================================================
+    // Unset primitive char: a char cannot be null, so a field that was never set holds (char) 0 - the type's only way
+    // of saying "no value". Export takes it as absent and writes the column's export-null string. Writing the NUL
+    // character itself would leave it to the XLSX writers, which silently replace it with '?' while saving, so the
+    // round trip would slide from '\0' to '?' to the character '?'.
+    // ==================================================================
+
+    private static UnsetCharRow unsetCharRow() {
+        final UnsetCharRow row = new UnsetCharRow();
+        row.setSetChar('A');   // the control column, the only one given a value
+        return row;
+    }
+
+    // Locates the data cell by its header text, so the assertion does not depend on the column order.
+    private static String unsetCharCellOf(final Workbook workbook, final String headerName) {
+        final Sheet sheet = workbook.getSheet("C");
+        for (final Cell headerCell : sheet.getRow(0)) {
+            if (headerName.equals(headerCell.getStringCellValue())) {
+                final Cell dataCell = sheet.getRow(1).getCell(headerCell.getColumnIndex());
+                return Objects.isNull(dataCell) ? null : dataCell.getStringCellValue();
+            }
+        }
+        return null;
+    }
+
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void charExport_unsetPrimitiveChar_writesExportNullString(final ExportDest dest) throws Exception {
+        try (Workbook workbook = workbookOf(pxl.exportExcel()
+                .sheet(UnsetCharRow.class, Arrays.asList(unsetCharRow()), "C")
+                .override(noValidationOption()), dest, testInfo)) {
+            // Asserts what PXL wrote rather than what a writer might have replaced: WORKBOOK holds the live workbook,
+            // where a NUL would still be a NUL, so the three destinations agree only because no NUL was ever written.
+            assertThat(unsetCharCellOf(workbook, "UnsetChar")).isEqualTo("");
+            assertThat(unsetCharCellOf(workbook, "UnsetCharDash")).isEqualTo("-");
+            assertThat(unsetCharCellOf(workbook, "SetChar")).isEqualTo("A");
+            // The boxed column takes the same path through null, as it always has.
+            assertThat(unsetCharCellOf(workbook, "UnsetWrapChar")).isEqualTo("");
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(ExportDest.class)
+    public void charExport_unsetPrimitiveChar_roundTripsAsUnset(final ExportDest dest) throws Exception {
+        final byte[] bytes = emit(pxl.exportExcel()
+                .sheet(UnsetCharRow.class, Arrays.asList(unsetCharRow()), "C")
+                .override(noValidationOption()), dest, testInfo);
+
+        final List<UnsetCharRow> out = importList(bytes, "C", UnsetCharRow.class);
+
+        // The empty cell parses back to (char) 0, so the unset field comes back unset instead of holding '?'.
+        assertThat(out.get(0).getUnsetChar()).isEqualTo((char) 0);
+        assertThat(out.get(0).getSetChar()).isEqualTo('A');
+        assertThat(out.get(0).getUnsetWrapChar()).isNull();
     }
 
     // ==================================================================

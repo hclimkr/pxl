@@ -335,7 +335,7 @@ Fields of an unsupported variable type fail with `PxlArgumentException` while th
 | `byte`·`short`·`int` + wrapper classes          | Written as a numeric cell (safe because the representable range is under 2^53)                                                                                                                                            |
 | `long`·`Long`                                   | Without a pattern, a numeric cell (double) → precision loss beyond 2^53.<br/>To preserve it, use a `pattern` or `BigInteger`/`BigDecimal`                                                                                  |
 | `float`·`double` + wrapper classes              | Numeric cell                                                                                                                                                                                                             |
-| `char`·`Character`                              | Written as a single-character string.<br/>`exportTrim` and masking (`exportMasking`) apply to that string, so trimming a whitespace character leaves an empty string                                                       |
+| `char`·`Character`                              | Written as a single-character string.<br/>`exportTrim` and masking (`exportMasking`) apply to that string, so trimming a whitespace character leaves an empty string.<br/>A `char` that was never set holds `'\0'`, which cannot be `null`; it is taken as no value and written with `exportNullString`                                                       |
 | `boolean`·`Boolean`                             | Written as a string according to `exportTrueString`/`exportFalseString`.<br/>`exportTrim` and masking (`exportMasking`) apply to that string                                                                              |
 | `String`                                        | Writes text. Options: `exportTrim`, masking (`exportMasking`), `exportStringAsFormula` (leading `=` → formula), `exportStringAsPicture` (image)                                                                            |
 | `BigInteger`·`BigDecimal`                       | Always written as a string cell to preserve precision → may be excluded from Excel sorting/formulas/filters.<br/>Can be rounded with `DecimalFormat` when a `pattern` is specified                                         |
@@ -349,8 +349,9 @@ Fields of an unsupported variable type fail with `PxlArgumentException` while th
 
 **Common to Export**
 
-- `null` values and empty/blank `String` values are written with the column's `exportNullString`, whose default is the empty string `""`.  
+- `null` values, empty/blank `String` values, and a `char` field left at `'\0'` are written with the column's `exportNullString`, whose default is the empty string `""`.  
   That is, regardless of type, a `null` field is by default exported as a string cell containing an empty string.  
+  A `char` is included because it cannot be `null`, so `'\0'` is the only way that type has of saying "no value"; a `Character` is not, since `null` already says it there.  
   You can specify a different string with `exportNullString`.
 - Export generates XLSX by default; `exportExcelEngine` can also select the `HSSF` engine (XLS) or the `SXSSF` engine (streaming XLSX). CSV export is not supported — an engine is an Excel writer, so CSV cannot be named there.
 - Sheet/column order is not guaranteed to follow the field declaration order, so if order matters, specify `exportOrder`.
@@ -476,7 +477,7 @@ Import-only: It is not used on export (or sample export).
 | `exportMasking`                                                                                                | `""`       | Regex for the part to mask                                                                                      |
 | `exportOptionItems`                                                                                            | `{}`       | List of selectable options (dropdown)                                                                           |
 | `exportEnumDropDownListStyle`                                                                                  | `SET`      | Style to set an Enum field as a dropdown (`SET` / `SORTED_SET` / `NONE`)                                        |
-| `exportNullString`                                                                                             | `""`       | String to use when exporting a null value (and empty/blank `String`). Default is a string cell containing an empty string (not a blank cell) |
+| `exportNullString`                                                                                             | `""`       | String to use when exporting a null value (and empty/blank `String`, and a `char` left at `'\0'`). Default is a string cell containing an empty string (not a blank cell) |
 | `exportTrueString` / `exportFalseString`                                                                       | `"true"`/`"false"` | Strings to use when exporting true/false.<br/>To import a custom value again, specify `importTrueString`/`importFalseString` with the same values |
 | `exportStringAsPicture`                                                                                        | `false`    | Insert an image URL string into the cell as an image |
 | `exportStringAsFormula`                                                                                        | `false`    | Compute a formula string (leading `=`) and apply it to the cell.<br/>Takes precedence over `exportStringAsPicture` when both are set |
