@@ -60,7 +60,7 @@ public final class PxlExportWorkbookOption {
      * Specifies the character encoding used to write a CSV, for every sheet of the workbook.
      * <p>
      * Overrides {@link PxlWorkbook#exportCsvCharset()} but not {@link PxlSheet#exportCsvCharset()}, since a CSV
-     * workbook is written as one file per sheet and the sheet level is the more specific one.
+     * file carries a single sheet and the sheet level is the more specific one.
      * The per-sheet counterpart is {@code PxlExportSheetOption.exportCsvCharset}.
      * <p>
      * Ignored for an Excel destination. Left {@code null}, the annotation decides.
@@ -72,7 +72,7 @@ public final class PxlExportWorkbookOption {
      * Specifies the field delimiter used to write a CSV, for every sheet of the workbook.
      * <p>
      * Overrides {@link PxlWorkbook#exportCsvDelimiter()} but not {@link PxlSheet#exportCsvDelimiter()}, since a CSV
-     * workbook is written as one file per sheet.
+     * file carries a single sheet and the sheet level is the more specific one.
      * The per-sheet counterpart is {@code PxlExportSheetOption.exportCsvDelimiter}.
      * <p>
      * Ignored for an Excel destination. Left {@code null}, the annotation decides.

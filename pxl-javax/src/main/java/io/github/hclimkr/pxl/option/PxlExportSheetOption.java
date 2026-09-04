@@ -21,8 +21,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Sheet export option, for an Excel or a CSV destination alike. A CSV workbook is written as one file per sheet, so
- * this is the level at which its charset and delimiter are settled; an Excel export ignores that pair.
+ * Sheet export option, for an Excel or a CSV destination alike. A CSV file carries a single sheet, so this is the
+ * level at which its charset and delimiter are settled; an Excel export ignores that pair.
  */
 @Getter
 @AllArgsConstructor

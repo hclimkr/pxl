@@ -362,7 +362,7 @@ public final class PxlWorkbookSupport {
     }
 
     /**
-     * Creates a safe sheet name (<=31 chars, no invalid characters) that does not collide with any sheet name already present in the workbook.
+     * Creates a safe sheet name ({@code <= 31} chars, no invalid characters) that does not collide with any sheet name already present in the workbook.
      * On a collision, appends a " (2)", " (3)" ... suffix while staying within the 31-char limit. (POI's getSheet matches case-insensitively.)
      *
      * @param workbook    the target workbook

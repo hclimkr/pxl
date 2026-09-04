@@ -387,7 +387,7 @@ public interface PxlConstants {
     /**
      * Marks the CSV charset as not specified at an annotation level on export.
      * <p>
-     * A CSV workbook is written as one file per sheet, so the charset resolves through a cascade - sheet option,
+     * A CSV file carries a single sheet, so the charset resolves through a cascade - sheet option,
      * {@link PxlSheet#exportCsvCharset()}, workbook option, {@link PxlWorkbook#exportCsvCharset()}, and finally
      * {@link #DEFAULT_EXPORT_CSV_CHARSET}. An option level says "not specified" with {@code null}, which an annotation
      * element cannot hold, so the two annotation levels say it with this value instead. Any blank value counts.

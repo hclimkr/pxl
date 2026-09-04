@@ -135,7 +135,7 @@ public @interface PxlSheet {
      * Specifies the Character Encoding Set of the CSV to export for this sheet.
      * Ignored for an Excel destination, which is one file whose encoding the format itself carries.
      * <p>
-     * A CSV workbook is written as one file per sheet, so the charset belongs to the file rather than the schema.
+     * A CSV file carries a single sheet, so the charset belongs to the file rather than the schema.
      * Left blank, the sheet falls back to the workbook's {@code exportCsvCharset}; a runtime sheet option overrides both.
      *
      * @return the character encoding used to write this sheet's CSV; defaults to {@link PxlConstants#UNSPECIFIED_EXPORT_CSV_CHARSET} ({@code ""}, i.e. inherit from the workbook)

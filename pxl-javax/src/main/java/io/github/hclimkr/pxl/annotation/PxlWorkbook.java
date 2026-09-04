@@ -54,8 +54,9 @@ public @interface PxlWorkbook {
      * Specifies the Character Encoding Set of the CSV to export, for every sheet of the workbook.
      * Ignored for an Excel destination, which is one file whose encoding the format itself carries.
      * <p>
-     * A sheet may depart from it with {@link PxlSheet#exportCsvCharset()}, since a CSV workbook is written as one file
-     * per sheet. Left blank, the workbook falls back to {@link PxlConstants#DEFAULT_EXPORT_CSV_CHARSET}
+     * A sheet may depart from it with {@link PxlSheet#exportCsvCharset()}, which is the more specific level: a CSV
+     * file carries a single sheet, so the charset belongs to that sheet's file rather than to the workbook.
+     * Left blank, the workbook falls back to {@link PxlConstants#DEFAULT_EXPORT_CSV_CHARSET}
      * ({@code "UTF-8"}); a runtime workbook option overrides it.
      *
      * @return the character encoding used to write a CSV; defaults to {@link PxlConstants#UNSPECIFIED_EXPORT_CSV_CHARSET} ({@code ""}, i.e. fall back to {@code "UTF-8"})
@@ -67,8 +68,9 @@ public @interface PxlWorkbook {
      * Specifies the Delimiter of the CSV to export, for every sheet of the workbook.
      * Ignored for an Excel destination, which has no delimiter.
      * <p>
-     * A sheet may depart from it with {@link PxlSheet#exportCsvDelimiter()}, since a CSV workbook is written as one file
-     * per sheet. Left at NUL, the workbook falls back to {@link PxlConstants#DEFAULT_EXPORT_CSV_DELIMITER}
+     * A sheet may depart from it with {@link PxlSheet#exportCsvDelimiter()}, which is the more specific level: a CSV
+     * file carries a single sheet, so the delimiter belongs to that sheet's file rather than to the workbook.
+     * Left at NUL, the workbook falls back to {@link PxlConstants#DEFAULT_EXPORT_CSV_DELIMITER}
      * ({@code ','}); a runtime workbook option overrides it.
      *
      * @return the CSV field delimiter on export; defaults to {@link PxlConstants#UNSPECIFIED_EXPORT_CSV_DELIMITER} ({@code '\0'}, i.e. fall back to {@code ','})
@@ -79,8 +81,9 @@ public @interface PxlWorkbook {
      * Specifies whether a byte order mark is written ahead of the CSV to export, for every sheet of the workbook.
      * Ignored for an Excel destination.
      * <p>
-     * A sheet may depart from it with {@link PxlSheet#exportCsvBom()}, since a CSV workbook is written as one file
-     * per sheet. Left {@link PxlOptionalBoolean#UNSPECIFIED}, the workbook falls back to
+     * A sheet may depart from it with {@link PxlSheet#exportCsvBom()}, which is the more specific level: a CSV
+     * file carries a single sheet, so the mark belongs to that sheet's file rather than to the workbook.
+     * Left {@link PxlOptionalBoolean#UNSPECIFIED}, the workbook falls back to
      * {@link PxlConstants#DEFAULT_EXPORT_CSV_BOM} ({@code false}); a runtime workbook option overrides it.
      * <p>
      * Honored only for UTF-8, UTF-16LE and UTF-16BE. Any other charset writes no mark even when this says
