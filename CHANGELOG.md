@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-09-04
+
 ### Added
 
 - **`Pxl.setThreadMessageLocale(Locale)` / `Pxl.resetThreadMessageLocale()`**, a per-thread tier for the
@@ -15,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   locale would change the messages of every other request in flight. Resolution now runs narrowest first:
   the thread override, then `Pxl.setMessageLocale(Locale)` (unchanged in meaning and behavior), then the JVM
   default. A thread override must be cleared before a pooled thread is returned, and does not cross threads.
+
+- **A missing sheet is now reported with the sheet names the source actually holds**, and
+  `PxlWorkbookUtils.getSheetNamesOfWorkbook(Workbook)` is public for reading them. `core.import.sheet.notFound`
+  named only the sheet that was asked for, which is the one thing the caller already knows, leaving a typo or a
+  CSV file matching no `@PxlSheet` to be guessed at. The message takes a second parameter: the workbook's own
+  sheet names on Excel, and the file or stream names the caller handed over on CSV. Resolving a sheet no longer
+  opens every sheet of a streaming workbook either, since only the name is read.
 
 ### Changed
 
@@ -409,7 +418,8 @@ First public release.
 - Around 30 built-in field-type codecs (numbers, `BigInteger`/`BigDecimal`, full `java.time` including
   zoned/offset/`Duration`/`Period`, enums, collections, and custom objects), with per-column custom converters.
 
-[Unreleased]: https://github.com/hclimkr/pxl/compare/v0.9.5...HEAD
+[Unreleased]: https://github.com/hclimkr/pxl/compare/v0.9.6...HEAD
+[0.9.6]: https://github.com/hclimkr/pxl/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/hclimkr/pxl/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/hclimkr/pxl/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/hclimkr/pxl/compare/v0.9.2...v0.9.3
