@@ -6,11 +6,10 @@ import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.styler.PxlStyler;
 import io.github.hclimkr.pxl.styler.PxlVoidStyler;
-import io.github.hclimkr.pxl.styler.data.PxlDataCommaSeparatedNumericStyler;
-import io.github.hclimkr.pxl.styler.data.PxlDataTextStyler;
-import io.github.hclimkr.pxl.styler.data.PxlDataVerticalCenterTextStyler;
-import io.github.hclimkr.pxl.styler.header.PxlHeaderVerticalCenterTextStyler;
+import io.github.hclimkr.pxl.styler.data.*;
+import io.github.hclimkr.pxl.styler.header.*;
 import io.github.hclimkr.pxl.tcdata.Employee;
+import io.github.hclimkr.pxl.tcdata.TestPaths;
 import io.github.hclimkr.pxl.type.PxlExcelEngine;
 import io.github.hclimkr.pxl.type.PxlFileFormat;
 import io.github.hclimkr.pxl.util.*;
@@ -20,6 +19,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -27,9 +27,9 @@ import org.apache.poi.ss.util.NumberToTextConverter;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.*;
 import java.lang.reflect.Proxy;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -1029,6 +1029,50 @@ public class PxlUtilityTests {
         assertThat(PxlCollectionUtils.makeEmptyStringList(-1)).isEmpty();
     }
 
+    @Test
+    public void collectionUtils_isEmptyAndSize_treatNullAsAnEmptyCollection() {
+        // The whole class answers a null collection the way it answers an empty one, so callers never
+        // have to null-check before asking.
+        assertThat(PxlCollectionUtils.isEmpty(null)).isTrue();
+        assertThat(PxlCollectionUtils.isEmpty(Collections.<String>emptyList())).isTrue();
+        assertThat(PxlCollectionUtils.isEmpty(Arrays.asList("a"))).isFalse();
+
+        assertThat(PxlCollectionUtils.isNotEmpty(null)).isFalse();
+        assertThat(PxlCollectionUtils.isNotEmpty(Collections.<String>emptyList())).isFalse();
+        assertThat(PxlCollectionUtils.isNotEmpty(Arrays.asList("a"))).isTrue();
+
+        assertThat(PxlCollectionUtils.size(null)).isZero();
+        assertThat(PxlCollectionUtils.size(Collections.<String>emptyList())).isZero();
+        assertThat(PxlCollectionUtils.size(Arrays.asList("a", "b"))).isEqualTo(2);
+    }
+
+    @Test
+    public void collectionUtils_get_indexOutsideTheBounds_answersNullInsteadOfThrowing() {
+        final List<String> list = Arrays.asList("a", "b");
+        assertThat(PxlCollectionUtils.get(list, 0)).isEqualTo("a");
+        assertThat(PxlCollectionUtils.get(list, 1)).isEqualTo("b");
+        // Out of range on either side, and a null list, are all "no element" rather than an exception.
+        assertThat(PxlCollectionUtils.get(list, -1)).isNull();
+        assertThat(PxlCollectionUtils.get(list, 2)).isNull();
+        assertThat(PxlCollectionUtils.get((List<String>) null, 0)).isNull();
+
+        // The array overload answers the same way.
+        final String[] array = {"a", "b"};
+        assertThat(PxlCollectionUtils.get(array, 1)).isEqualTo("b");
+        assertThat(PxlCollectionUtils.get(array, -1)).isNull();
+        assertThat(PxlCollectionUtils.get(array, 2)).isNull();
+        assertThat(PxlCollectionUtils.get((String[]) null, 0)).isNull();
+    }
+
+    @Test
+    public void collectionUtils_emptyIfNull_presentCollection_passesTheSameInstanceThrough() {
+        assertThat(PxlCollectionUtils.<String>emptyIfNull(null)).isEmpty();
+
+        // A collection that is already there is handed back as-is, not copied - callers iterate it directly.
+        final List<String> list = Arrays.asList("a", "b");
+        assertThat(PxlCollectionUtils.emptyIfNull(list)).isSameAs(list);
+    }
+
     // ==================================================================
     // styler/ apply methods (optional stylers that no built-in default uses)
     // ==================================================================
@@ -1054,6 +1098,71 @@ public class PxlUtilityTests {
             final Font verticalCenterFont = new PxlHeaderVerticalCenterTextStyler().apply(workbook, verticalCenterStyle);
             assertThat(verticalCenterStyle.getVerticalAlignment()).isEqualTo(VerticalAlignment.CENTER);
             assertThat(verticalCenterFont).isNotNull();
+        }
+    }
+
+    @Test
+    public void stylers_wrapBorderAndCenterStylers_applyTheirOwnAttribute() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            // Data stylers extend PxlDataStyler, which applies no font - they return null and only touch the style.
+            final CellStyle dataWrapStyle = workbook.createCellStyle();
+            assertThat(new PxlDataWrapTextStyler().apply(workbook, dataWrapStyle)).isNull();
+            assertThat(dataWrapStyle.getWrapText()).isTrue();
+
+            final CellStyle borderStyle = workbook.createCellStyle();
+            assertThat(new PxlDataThinBorderStyler().apply(workbook, borderStyle)).isNull();
+            assertThat(borderStyle.getBorderLeft()).isEqualTo(BorderStyle.THIN);
+            assertThat(borderStyle.getBorderRight()).isEqualTo(BorderStyle.THIN);
+            assertThat(borderStyle.getBorderTop()).isEqualTo(BorderStyle.THIN);
+            assertThat(borderStyle.getBorderBottom()).isEqualTo(BorderStyle.THIN);
+
+            final CellStyle dataHorizontalStyle = workbook.createCellStyle();
+            assertThat(new PxlDataHorizontalCenterTextStyler().apply(workbook, dataHorizontalStyle)).isNull();
+            assertThat(dataHorizontalStyle.getAlignment()).isEqualTo(HorizontalAlignment.CENTER);
+
+            final CellStyle dataVerticalStyle = workbook.createCellStyle();
+            assertThat(new PxlDataVerticalCenterTextStyler().apply(workbook, dataVerticalStyle)).isNull();
+            assertThat(dataVerticalStyle.getVerticalAlignment()).isEqualTo(VerticalAlignment.CENTER);
+
+            // Header stylers extend PxlHeaderStyler, so each one adds its attribute on top of the bold
+            // header font and the grey header fill it inherits.
+            final CellStyle headerWrapStyle = workbook.createCellStyle();
+            final Font headerWrapFont = new PxlHeaderWrapTextStyler().apply(workbook, headerWrapStyle);
+            assertThat(headerWrapStyle.getWrapText()).isTrue();
+            assertThat(headerWrapFont.getBold()).isTrue();
+            assertThat(headerWrapStyle.getFillPattern()).isEqualTo(FillPatternType.SOLID_FOREGROUND);
+
+            final CellStyle headerHorizontalStyle = workbook.createCellStyle();
+            final Font headerHorizontalFont = new PxlHeaderHorizontalCenterTextStyler().apply(workbook, headerHorizontalStyle);
+            assertThat(headerHorizontalStyle.getAlignment()).isEqualTo(HorizontalAlignment.CENTER);
+            assertThat(headerHorizontalFont.getBold()).isTrue();
+        }
+    }
+
+    @Test
+    public void stylers_requiredAndOptionalHeaderStylers_shareTheFillAndDifferInFontColor() throws Exception {
+        // These two are the built-in header defaults: a required column and an optional one are told apart by
+        // font color alone, so the shared fill and the differing color are the contract worth pinning down.
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final CellStyle requiredStyle = workbook.createCellStyle();
+            final Font requiredFont = new PxlHeaderRequiredStyler().apply(workbook, requiredStyle);
+
+            final CellStyle optionalStyle = workbook.createCellStyle();
+            final Font optionalFont = new PxlHeaderOptionalStyler().apply(workbook, optionalStyle);
+
+            // Both inherit the bold, vertically centered, grey-filled header look.
+            assertThat(requiredFont.getBold()).isTrue();
+            assertThat(optionalFont.getBold()).isTrue();
+            assertThat(requiredStyle.getVerticalAlignment()).isEqualTo(VerticalAlignment.CENTER);
+            assertThat(optionalStyle.getVerticalAlignment()).isEqualTo(VerticalAlignment.CENTER);
+            assertThat(requiredStyle.getFillForegroundColor()).isEqualTo(optionalStyle.getFillForegroundColor());
+            assertThat(requiredStyle.getFillPattern()).isEqualTo(FillPatternType.SOLID_FOREGROUND);
+            assertThat(optionalStyle.getFillPattern()).isEqualTo(FillPatternType.SOLID_FOREGROUND);
+
+            // The font color is what separates them: black for required, grey for optional.
+            assertThat(requiredFont.getColor()).isEqualTo(IndexedColors.BLACK.getIndex());
+            assertThat(optionalFont.getColor()).isEqualTo(IndexedColors.GREY_50_PERCENT.getIndex());
+            assertThat(requiredFont.getColor()).isNotEqualTo(optionalFont.getColor());
         }
     }
 
@@ -1434,6 +1543,59 @@ public class PxlUtilityTests {
     }
 
     // ------------------------------------------------------------------
+    // PxlColumnUtils (auto-sizing, and its documented negative-index no-op)
+    // ------------------------------------------------------------------
+
+    @Test
+    public void columnUtils_autoSizeColumns_shortContent_widenedUpToTheMinimumWidth() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            sheet.createRow(0).createCell(0).setCellValue("ab");
+
+            PxlColumnUtils.autoSizeColumns(sheet, 0);
+
+            // POI sizes "ab" well below the floor, so the clamp lifts it to exactly the minimum.
+            assertThat(sheet.getColumnWidth(0)).isEqualTo(PxlConstants.EXPORT_AUTO_COLUMN_MIN_WIDTH);
+        }
+    }
+
+    @Test
+    public void columnUtils_autoSizeColumns_longContent_cappedAtTheMaximumWidth() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+
+            final StringBuilder longText = new StringBuilder();
+            for (int i = 0; i < 300; i++) {
+                longText.append("wide ");
+            }
+            sheet.createRow(0).createCell(0).setCellValue(longText.toString());
+
+            PxlColumnUtils.autoSizeColumns(sheet, 0);
+
+            // The 1.8x widening is bounded twice - by POI's 255-character ceiling and then by the max clamp.
+            assertThat(sheet.getColumnWidth(0)).isEqualTo(PxlConstants.EXPORT_AUTO_COLUMN_MAX_WIDTH);
+        }
+    }
+
+    @Test
+    public void columnUtils_autoSizeColumns_nullSheetOrNegativeIndex_isNoOp() throws Exception {
+        // Documented exception to this package's "lookups are lenient, mutations are strict" rule: this call
+        // mutates the sheet yet swallows a negative index instead of rejecting it, because the no-op is part
+        // of its published contract.
+        PxlColumnUtils.autoSizeColumns(null, 0);
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            final Sheet sheet = workbook.createSheet("S");
+            sheet.createRow(0).createCell(0).setCellValue("ab");
+            final int widthBefore = sheet.getColumnWidth(0);
+
+            PxlColumnUtils.autoSizeColumns(sheet, -1);
+
+            assertThat(sheet.getColumnWidth(0)).isEqualTo(widthBefore);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // PxlWorkbookUtils (sheet names)
     // ------------------------------------------------------------------
 
@@ -1458,6 +1620,87 @@ public class PxlUtilityTests {
         }
 
         assertThrows(PxlNullPointerException.class, () -> PxlWorkbookUtils.getSheetNamesOfWorkbook(null));
+    }
+
+    @Test
+    public void workbookUtils_openWorkbook_fileAndStream_detectTheFormatFromTheContent(final TestInfo testInfo) throws Exception {
+        // Nothing in main calls this overload - it is there for the user opening a workbook of their own, so
+        // the success path is only covered here.
+        final File xlsxFile = TestPaths.exportFile(testInfo, ".xlsx");
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             FileOutputStream outputStream = new FileOutputStream(xlsxFile)) {
+            workbook.createSheet("Data").createRow(0).createCell(0).setCellValue("kept");
+            PxlWorkbookUtils.writeToStream(workbook, outputStream, null);
+        }
+
+        try (Workbook reopened = PxlWorkbookUtils.openWorkbook(xlsxFile, null, true)) {
+            assertThat(reopened).isInstanceOf(XSSFWorkbook.class);
+            assertThat(reopened.getSheet("Data").getRow(0).getCell(0).getStringCellValue()).isEqualTo("kept");
+        }
+
+        // The format comes from what the file holds, not from its extension or from an argument.
+        final File xlsFile = TestPaths.exportFile(testInfo, ".xls");
+        try (HSSFWorkbook workbook = new HSSFWorkbook();
+             FileOutputStream outputStream = new FileOutputStream(xlsFile)) {
+            workbook.createSheet("Data").createRow(0).createCell(0).setCellValue("kept");
+            PxlWorkbookUtils.writeToStream(workbook, outputStream, null);
+        }
+
+        try (Workbook reopened = PxlWorkbookUtils.openWorkbook(xlsFile, null, true)) {
+            assertThat(reopened).isInstanceOf(HSSFWorkbook.class);
+            assertThat(reopened.getSheet("Data").getRow(0).getCell(0).getStringCellValue()).isEqualTo("kept");
+        }
+
+        // The stream overload answers the same, and it buffers the stream itself so a plain one is enough.
+        try (InputStream inputStream = new FileInputStream(xlsxFile);
+             Workbook reopened = PxlWorkbookUtils.openWorkbook(inputStream, null)) {
+            assertThat(reopened.getSheet("Data").getRow(0).getCell(0).getStringCellValue()).isEqualTo("kept");
+        }
+    }
+
+    @Test
+    public void workbookUtils_openWorkbook_encryptedFile_opensWithThePasswordAndRejectsAWrongOne(final TestInfo testInfo) throws Exception {
+        final File file = TestPaths.exportFile(testInfo, ".xlsx");
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             FileOutputStream outputStream = new FileOutputStream(file)) {
+            workbook.createSheet("Data").createRow(0).createCell(0).setCellValue("secret value");
+            PxlWorkbookUtils.writeToStream(workbook, outputStream, "correct");
+        }
+
+        try (Workbook reopened = PxlWorkbookUtils.openWorkbook(file, "correct", false)) {
+            assertThat(reopened.getSheet("Data").getRow(0).getCell(0).getStringCellValue()).isEqualTo("secret value");
+        }
+
+        // A wrong password and a missing one both come back as PxlIOException - POI's EncryptedDocumentException
+        // is translated rather than allowed to escape.
+        assertThrows(PxlException.class, () -> PxlWorkbookUtils.openWorkbook(file, "wrong", false));
+        assertThrows(PxlException.class, () -> PxlWorkbookUtils.openWorkbook(file, null, false));
+    }
+
+    @Test
+    public void workbookUtils_createFormulaEvaluator_evaluatesFormulasAndAnswersNullOnStreaming() throws Exception {
+        final byte[] xlsx;
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            final Row row = workbook.createSheet("Data").createRow(0);
+            row.createCell(0).setCellValue(2);
+            row.createCell(1).setCellValue(3);
+            final Cell formulaCell = row.createCell(2);
+            formulaCell.setCellFormula("A1+B1");
+
+            final FormulaEvaluator evaluator = PxlWorkbookUtils.createFormulaEvaluator(workbook);
+            assertThat(evaluator).isNotNull();
+            assertThat(evaluator.evaluate(formulaCell).getNumberValue()).isEqualTo(5.0);
+
+            workbook.write(outputStream);
+            xlsx = outputStream.toByteArray();
+        }
+
+        // A streaming workbook cannot evaluate formulas, so it is answered with null instead of an exception -
+        // callers branch on the null rather than guarding on the workbook type themselves.
+        try (Workbook streaming = StreamingReader.builder().open(new ByteArrayInputStream(xlsx))) {
+            assertThat(PxlWorkbookUtils.createFormulaEvaluator(streaming)).isNull();
+        }
     }
 
     @Test
@@ -1528,6 +1771,58 @@ public class PxlUtilityTests {
                 Workbook.class.getClassLoader(), new Class<?>[]{Workbook.class}, (proxy, method, args) -> null);
 
         assertThat(PxlFileFormat.fromPoiWorkbook(unknown)).isEqualTo(PxlConstants.DEFAULT_EXPORT_FILE_FORMAT);
+    }
+
+    @Test
+    public void fileFormat_extensionAndContentType_carryTheDownloadValuesOfEachFormat() {
+        // Nothing in main calls these two - they exist for the user assembling an HTTP download response,
+        // so the values themselves are the contract.
+        assertThat(PxlFileFormat.XLS.getFilenameExtension()).isEqualTo("xls");
+        assertThat(PxlFileFormat.XLSX.getFilenameExtension()).isEqualTo("xlsx");
+        assertThat(PxlFileFormat.CSV.getFilenameExtension()).isEqualTo("csv");
+
+        // The extension carries no dot, so a caller composing a filename supplies it.
+        assertThat(PxlFileFormat.XLSX.getFilenameExtension()).doesNotStartWith(".");
+
+        assertThat(PxlFileFormat.XLS.getContentType()).isEqualTo("application/vnd.ms-excel");
+        assertThat(PxlFileFormat.XLSX.getContentType())
+                .isEqualTo("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        assertThat(PxlFileFormat.CSV.getContentType()).isEqualTo("text/csv");
+    }
+
+    @Test
+    public void fileFormat_sheetLimits_followTheSpreadsheetVersionOfEachFormat() {
+        // The Excel formats take their row/column ceilings from POI's SpreadsheetVersion, which is what makes
+        // XLS the narrow one; CSV has no spreadsheet version and carries PXL's own limits instead.
+        assertThat(PxlFileFormat.XLS.getMaxExportRows()).isEqualTo(SpreadsheetVersion.EXCEL97.getMaxRows());
+        assertThat(PxlFileFormat.XLS.getMaxExportColumns()).isEqualTo(SpreadsheetVersion.EXCEL97.getMaxColumns());
+        assertThat(PxlFileFormat.XLSX.getMaxExportRows()).isEqualTo(SpreadsheetVersion.EXCEL2007.getMaxRows());
+        assertThat(PxlFileFormat.XLSX.getMaxExportColumns()).isEqualTo(SpreadsheetVersion.EXCEL2007.getMaxColumns());
+        assertThat(PxlFileFormat.XLS.getMaxExportRows()).isLessThan(PxlFileFormat.XLSX.getMaxExportRows());
+
+        assertThat(PxlFileFormat.CSV.getMaxExportRows()).isEqualTo(PxlConstants.EXPORT_MAX_NUMBER_OF_CSV_ROWS);
+        assertThat(PxlFileFormat.CSV.getMaxExportColumns()).isEqualTo(PxlConstants.EXPORT_MAX_NUMBER_OF_CSV_COLUMNS);
+        assertThat(PxlFileFormat.CSV.getMaxImportRows()).isEqualTo(PxlConstants.IMPORT_MAX_NUMBER_OF_CSV_ROWS);
+        assertThat(PxlFileFormat.CSV.getMaxImportColumns()).isEqualTo(PxlConstants.IMPORT_MAX_NUMBER_OF_CSV_COLUMNS);
+
+        // Every format caps the sheet count, the Excel ones and CSV alike.
+        assertThat(PxlFileFormat.XLSX.getMaxExportSheets()).isEqualTo(PxlConstants.EXPORT_MAX_NUMBER_OF_EXCEL_SHEETS);
+        assertThat(PxlFileFormat.XLSX.getMaxImportSheets()).isEqualTo(PxlConstants.IMPORT_MAX_NUMBER_OF_EXCEL_SHEETS);
+        assertThat(PxlFileFormat.CSV.getMaxExportSheets()).isEqualTo(PxlConstants.EXPORT_MAX_NUMBER_OF_CSV_SHEETS);
+        assertThat(PxlFileFormat.CSV.getMaxImportSheets()).isEqualTo(PxlConstants.IMPORT_MAX_NUMBER_OF_CSV_SHEETS);
+    }
+
+    @Test
+    public void excelEngine_getFileFormat_eachEngineKnowsTheFormatItWrites() {
+        // The engine is the writer axis and the format is the physical one; the limits a workbook is held to
+        // are derived from the format, which is the link this getter provides.
+        assertThat(PxlExcelEngine.HSSF.getFileFormat()).isEqualTo(PxlFileFormat.XLS);
+        assertThat(PxlExcelEngine.XSSF.getFileFormat()).isEqualTo(PxlFileFormat.XLSX);
+        assertThat(PxlExcelEngine.SXSSF.getFileFormat()).isEqualTo(PxlFileFormat.XLSX);
+
+        // No engine writes CSV - it is plain text rather than a POI workbook.
+        assertThat(Arrays.stream(PxlExcelEngine.values()).map(PxlExcelEngine::getFileFormat))
+                .doesNotContain(PxlFileFormat.CSV);
     }
 
     // ==================================================================
