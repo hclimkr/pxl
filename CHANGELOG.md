@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writes `****` rather than `true`; under `exportTrim` a whitespace character trims away to an empty cell. Columns
   that set neither option are unaffected, and the import direction is untouched.
 
+- **Dependencies and build plugins moved up to their current releases.** `excel-streaming-reader` 5.2.0 -> 5.3.0
+  is the only one a consumer inherits; `lombok` 1.18.46 -> 1.18.48 is `provided`, and the rest are test-scope or
+  build-only (`hibernate-validator` 9.1.1.Final -> 9.1.3.Final in the jakarta module, `maven-surefire-plugin`
+  3.5.6 -> 3.6.0, `flatten-maven-plugin` 1.7.3 -> 1.8.0, `maven-jar-plugin` 3.5.0 -> 3.5.1,
+  `maven-compiler-plugin` 3.15.0 -> 3.16.0). No API or behavior change.
+
+- **The published POM now states the developer's timezone and points `scm` at the repository root.** Metadata
+  only - nothing about the artifact or what it depends on changes.
+
 ### Fixed
 
 - **A `char` column that was never set now exports as its `exportNullString` instead of a `?`.** A `char` cannot be

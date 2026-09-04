@@ -26,13 +26,14 @@
             <name>hclim</name>
             <email>hclim.kr@gmail.com</email>
             <organization>Individual</organization>
+            <timezone>Asia/Seoul</timezone>
         </developer>
     </developers>
 
     <scm>
         <connection>scm:git:git://github.com/hclimkr/pxl.git</connection>
         <developerConnection>scm:git:ssh://github.com/hclimkr/pxl.git</developerConnection>
-        <url>https://github.com/hclimkr/pxl/tree/main</url>
+        <url>https://github.com/hclimkr/pxl</url>
     </scm>
 
     <modules>
@@ -87,7 +88,7 @@
         <dependency>
             <groupId>com.github.pjfanning</groupId>
             <artifactId>excel-streaming-reader</artifactId>
-            <version>5.2.0</version>
+            <version>5.3.0</version>
             <scope>compile</scope>
         </dependency>
 
@@ -115,7 +116,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.46</version>
+            <version>1.18.48</version>
             <scope>provided</scope>
         </dependency>
 
@@ -153,7 +154,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.6</version>
+                <version>3.6.0</version>
                 <configuration>
                     <skipTests>false</skipTests>
                 </configuration>
@@ -169,7 +170,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
-                <version>1.7.3</version>
+                <version>1.8.0</version>
                 <configuration>
                     <updatePomFile>true</updatePomFile>
                     <flattenMode>resolveCiFriendliesOnly</flattenMode>

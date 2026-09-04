@@ -133,7 +133,7 @@ If either one is missing, `new Pxl()` merely logs a warning (SLF4J `WARN`) and d
 <dependency>
     <groupId>org.hibernate.validator</groupId>
     <artifactId>hibernate-validator</artifactId>
-    <version>9.1.1.Final</version>
+    <version>9.1.3.Final</version>
 </dependency>
 <dependency>
     <groupId>org.glassfish</groupId>
@@ -152,7 +152,7 @@ implementation 'org.glassfish:jakarta.el:3.0.4'
 
 ```groovy
 // jakarta variant
-implementation 'org.hibernate.validator:hibernate-validator:9.1.1.Final'
+implementation 'org.hibernate.validator:hibernate-validator:9.1.3.Final'
 implementation 'org.glassfish:jakarta.el:4.0.2'
 ```
 
