@@ -234,6 +234,40 @@ public class PxlUtilityTests {
     }
 
     @Test
+    public void miscUtils_invalidXmlChars_detectedAndRemoved() {
+        // Tab, newline and carriage return are the only C0 controls XML allows.
+        assertThat(PxlMiscUtils.containsInvalidXmlChars("plain text\t\r\n")).isFalse();
+        assertThat(PxlMiscUtils.containsInvalidXmlChars(null)).isFalse();
+        assertThat(PxlMiscUtils.containsInvalidXmlChars("")).isFalse();
+        // Everything else below 0x20, and the two non-characters at the top of the BMP, cannot survive an XLSX
+        // export - POI writes them as '?' without saying so.
+        assertThat(PxlMiscUtils.containsInvalidXmlChars("a\u0000b")).isTrue();
+        assertThat(PxlMiscUtils.containsInvalidXmlChars("a\u0001b")).isTrue();
+        assertThat(PxlMiscUtils.containsInvalidXmlChars("a\u001Fb")).isTrue();
+        assertThat(PxlMiscUtils.containsInvalidXmlChars("a\uFFFEb")).isTrue();
+        assertThat(PxlMiscUtils.containsInvalidXmlChars("a\uFFFFb")).isTrue();
+
+        assertThat(PxlMiscUtils.removeInvalidXmlChars("a\u0001b\u0000c\u001Fd")).isEqualTo("abcd");
+        assertThat(PxlMiscUtils.removeInvalidXmlChars("plain text\t\r\n")).isEqualTo("plain text\t\r\n");
+        assertThat(PxlMiscUtils.removeInvalidXmlChars(null)).isNull();
+    }
+
+    @Test
+    public void miscUtils_invalidXmlChars_walkedByCodePoint() {
+        // A well-formed surrogate pair encodes U+1F600, which is inside the allowed supplementary range, so it
+        // counts as the one character it is rather than as two invalid halves.
+        final String emoji = "a\uD83D\uDE00b";
+        assertThat(PxlMiscUtils.containsInvalidXmlChars(emoji)).isFalse();
+        // Clean text is handed back as it came, not copied.
+        assertThat(PxlMiscUtils.removeInvalidXmlChars(emoji)).isSameAs(emoji);
+
+        // A surrogate left without its pair is not a character at all.
+        assertThat(PxlMiscUtils.containsInvalidXmlChars("a\uD83Db")).isTrue();
+        assertThat(PxlMiscUtils.removeInvalidXmlChars("a\uD83Db")).isEqualTo("ab");
+        assertThat(PxlMiscUtils.removeInvalidXmlChars("a\uDE00b")).isEqualTo("ab");
+    }
+
+    @Test
     public void miscUtils_effectiveCellStyler_detectsConcreteStyler() {
         assertThat(PxlMiscUtils.isEffectiveCellStylerClass(null)).isFalse();
         // The PxlStyler interface is also the VOID sentinel -> not effective.

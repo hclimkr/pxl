@@ -16,8 +16,8 @@ import java.util.regex.Pattern;
 
 /**
  * Miscellaneous spreadsheet helpers: conversions between numeric row/column indexes and A1-style
- * column letters, cell references and range addresses, plus a check for whether a styler class is
- * an effective (usable) cell styler.
+ * column letters, cell references and range addresses, a filter for text XML cannot carry, plus a
+ * check for whether a styler class is an effective (usable) cell styler.
  * <p>
  * The conversions settle the shape of what they are given before POI sees it, in both directions: letters that are
  * not column letters and a negative index alike raise {@link PxlArgumentException}. Left to itself POI answers
@@ -167,6 +167,95 @@ public final class PxlMiscUtils {
         }
 
         return Pair.of(cellRef.getRow(), (int) cellRef.getCol());
+    }
+
+    /**
+     * Determines whether the given text carries a character that XML cannot represent, and so cannot survive an
+     * XLSX/XLSM export intact.
+     * <p>
+     * The set of characters XML 1.0 allows is {@code #x9}, {@code #xA}, {@code #xD},
+     * {@code #x20-#xD7FF}, {@code #xE000-#xFFFD} and {@code #x10000-#x10FFFF}. Everything else - the C0 control
+     * characters other than tab, newline and carriage return, {@code #xFFFE} and {@code #xFFFF}, and any surrogate
+     * left without its pair - is invalid. The text is walked by code point, so a well-formed surrogate pair counts
+     * as the supplementary character it encodes rather than as two invalid halves.
+     * <p>
+     * Nothing in the write path reports these characters: POI 5.5.1 turns each of them into {@code '?'} on the way
+     * into an XLSX (XSSF through the XmlBeans saver, SXSSF through its own sheet writer) without an exception or a
+     * warning, while XLS keeps them as they are because the binary format is not XML. The loss is therefore silent
+     * and it splits by file format, which is what makes it worth testing for up front.
+     *
+     * @param value the text to test, may be {@code null}
+     * @return {@code true} if the text carries at least one character XML cannot represent; {@code false} for
+     * {@code null} or empty text
+     */
+    public static boolean containsInvalidXmlChars(final String value) {
+
+        if (Objects.isNull(value)) {
+            return false;
+        }
+
+        final int length = value.length();
+        int index = 0;
+        while (index < length) {
+            final int codePoint = value.codePointAt(index);
+            if (!isValidXmlCodePoint(codePoint)) {
+                return true;
+            }
+            index += Character.charCount(codePoint);
+        }
+
+        return false;
+    }
+
+    /**
+     * Removes every character that XML cannot represent, leaving the rest of the text untouched. The characters
+     * removed are the ones {@link #containsInvalidXmlChars} reports on.
+     * <p>
+     * Removing is a deliberate choice over the {@code '?'} POI substitutes: a dropped character reads as an
+     * absence, whereas a substituted one reads as content that was really there. Callers who want POI's
+     * behavior can keep it by not filtering at all.
+     * <p>
+     * Nothing is copied when there is nothing to remove - the argument itself comes back, {@code null} included -
+     * so this is cheap to call on text that is usually clean.
+     *
+     * @param value the text to filter, may be {@code null}
+     * @return the text without the characters XML cannot represent; the argument itself when it carries none
+     */
+    public static String removeInvalidXmlChars(final String value) {
+
+        if (!containsInvalidXmlChars(value)) {
+            return value;
+        }
+
+        final int length = value.length();
+        final StringBuilder builder = new StringBuilder(length);
+        int index = 0;
+        while (index < length) {
+            final int codePoint = value.codePointAt(index);
+            final int charCount = Character.charCount(codePoint);
+            if (isValidXmlCodePoint(codePoint)) {
+                builder.append(value, index, index + charCount);
+            }
+            index += charCount;
+        }
+
+        return builder.toString();
+    }
+
+    /**
+     * Determines whether a single code point is one XML 1.0 allows in character data.
+     *
+     * @param codePoint the code point to test
+     * @return {@code true} if XML can represent it
+     */
+    private static boolean isValidXmlCodePoint(final int codePoint) {
+
+        return codePoint == 0x9
+                || codePoint == 0xA
+                || codePoint == 0xD
+                || (codePoint >= 0x20 && codePoint <= 0xD7FF)
+                || (codePoint >= 0xE000 && codePoint <= 0xFFFD)
+                || (codePoint >= 0x10000 && codePoint <= 0x10FFFF);
     }
 
     /**
