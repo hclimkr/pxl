@@ -4,6 +4,7 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 import java.time.Duration;
@@ -123,7 +124,7 @@ public final class PxlTemporalAmountSupport {
                     i++; // consume the closing quote
                 }
                 regex.append(Pattern.quote(literal.toString()));
-            } else if (TEMPORAL_AMOUNT_PATTERN_TOKENS.indexOf(c) >= 0) {
+            } else if (StringUtils.contains(TEMPORAL_AMOUNT_PATTERN_TOKENS, c)) {
                 int n = 0;
                 while (i < pattern.length() && pattern.charAt(i) == c) {
                     n++;
@@ -153,7 +154,7 @@ public final class PxlTemporalAmountSupport {
     private static Map<Character, Long> parseTemporalAmountFields(final String value,
                                                                   final CompiledTemporalPattern compiledPattern) {
 
-        final Matcher matcher = compiledPattern.getRegex().matcher(value.trim());
+        final Matcher matcher = compiledPattern.getRegex().matcher(StringUtils.trim(value));
         if (!matcher.matches()) {
             throw new IllegalArgumentException(PxlI18nDiagnostic.get(PxlI18nDiagnosticKeys.SUPPORT_PERIOD_DURATION_PATTERN_MISMATCH, String.valueOf(value), compiledPattern.getSourcePattern()));
         }

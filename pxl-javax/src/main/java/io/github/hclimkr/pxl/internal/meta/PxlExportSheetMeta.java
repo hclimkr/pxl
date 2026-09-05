@@ -308,7 +308,7 @@ public final class PxlExportSheetMeta {
             Field exportGroupingField = null;
             if (StringUtils.isNotBlank(exportGroupingFieldName)) {
                 exportGroupingField = PxlReflectionSupport.getAllFields(rowClass).stream()
-                        .filter(f -> f.getName().equals(exportGroupingFieldName))
+                        .filter(f -> StringUtils.equals(f.getName(), exportGroupingFieldName))
                         .findFirst()
                         .orElse(null);
                 if (Objects.isNull(exportGroupingField)) {
@@ -382,9 +382,7 @@ public final class PxlExportSheetMeta {
             final String exportCsvCharset = Optional.ofNullable(sheetOption)
                     .flatMap(option -> Optional.ofNullable(option.getExportCsvCharset()))
                     .filter(StringUtils::isNotBlank)
-                    .orElseGet(() -> StringUtils.isNotBlank(sheetAnnotation.exportCsvCharset()) ?
-                            sheetAnnotation.exportCsvCharset() :
-                            workbookMeta.getExportCsvCharset());
+                    .orElseGet(() -> StringUtils.defaultIfBlank(sheetAnnotation.exportCsvCharset(), workbookMeta.getExportCsvCharset()));
 
             final char exportCsvDelimiter = Optional.ofNullable(sheetOption)
                     .flatMap(option -> Optional.ofNullable(option.getExportCsvDelimiter()))
@@ -553,7 +551,7 @@ public final class PxlExportSheetMeta {
         Field exportGroupingField = null;
         if (StringUtils.isNotBlank(exportGroupingFieldName)) {
             exportGroupingField = PxlReflectionSupport.getAllFields(rowClass).stream()
-                    .filter(f -> f.getName().equals(exportGroupingFieldName))
+                    .filter(f -> StringUtils.equals(f.getName(), exportGroupingFieldName))
                     .findFirst()
                     .orElse(null);
             if (Objects.isNull(exportGroupingField)) {

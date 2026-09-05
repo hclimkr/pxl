@@ -153,11 +153,11 @@ public final class PxlSheetUtils {
             if (character == SHEET_NAME_QUOTE) {
                 quoted = !quoted;
             } else if (!quoted && character == PRINT_AREA_RANGE_SEPARATOR) {
-                ranges.add(removeSheetNameFromRange(printArea.substring(rangeStart, i)));
+                ranges.add(removeSheetNameFromRange(StringUtils.substring(printArea, rangeStart, i)));
                 rangeStart = i + 1;
             }
         }
-        ranges.add(removeSheetNameFromRange(printArea.substring(rangeStart)));
+        ranges.add(removeSheetNameFromRange(StringUtils.substring(printArea, rangeStart)));
 
         return StringUtils.join(ranges, PRINT_AREA_RANGE_SEPARATOR);
     }
@@ -180,7 +180,7 @@ public final class PxlSheetUtils {
             if (character == SHEET_NAME_QUOTE) {
                 quoted = !quoted;
             } else if (!quoted && character == SHEET_NAME_SEPARATOR) {
-                return range.substring(i + 1);
+                return StringUtils.substring(range, i + 1);
             }
         }
 

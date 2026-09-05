@@ -312,9 +312,7 @@ public final class PxlImportSheetMeta {
             final String importCsvCharset = Optional.ofNullable(sheetOption)
                     .flatMap(option -> Optional.ofNullable(option.getImportCsvCharset()))
                     .filter(StringUtils::isNotBlank)
-                    .orElseGet(() -> StringUtils.isNotBlank(sheetAnnotation.importCsvCharset()) ?
-                            sheetAnnotation.importCsvCharset() :
-                            workbookMeta.getImportCsvCharset());
+                    .orElseGet(() -> StringUtils.defaultIfBlank(sheetAnnotation.importCsvCharset(), workbookMeta.getImportCsvCharset()));
 
             final char importCsvDelimiter = Optional.ofNullable(sheetOption)
                     .flatMap(option -> Optional.ofNullable(option.getImportCsvDelimiter()))

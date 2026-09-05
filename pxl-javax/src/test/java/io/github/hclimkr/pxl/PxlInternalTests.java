@@ -421,6 +421,21 @@ public class PxlInternalTests {
     }
 
     @Test
+    public void workbookSupport_makeUniqueSafeSheetName_nameAtMaxLength_trimsBaseToFitTheSuffix() throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            // 31 characters: the limit itself, so no suffix fits unless the base gives something up.
+            final String maxLengthName = "MaxLengthSheetNameWithThirtyOne";
+            workbook.createSheet(maxLengthName);
+
+            final String uniqueName = PxlWorkbookSupport.makeUniqueSafeSheetName(workbook, maxLengthName);
+
+            // The " (2)" has to sit inside the same 31 characters, so the base loses its last 4.
+            assertThat(uniqueName).isEqualTo("MaxLengthSheetNameWithThirt (2)");
+            assertThat(uniqueName).hasSize(PxlConstants.MAX_SHEET_NAME_LENGTH);
+        }
+    }
+
+    @Test
     public void workbookSupport_makeUniqueDefinedName_avoidsCollision() throws Exception {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             workbook.createSheet("Sheet1");

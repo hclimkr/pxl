@@ -2,6 +2,7 @@ package io.github.hclimkr.pxl.builder;
 
 import io.github.hclimkr.pxl.option.PxlImportWorkbookOption;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.validation.Validator;
 import java.io.File;
@@ -64,7 +65,7 @@ abstract class PxlAbstractImportBuilder {
      */
     protected static String getNormalizedFileBaseName(final File file) {
 
-        return Normalizer.normalize(FilenameUtils.getBaseName(file.getName()), Normalizer.Form.NFC).trim();
+        return StringUtils.trim(Normalizer.normalize(FilenameUtils.getBaseName(file.getName()), Normalizer.Form.NFC));
     }
 
 }

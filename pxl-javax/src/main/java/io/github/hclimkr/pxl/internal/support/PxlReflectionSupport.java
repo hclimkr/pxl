@@ -5,6 +5,7 @@ import io.github.hclimkr.pxl.exception.PxlReflectionException;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import org.apache.commons.lang3.ClassUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
@@ -249,7 +250,7 @@ public final class PxlReflectionSupport {
 
         // 3) Return newValue only for the key member; delegate the rest (other members + annotationType/equals/hashCode/toString) to the original
         final InvocationHandler invocationHandler = (proxy, method, args) -> {
-            if (method.getParameterCount() == 0 && method.getName().equals(key)) {
+            if (method.getParameterCount() == 0 && StringUtils.equals(method.getName(), key)) {
                 return newValue;
             }
             return method.invoke(annotation, args);

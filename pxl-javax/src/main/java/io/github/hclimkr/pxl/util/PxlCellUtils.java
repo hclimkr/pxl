@@ -1820,7 +1820,7 @@ public final class PxlCellUtils {
         }
 
         for (final PictureType pictureType : PictureType.values()) {
-            if (pictureType.contentType.equals(contentType) && pictureType.ooxmlId > 0) {
+            if (StringUtils.equals(pictureType.contentType, contentType) && pictureType.ooxmlId > 0) {
                 return pictureType.ooxmlId;
             }
         }

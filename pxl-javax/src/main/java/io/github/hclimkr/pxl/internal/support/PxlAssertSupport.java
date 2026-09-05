@@ -307,7 +307,7 @@ public final class PxlAssertSupport {
         if (Objects.isNull(chars)) {
             throw new PxlNullPointerException(nullMessage(parameterName));
         }
-        if (chars.length() == 0) {
+        if (StringUtils.isEmpty(chars)) {
             throw new PxlArgumentException(emptyMessage(parameterName));
         }
 

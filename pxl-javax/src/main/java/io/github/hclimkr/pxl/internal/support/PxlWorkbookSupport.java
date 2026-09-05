@@ -380,7 +380,7 @@ public final class PxlWorkbookSupport {
         for (int suffixNumber = 2; ; suffixNumber++) {
             final String suffix = " (" + suffixNumber + ")";
             final int maxBaseLength = PxlConstants.MAX_SHEET_NAME_LENGTH - suffix.length();
-            final String base = safeName.length() > maxBaseLength ? safeName.substring(0, maxBaseLength) : safeName;
+            final String base = StringUtils.left(safeName, maxBaseLength);
             final String candidate = base + suffix;   // both base and suffix are already safe, so no re-sanitization is needed.
             if (Objects.isNull(workbook.getSheet(candidate))) {
                 return candidate;
