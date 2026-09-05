@@ -544,7 +544,7 @@ public final class PxlExportSheetMeta {
                 .flatMap(option -> Optional.ofNullable(option.getExportRowHeightInPoints()))
                 .orElse(PxlConstants.DEFAULT_EXPORT_ROW_HEIGHT_IN_POINTS);
 
-        final String exportOrder = "";
+        final String exportOrder = StringUtils.EMPTY;
         final String exportGroupingFieldName = Optional.ofNullable(sheetOption)
                 .flatMap(option -> Optional.ofNullable(option.getExportGroupingFieldName()))
                 .orElse(null);

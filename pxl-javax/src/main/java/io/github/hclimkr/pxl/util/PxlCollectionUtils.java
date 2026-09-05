@@ -1,5 +1,8 @@
 package io.github.hclimkr.pxl.util;
 
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -85,11 +88,7 @@ public final class PxlCollectionUtils {
     public static <T> T get(final T[] array,
                             final int index) {
 
-        if (Objects.isNull(array) || index < 0 || index >= array.length) {
-            return null;
-        }
-
-        return array[index];
+        return ArrayUtils.get(array, index);
     }
 
     /**
@@ -110,8 +109,9 @@ public final class PxlCollectionUtils {
      * A count of zero or less yields an empty list.
      * <p>
      * The list is meant to be written into by index - a fixed-width record whose fields are filled in as they
-     * are resolved, leaving the untouched ones empty - so it is an {@link ArrayList} rather than the immutable
-     * list {@link Collections#nCopies(int, Object)} would give.
+     * are resolved, leaving the untouched ones empty - so the immutable list
+     * {@link Collections#nCopies(int, Object)} gives is copied into an {@link ArrayList} rather than returned
+     * as it stands.
      *
      * @param numOfElements the number of empty strings the list holds
      * @return a mutable list of empty strings, never {@code null}
@@ -119,13 +119,8 @@ public final class PxlCollectionUtils {
     public static List<String> makeEmptyStringList(final int numOfElements) {
 
         final int safeNumOfElements = Math.max(0, numOfElements);
-        final List<String> emptyStringList = new ArrayList<>(safeNumOfElements);
 
-        for (int index = 0; index < safeNumOfElements; index++) {
-            emptyStringList.add("");
-        }
-
-        return emptyStringList;
+        return new ArrayList<>(Collections.nCopies(safeNumOfElements, StringUtils.EMPTY));
     }
 
     /**

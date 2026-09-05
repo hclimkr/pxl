@@ -89,7 +89,7 @@ public final class PxlColumnSupport {
             dropdownNamedRange.setNameName(dropdownNamedRangeName);
 
             // The uniquifying suffix (e.g. " (2)") may introduce spaces/special characters into the sheet name, so always quote the sheet name in the formula.
-            final String quotedDropdownSheetName = "'" + StringUtils.replace(dropdownSheetName, "'", "''") + "'";
+            final String quotedDropdownSheetName = StringUtils.wrap(StringUtils.replace(dropdownSheetName, "'", "''"), '\'');
             dropdownNamedRange.setRefersToFormula(quotedDropdownSheetName + "!$A$1:$A$" + itemStrings.length);
 
             workbook.setSheetHidden(workbook.getSheetIndex(dropdownSheet), true);

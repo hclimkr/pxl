@@ -2,6 +2,7 @@ package io.github.hclimkr.pxl.internal.constraint;
 
 import io.github.hclimkr.pxl.annotation.PxlSheet;
 import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
+import org.apache.commons.lang3.ObjectUtils;
 
 import javax.validation.Path;
 import javax.validation.TraversableResolver;
@@ -158,7 +159,7 @@ public final class PxlSheetCascadeSkippingResolver implements TraversableResolve
                                  final Path.Node traversableProperty) {
 
         final Class<?> hostType = Objects.nonNull(traversableObject) ? traversableObject.getClass() : rootBeanType;
-        if (Objects.isNull(hostType) || Objects.isNull(traversableProperty)) {
+        if (ObjectUtils.anyNull(hostType, traversableProperty)) {
             return false;
         }
 

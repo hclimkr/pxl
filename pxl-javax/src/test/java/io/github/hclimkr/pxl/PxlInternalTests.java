@@ -33,11 +33,10 @@ import java.io.StringWriter;
 import java.lang.annotation.ElementType;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.Period;
+import java.time.*;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -246,7 +245,7 @@ public class PxlInternalTests {
     }
 
     // ------------------------------------------------------------------
-    // PxlClassSupport (concrete collection resolution)
+    // PxlClassSupport (type predicates, concrete collection resolution)
     // ------------------------------------------------------------------
 
     @Test
@@ -268,6 +267,132 @@ public class PxlInternalTests {
         assertThrows(PxlReflectionException.class, () -> PxlClassSupport.getConcreteCollectionClass(Comparable.class));
         // a concrete non-collection class
         assertThrows(PxlReflectionException.class, () -> PxlClassSupport.getConcreteCollectionClass(String.class));
+    }
+
+    @Test
+    public void classSupport_typePredicates_acceptAPrimitiveAndItsWrapperAlike() {
+        // A column field may be declared either way, so a predicate that covers a primitive must answer the same
+        // for its wrapper. Losing one half of a pair does not fail loudly on its own: the type simply stops being
+        // recognized as built-in and falls through to the custom-object path, where it is reported as a missing
+        // converter rather than as a broken predicate. Both halves are therefore listed here.
+        assertThat(PxlClassSupport.isNumberClass(byte.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(Byte.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(short.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(Short.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(int.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(Integer.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(long.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(Long.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(double.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(Double.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(float.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(Float.class)).isTrue();
+
+        assertThat(PxlClassSupport.isBooleanClass(boolean.class)).isTrue();
+        assertThat(PxlClassSupport.isBooleanClass(Boolean.class)).isTrue();
+
+        assertThat(PxlClassSupport.isCharacterClass(char.class)).isTrue();
+        assertThat(PxlClassSupport.isCharacterClass(Character.class)).isTrue();
+    }
+
+    @Test
+    public void classSupport_typePredicates_acceptTheTypesTheyOwn() {
+        // The types that have no primitive form, listed per predicate so that dropping one from a predicate's
+        // list is caught here rather than at the column that happens to use it.
+        assertThat(PxlClassSupport.isNumberClass(BigInteger.class)).isTrue();
+        assertThat(PxlClassSupport.isNumberClass(BigDecimal.class)).isTrue();
+
+        assertThat(PxlClassSupport.isStringClass(String.class)).isTrue();
+        assertThat(PxlClassSupport.isJavaDateClass(Date.class)).isTrue();
+        assertThat(PxlClassSupport.isUuidClass(UUID.class)).isTrue();
+
+        assertThat(PxlClassSupport.isDateTimeClass(LocalDate.class)).isTrue();
+        assertThat(PxlClassSupport.isDateTimeClass(LocalTime.class)).isTrue();
+        assertThat(PxlClassSupport.isDateTimeClass(LocalDateTime.class)).isTrue();
+        assertThat(PxlClassSupport.isDateTimeClass(ZonedDateTime.class)).isTrue();
+        assertThat(PxlClassSupport.isDateTimeClass(OffsetTime.class)).isTrue();
+        assertThat(PxlClassSupport.isDateTimeClass(OffsetDateTime.class)).isTrue();
+
+        assertThat(PxlClassSupport.isTemporalAmountClass(Period.class)).isTrue();
+        assertThat(PxlClassSupport.isTemporalAmountClass(Duration.class)).isTrue();
+
+        // isCollectionClass asks whether the type is assignable to Collection, so an implementation counts too.
+        assertThat(PxlClassSupport.isCollectionClass(Collection.class)).isTrue();
+        assertThat(PxlClassSupport.isCollectionClass(List.class)).isTrue();
+        assertThat(PxlClassSupport.isCollectionClass(ArrayList.class)).isTrue();
+    }
+
+    @Test
+    public void classSupport_typePredicates_rejectTheTypesTheyDoNotOwn() {
+        // The predicates partition the built-in types, and the resolver dispatches on the first one that says
+        // yes, so an overlap would route a column to the wrong codec.
+        assertThat(PxlClassSupport.isNumberClass(boolean.class)).isFalse();
+        assertThat(PxlClassSupport.isNumberClass(char.class)).isFalse();
+        assertThat(PxlClassSupport.isNumberClass(Character.class)).isFalse();
+        assertThat(PxlClassSupport.isNumberClass(String.class)).isFalse();
+
+        assertThat(PxlClassSupport.isBooleanClass(int.class)).isFalse();
+        assertThat(PxlClassSupport.isCharacterClass(String.class)).isFalse();
+        assertThat(PxlClassSupport.isStringClass(char.class)).isFalse();
+        assertThat(PxlClassSupport.isStringClass(Character.class)).isFalse();
+
+        // The legacy Date and the java.time types are owned by different predicates and by different codecs.
+        assertThat(PxlClassSupport.isDateTimeClass(Date.class)).isFalse();
+        assertThat(PxlClassSupport.isJavaDateClass(LocalDate.class)).isFalse();
+        // A Period/Duration is an amount of time rather than a point on the timeline.
+        assertThat(PxlClassSupport.isDateTimeClass(Duration.class)).isFalse();
+        assertThat(PxlClassSupport.isTemporalAmountClass(LocalTime.class)).isFalse();
+
+        // A Map is not a Collection, which is why a Map column is not a collection column.
+        assertThat(PxlClassSupport.isCollectionClass(Map.class)).isFalse();
+        assertThat(PxlClassSupport.isCollectionClass(String.class)).isFalse();
+    }
+
+    @Test
+    public void classSupport_valueTypePredicates_nullClass_answersFalse() {
+        // A predicate over a value type answers null the way it answers any other class it does not own, so a
+        // caller holding a class it has not resolved yet does not have to guard the call.
+        //
+        // isCollectionClass and isSupportedColumnClass are deliberately absent: both dereference the argument
+        // (isAssignableFrom / isEnum) and would throw. Neither is reached with null, since the column class comes
+        // from a Field.
+        assertThat(PxlClassSupport.isNumberClass(null)).isFalse();
+        assertThat(PxlClassSupport.isStringClass(null)).isFalse();
+        assertThat(PxlClassSupport.isBooleanClass(null)).isFalse();
+        assertThat(PxlClassSupport.isCharacterClass(null)).isFalse();
+        assertThat(PxlClassSupport.isJavaDateClass(null)).isFalse();
+        assertThat(PxlClassSupport.isDateTimeClass(null)).isFalse();
+        assertThat(PxlClassSupport.isTemporalAmountClass(null)).isFalse();
+        assertThat(PxlClassSupport.isUuidClass(null)).isFalse();
+    }
+
+    @Test
+    public void classSupport_isSupportedColumnClass_coversTheBuiltInTypesAndNothingElse() {
+        // The union of the predicates above, plus enums and collections. It decides whether a column is handled
+        // by a built-in codec or sent down the custom-object path.
+        assertThat(PxlClassSupport.isSupportedColumnClass(int.class)).isTrue();
+        assertThat(PxlClassSupport.isSupportedColumnClass(Integer.class)).isTrue();
+        assertThat(PxlClassSupport.isSupportedColumnClass(String.class)).isTrue();
+        assertThat(PxlClassSupport.isSupportedColumnClass(Date.class)).isTrue();
+        assertThat(PxlClassSupport.isSupportedColumnClass(LocalDate.class)).isTrue();
+        assertThat(PxlClassSupport.isSupportedColumnClass(Duration.class)).isTrue();
+        assertThat(PxlClassSupport.isSupportedColumnClass(UUID.class)).isTrue();
+        assertThat(PxlClassSupport.isSupportedColumnClass(Grade.class)).isTrue();     // any enum
+        assertThat(PxlClassSupport.isSupportedColumnClass(List.class)).isTrue();      // any Collection
+        assertThat(PxlClassSupport.isSupportedColumnClass(Object.class)).isFalse();
+        assertThat(PxlClassSupport.isSupportedColumnClass(Money.class)).isFalse();    // a custom object column
+
+        // isCustomClass is its complement; isCustomConvertibleClass adds enums back in, since an enum is
+        // converted through the same String-constructor / converter machinery a custom object is.
+        assertThat(PxlClassSupport.isCustomClass(Object.class)).isTrue();
+        assertThat(PxlClassSupport.isCustomClass(Money.class)).isTrue();
+        assertThat(PxlClassSupport.isCustomClass(int.class)).isFalse();
+        assertThat(PxlClassSupport.isCustomClass(Grade.class)).isFalse();
+
+        assertThat(PxlClassSupport.isCustomConvertibleClass(Grade.class)).isTrue();
+        assertThat(PxlClassSupport.isCustomConvertibleClass(Money.class)).isTrue();
+        assertThat(PxlClassSupport.isCustomConvertibleClass(int.class)).isFalse();
+        assertThat(PxlClassSupport.isCustomConvertibleClass(String.class)).isFalse();
     }
 
     // ------------------------------------------------------------------

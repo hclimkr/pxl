@@ -1,10 +1,12 @@
 package io.github.hclimkr.pxl.internal.core;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler;
 import org.apache.poi.xssf.usermodel.XSSFComment;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -55,9 +57,7 @@ public final class PxlContentsHandler implements XSSFSheetXMLHandler.SheetConten
         } else {
             // If the header is longer than the current row, the trailing cells are empty, so pad with that many blanks
             if (row.size() < header.size()) {
-                for (int i = row.size(); i < header.size(); i++) {
-                    row.add("");
-                }
+                row.addAll(Collections.nCopies(header.size() - row.size(), StringUtils.EMPTY));
             }
 
             rows.add(new ArrayList<>(row));
@@ -80,8 +80,8 @@ public final class PxlContentsHandler implements XSSFSheetXMLHandler.SheetConten
         int emptyCol = iCol - currentCol - 1;
 
         // Using the read cell's number, force-store empty values in the empty cell positions
-        for (int i = 0; i < emptyCol; i++) {
-            row.add("");
+        if (emptyCol > 0) {
+            row.addAll(Collections.nCopies(emptyCol, StringUtils.EMPTY));
         }
 
         currentCol = iCol;

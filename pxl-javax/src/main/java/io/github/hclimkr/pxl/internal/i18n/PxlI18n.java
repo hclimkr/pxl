@@ -291,7 +291,7 @@ public class PxlI18n {
         @Override
         public Locale getFallbackLocale(String baseName, Locale locale) {
 
-            if (Objects.isNull(baseName) || Objects.isNull(locale)) {
+            if (ObjectUtils.anyNull(baseName, locale)) {
                 throw new NullPointerException();
             }
 

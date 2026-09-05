@@ -3,6 +3,8 @@ package io.github.hclimkr.pxl.internal.support;
 import io.github.hclimkr.pxl.exception.PxlReflectionException;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.ClassUtils;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -15,8 +17,36 @@ import java.util.*;
  * Provides the {@code is*Class} checks the resolver uses to classify a field's declared type (number, string, boolean,
  * character, date/time, UUID, collection, enum, custom object), plus resolution of a concrete {@link Collection}
  * implementation for a requested collection interface.
+ * <p>
+ * The predicates that accept several types compare against a lookup array rather than a chain of {@code ==} tests,
+ * and the ones that accept a primitive alongside its wrapper widen the argument with
+ * {@code ClassUtils.primitiveToWrapper} first, so each list is written once instead of twice. Both helpers answer a
+ * {@code null} argument the way the chain did, with {@code false}: {@code primitiveToWrapper} passes {@code null}
+ * through and {@code ArrayUtils.contains} finds nothing.
  */
 public final class PxlClassSupport {
+
+    /**
+     * The numeric types a built-in codec handles, in wrapper form. A primitive argument is widened to its wrapper
+     * before being looked up here.
+     */
+    private static final Class<?>[] NUMBER_CLASSES = {
+            Byte.class, Short.class, Integer.class, Long.class, Double.class, Float.class,
+            BigInteger.class, BigDecimal.class
+    };
+
+    /**
+     * The {@code java.time} date/time types a built-in codec handles.
+     */
+    private static final Class<?>[] DATE_TIME_CLASSES = {
+            LocalDate.class, LocalTime.class, LocalDateTime.class,
+            ZonedDateTime.class, OffsetTime.class, OffsetDateTime.class
+    };
+
+    /**
+     * The {@code java.time} temporal-amount types a built-in codec handles.
+     */
+    private static final Class<?>[] TEMPORAL_AMOUNT_CLASSES = {Period.class, Duration.class};
 
     /**
      * Prevents instantiation.
@@ -86,37 +116,7 @@ public final class PxlClassSupport {
      */
     public static boolean isNumberClass(final Class<?> clazz) {
 
-        if (clazz == byte.class) {
-            return true;
-        } else if (clazz == Byte.class) {
-            return true;
-        } else if (clazz == short.class) {
-            return true;
-        } else if (clazz == Short.class) {
-            return true;
-        } else if (clazz == int.class) {
-            return true;
-        } else if (clazz == Integer.class) {
-            return true;
-        } else if (clazz == long.class) {
-            return true;
-        } else if (clazz == Long.class) {
-            return true;
-        } else if (clazz == double.class) {
-            return true;
-        } else if (clazz == Double.class) {
-            return true;
-        } else if (clazz == float.class) {
-            return true;
-        } else if (clazz == Float.class) {
-            return true;
-        } else if (clazz == BigInteger.class) {
-            return true;
-        } else if (clazz == BigDecimal.class) {
-            return true;
-        } else {
-            return false;
-        }
+        return ArrayUtils.contains(NUMBER_CLASSES, ClassUtils.primitiveToWrapper(clazz));
     }
 
     /**
@@ -142,13 +142,7 @@ public final class PxlClassSupport {
      */
     public static boolean isBooleanClass(final Class<?> clazz) {
 
-        if (clazz == boolean.class) {
-            return true;
-        } else if (clazz == Boolean.class) {
-            return true;
-        } else {
-            return false;
-        }
+        return ClassUtils.primitiveToWrapper(clazz) == Boolean.class;
     }
 
     /**
@@ -159,13 +153,7 @@ public final class PxlClassSupport {
      */
     public static boolean isCharacterClass(final Class<?> clazz) {
 
-        if (clazz == char.class) {
-            return true;
-        } else if (clazz == Character.class) {
-            return true;
-        } else {
-            return false;
-        }
+        return ClassUtils.primitiveToWrapper(clazz) == Character.class;
     }
 
     /**
@@ -192,21 +180,7 @@ public final class PxlClassSupport {
      */
     public static boolean isDateTimeClass(final Class<?> clazz) {
 
-        if (clazz == LocalDate.class) {
-            return true;
-        } else if (clazz == LocalTime.class) {
-            return true;
-        } else if (clazz == LocalDateTime.class) {
-            return true;
-        } else if (clazz == ZonedDateTime.class) {
-            return true;
-        } else if (clazz == OffsetTime.class) {
-            return true;
-        } else if (clazz == OffsetDateTime.class) {
-            return true;
-        } else {
-            return false;
-        }
+        return ArrayUtils.contains(DATE_TIME_CLASSES, clazz);
     }
 
     /**
@@ -217,13 +191,7 @@ public final class PxlClassSupport {
      */
     public static boolean isTemporalAmountClass(final Class<?> clazz) {
 
-        if (clazz == Period.class) {
-            return true;
-        } else if (clazz == Duration.class) {
-            return true;
-        } else {
-            return false;
-        }
+        return ArrayUtils.contains(TEMPORAL_AMOUNT_CLASSES, clazz);
     }
 
     /**

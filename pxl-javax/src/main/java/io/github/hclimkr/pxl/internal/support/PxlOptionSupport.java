@@ -5,10 +5,10 @@ import io.github.hclimkr.pxl.internal.constraint.Nullable;
 import io.github.hclimkr.pxl.option.PxlExportSheetOption;
 import io.github.hclimkr.pxl.option.PxlImportSheetOption;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -108,9 +108,10 @@ public final class PxlOptionSupport {
                 ? null
                 : firstMatching(sheetOptions, fieldName, fieldNameGetter);
 
-        return Objects.nonNull(namedOption)
-                ? namedOption
-                : firstMatching(sheetOptions, PxlConstants.SHEET_FIELD_NAME_WILD_CARD, fieldNameGetter);
+        // getIfNull rather than defaultIfNull: the wildcard lookup is a second pass over the list, and a named
+        // option having been found is exactly when it does not need running.
+        return ObjectUtils.getIfNull(namedOption,
+                () -> firstMatching(sheetOptions, PxlConstants.SHEET_FIELD_NAME_WILD_CARD, fieldNameGetter));
     }
 
     /**

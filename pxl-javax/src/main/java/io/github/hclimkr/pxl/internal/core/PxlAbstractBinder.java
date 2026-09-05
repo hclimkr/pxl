@@ -7,6 +7,7 @@ import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
 import io.github.hclimkr.pxl.internal.meta.PxlImportColumnMeta;
 import io.github.hclimkr.pxl.internal.support.PxlReflectionSupport;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
+import org.apache.commons.lang3.ObjectUtils;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.Validator;
@@ -36,7 +37,7 @@ abstract class PxlAbstractBinder {
                                                   final Integer rowIndex)
             throws PxlValidationException {
 
-        if (Objects.isNull(validator) || Objects.isNull(object)) {
+        if (ObjectUtils.anyNull(validator, object)) {
             return;
         }
 

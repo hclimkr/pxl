@@ -11,6 +11,7 @@ import io.github.hclimkr.pxl.type.PxlFileFormat;
 import net.coobird.thumbnailator.Thumbnails;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.common.usermodel.HyperlinkType;
@@ -221,7 +222,7 @@ public final class PxlCellUtils {
      */
     public static void copyCell(final Cell srcCell, final Cell dstCell) {
 
-        if (Objects.isNull(srcCell) || Objects.isNull(dstCell)) {
+        if (ObjectUtils.anyNull(srcCell, dstCell)) {
             return;
         }
 
@@ -1232,7 +1233,7 @@ public final class PxlCellUtils {
     public static CellStyle cloneCellStyle(final Cell cell,
                                            final Workbook targetWorkbook) {
 
-        if (Objects.isNull(cell) || Objects.isNull(targetWorkbook)) {
+        if (ObjectUtils.anyNull(cell, targetWorkbook)) {
             return null;
         }
 

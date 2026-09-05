@@ -1,6 +1,7 @@
 package io.github.hclimkr.pxl.internal.support;
 
 import io.github.hclimkr.pxl.internal.constraint.Nullable;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Collections;
@@ -108,7 +109,7 @@ public final class PxlNameMatchSupport {
             return true;
         }
 
-        if (Objects.isNull(name1) || Objects.isNull(name2)) {
+        if (ObjectUtils.anyNull(name1, name2)) {
             return false;
         }
 

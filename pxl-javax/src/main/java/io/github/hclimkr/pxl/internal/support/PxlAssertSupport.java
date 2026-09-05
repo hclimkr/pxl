@@ -5,6 +5,7 @@ import io.github.hclimkr.pxl.exception.PxlException;
 import io.github.hclimkr.pxl.exception.PxlNullPointerException;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 
@@ -132,7 +133,7 @@ public final class PxlAssertSupport {
         if (Objects.isNull(array)) {
             throw new PxlNullPointerException(nullMessage(parameterName));
         }
-        if (array.length == 0) {
+        if (ArrayUtils.isEmpty(array)) {
             throw new PxlArgumentException(emptyMessage(parameterName));
         }
 
@@ -152,7 +153,7 @@ public final class PxlAssertSupport {
     public static <T, X extends Throwable> T[] notEmpty(final T[] array, final Supplier<? extends X> exceptionSupplier)
             throws X {
 
-        if (Objects.isNull(array) || array.length == 0) {
+        if (ArrayUtils.isEmpty(array)) {
             throw exceptionSupplier.get();
         }
 

@@ -3,6 +3,7 @@ package io.github.hclimkr.pxl.util;
 import com.github.pjfanning.xlsx.impl.StreamingSheet;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnostic;
 import io.github.hclimkr.pxl.internal.i18n.PxlI18nDiagnosticKeys;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -83,7 +84,7 @@ public final class PxlRegionUtils {
             return;
         }
 
-        if (Objects.isNull(srcRow) || Objects.isNull(dstRow)) {
+        if (ObjectUtils.anyNull(srcRow, dstRow)) {
             return;
         }
 

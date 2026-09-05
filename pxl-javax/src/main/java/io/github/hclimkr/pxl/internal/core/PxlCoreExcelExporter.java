@@ -17,6 +17,7 @@ import io.github.hclimkr.pxl.styler.PxlStyler;
 import io.github.hclimkr.pxl.util.PxlCollectionUtils;
 import io.github.hclimkr.pxl.util.PxlColumnUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
@@ -93,7 +94,7 @@ public final class PxlCoreExcelExporter extends PxlAbstractExporter {
             // Get the row data to write into the sheet.
             final Collection<?> rowObjects = getRowObjects(sheetMeta.getSheetField(), workbookObject);
 
-            if (exportDataValidation && Objects.nonNull(validator) && Objects.nonNull(rowObjects)) {
+            if (exportDataValidation && ObjectUtils.allNotNull(validator, rowObjects)) {
                 validateBeanConstraints(validator, rowObjects, sheetMeta.getActualExportSheetName(), null);
             }
 
